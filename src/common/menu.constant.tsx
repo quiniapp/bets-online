@@ -1,15 +1,18 @@
 import type { MainMenuItem } from "@/types/menu.type";
+import { UsersRound, ChartArea } from 'lucide-react';
 
 export const MainMenu: MainMenuItem[] = [
     {
       id: '221',
       label: 'Estadisticas',
-      link: '/admin/stats'
+      link: '/admin/stats',
+      icon: <ChartArea size={16} />
     },
     {
       id: '220',
       label: 'Usuarios', 
       link: '/admin/users',
+      icon: <UsersRound size={16} />,
       children: [
         {
           id: '290-b',

@@ -5,9 +5,8 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion"
 import type { MainMenuItem } from "@/types/menu.type";
-import { FlexCol } from "../flex";
+import { Flex, FlexCol } from "../flex";
 import Link from "next/link";
-
 
 interface AsideMenuProps {
     menu: MainMenuItem[]
@@ -21,13 +20,13 @@ const AsideMenu = ({ menu }: AsideMenuProps) => {
                     <FlexCol key={item.id}>
                         {hasChildren ? (
                             <Accordion type="single" collapsible>
-                                <AccordionItem value={item.id}>
-                                    <AccordionTrigger className="py-0 px-2 h-sidebar-item flex items-center">{item.label}</AccordionTrigger>
-                                    <AccordionContent >
+                                <AccordionItem value={item.id} >
+                                    <AccordionTrigger className="py-0 px-2 h-sidebar-item flex items-center"> <Flex className="gap-sm"> {item.icon} {item.label}</Flex></AccordionTrigger>
+                                    <AccordionContent className="!p-0" >
                                         {item.children!.map((child) => (
                                             <FlexCol key={child.id} className="px-2 h-sidebar-item flex justify-center items-start">
                                                 <Link href={child.link || ''}>
-                                                    {child.label}
+                                                   {child.label}
                                                 </Link>
                                             </FlexCol>
                                         ))}
@@ -35,7 +34,7 @@ const AsideMenu = ({ menu }: AsideMenuProps) => {
                                 </AccordionItem>
                             </Accordion>
                         ) : (
-                            <Link className="px-2 flex items-center h-sidebar-item" href={item.link || ''}>{item.label}</Link>
+                            <Link className="px-2 flex items-center h-sidebar-item gap-sm" href={item.link || ''}>{item.icon} {item.label}</Link>
                         )}
                     </FlexCol>
                 );

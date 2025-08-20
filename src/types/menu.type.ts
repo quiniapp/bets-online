@@ -3,4 +3,5 @@ export interface MainMenuItem {
     label: string;
     link?: string;
     children?: MainMenuItem[];
+    icon?: React.ReactElement;
   }
