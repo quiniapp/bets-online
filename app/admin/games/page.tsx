@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { mockGames, type Game } from "@/lib/mock-data"
-import { ArrowLeft, Edit, ToggleLeft, ToggleRight } from "lucide-react"
+import { ArrowLeft, Download, Edit, ToggleLeft, ToggleRight } from "lucide-react"
 import Link from "next/link"
+import { DashboardLayout } from "@/components/dashboard-layout"
 
 export default function AdminGames() {
   const { role } = useAuth()
@@ -28,20 +29,19 @@ export default function AdminGames() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Link href="/admin/dashboard">
-              <Button variant="ghost" size="sm" className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Gestión de Juegos</h1>
+    <DashboardLayout>
+
+<div className="space-y-6">
+    <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Reporte de Apuestas</h1>
+            <p className="text-muted-foreground">Análisis detallado de todas las apuestas</p>
           </div>
+          <Button>
+            <Download className="mr-2 h-4 w-4" />
+            Exportar Reporte
+          </Button>
         </div>
-      </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -99,5 +99,6 @@ export default function AdminGames() {
         </div>
       </main>
     </div>
+    </DashboardLayout>
   )
 }
