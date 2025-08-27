@@ -23,6 +23,7 @@ import {
   Cell,
 } from "recharts"
 import Link from "next/link"
+import ROUTER from "@/routes"
 
 export default function AdminDashboard() {
   const { user, role } = useAuth()
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (role !== "admin") {
-      router.push("/admin/login")
+      router.push(ROUTER.SITE)
     }
   }, [role, router])
 

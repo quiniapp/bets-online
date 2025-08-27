@@ -1,6 +1,8 @@
+import { Flex } from "@/components/flex";
+
 const HeroBannerIndex = () => {
     return (
-        <div> Hero Banner </div>
+        <Flex> Hero Banner </Flex>
     )
 }
 export default HeroBannerIndex;
