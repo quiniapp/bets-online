@@ -1,13 +1,17 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useAuth } from "@/contexts/auth-context"
-import { useLanguage } from "@/contexts/language-context"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { useLanguage } from "@/contexts/language-context";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   BarChart3,
   Users,
@@ -22,19 +26,19 @@ import {
   History,
   CreditCard,
   Settings,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  className?: string
+  className?: string;
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const { user, role, logout } = useAuth()
-  const { t } = useLanguage()
-  const pathname = usePathname()
-  const [usersOpen, setUsersOpen] = useState(false)
-  const [reportsOpen, setReportsOpen] = useState(false)
+  const { user, role, logout } = useAuth();
+  const { t } = useLanguage();
+  const pathname = usePathname();
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
 
   const adminMenuItems = [
     {
@@ -50,7 +54,10 @@ export function Sidebar({ className }: SidebarProps) {
       setOpen: setUsersOpen,
       items: [
         { title: t("users.list"), href: "/admin/users" },
-        { title: t("users.createManager"), href: "/admin/users/create-manager" },
+        {
+          title: t("users.createManager"),
+          href: "/admin/users/create-manager",
+        },
         { title: t("users.createUser"), href: "/admin/users/create-user" },
       ],
     },
@@ -86,7 +93,7 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/admin/settings",
       icon: Settings,
     },
-  ]
+  ];
 
   const userMenuItems = [
     {
@@ -119,12 +126,17 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/user/settings",
       icon: Settings,
     },
-  ]
+  ];
 
-  const menuItems = role === "admin" ? adminMenuItems : userMenuItems
+  const menuItems = role === "admin" ? adminMenuItems : userMenuItems;
 
   return (
-    <div className={cn("hidden md:flex h-full w-64 flex-col border-r bg-background", className)}>
+    <div
+      className={cn(
+        "hidden md:flex h-full w-64 flex-col border-r bg-background",
+        className
+      )}
+    >
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <div className="flex items-center gap-2 font-semibold">
@@ -140,22 +152,31 @@ export function Sidebar({ className }: SidebarProps) {
         <nav className="space-y-2">
           {menuItems.map((item, index) => (
             <div key={index}>
-              {item.collapsible ? (
-                <Collapsible open={item.isOpen} onOpenChange={item.setOpen}>
+              {item?.collapsible ? (
+                <Collapsible open={item?.isOpen} onOpenChange={item.setOpen}>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" className="w-full justify-between font-normal">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-between font-normal"
+                    >
                       <div className="flex items-center gap-2">
                         <item.icon className="h-4 w-4" />
                         {item.title}
                       </div>
-                      {item.isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      {item.isOpen ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1">
                     {item.items?.map((subItem, subIndex) => (
                       <Button
                         key={subIndex}
-                        variant={pathname === subItem.href ? "secondary" : "ghost"}
+                        variant={
+                          pathname === subItem.href ? "secondary" : "ghost"
+                        }
                         className="w-full justify-start pl-8 font-normal"
                         asChild
                       >
@@ -174,7 +195,9 @@ export function Sidebar({ className }: SidebarProps) {
                     {item.items.map((subItem, subIndex) => (
                       <Button
                         key={subIndex}
-                        variant={pathname === subItem.href ? "secondary" : "ghost"}
+                        variant={
+                          pathname === subItem.href ? "secondary" : "ghost"
+                        }
                         className="w-full justify-start pl-8 font-normal"
                         asChild
                       >
@@ -206,11 +229,16 @@ export function Sidebar({ className }: SidebarProps) {
           {role === "admin" ? t("common.admin") : t("common.user")}
         </div>
         <div className="mb-3 text-sm font-medium">{user?.username}</div>
-        <Button variant="outline" size="sm" className="w-full bg-transparent" onClick={logout}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full bg-transparent"
+          onClick={logout}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           {t("common.logout")}
         </Button>
       </div>
     </div>
-  )
+  );
 }

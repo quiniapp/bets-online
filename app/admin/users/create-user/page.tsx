@@ -87,10 +87,7 @@ export default function CreateUserPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver
-          </Button>
+         
           <div>
             <h1 className="text-3xl font-bold">Crear Nuevo Usuario</h1>
             <p className="text-muted-foreground">Registra un nuevo usuario en el sistema</p>

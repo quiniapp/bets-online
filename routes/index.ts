@@ -1,9 +1,12 @@
-import { CONFIG } from "@/config"
-
+ 
 const ROUTER = {
-    SITE : CONFIG.NEXTAUTH_URL,
-    LOGIN: CONFIG.NEXTAUTH_URL + '/login',
-    ADMIN: '',
+    SITE: "/",   
+    LOGIN: "/login",  
+    ADMIN: "/admin",
+    ADMIN_DASHBOARD: "/admin/dashboard",
+    ADMIN_USERS: "/admin/users",
+    ADMIN_GAMES: "/admin/games",
+    ADMIN_BALANCES: "/admin/balances",
 }
 
 export default ROUTER

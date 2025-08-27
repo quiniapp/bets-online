@@ -11,11 +11,18 @@ export interface User {
   updatedAt: Date
 }
 
+export enum Role {
+  admin= "admin",
+  superadmin= "superadmin",
+  user="user",
+   
+} 
+
 export interface Admin {
   id: string
   username: string
   email: string
-  role: "admin"
+  role: Role
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -101,7 +108,7 @@ export const mockAdmins: Admin[] = [
     id: "admin1",
     username: "admin",
     email: "admin@betplatform.com",
-    role: "admin",
+    role: Role.admin,
     isActive: true,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),
@@ -110,7 +117,7 @@ export const mockAdmins: Admin[] = [
     id: "admin2",
     username: "superadmin",
     email: "super@betplatform.com",
-    role: "admin",
+    role: Role.superadmin,
     isActive: true,
     createdAt: new Date("2024-01-01"),
     updatedAt: new Date("2024-01-01"),

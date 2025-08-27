@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockUsers, mockBets, mockGameAccessRequests } from "@/lib/mock-data"
+import { mockUsers, mockBets, mockGameAccessRequests, Role } from "@/lib/mock-data"
 import { Users, Gamepad2, DollarSign, TrendingUp, Clock, ArrowUp, ArrowDown } from "lucide-react"
 import {
   LineChart,
@@ -26,16 +26,48 @@ import Link from "next/link"
 import ROUTER from "@/routes"
 
 export default function AdminDashboard() {
-  const { user, role } = useAuth()
+  const { user, role, isLoading } = useAuth() // ✅ Agregamos isLoading
   const router = useRouter()
 
-  useEffect(() => {
-    if (role !== "admin") {
-      router.push(ROUTER.SITE)
-    }
-  }, [role, router])
+  // ✅ Debug completo
+  console.log("🏠 AdminDashboard - Current state:", { 
+    user: user?.username, 
+    role, 
+    isLoading, // ✅ Mostrar estado de carga
+    Role_admin: Role.admin,
+    Role_superadmin: Role.superadmin,
+    comparison1: role !== Role.admin,
+    comparison2: role !== Role.superadmin,
+    shouldRedirect: role !== Role.admin && role !== Role.superadmin
+  });
 
-  if (role !== "admin") return null
+  useEffect(() => {
+    console.log("🔄 AdminDashboard useEffect triggered:", { role, isLoading });
+    
+    // ✅ Solo validar cuando ya terminó de cargar
+    if (!isLoading) {
+      if (role !== Role.admin && role !== Role.superadmin) {
+        console.log("❌ Access denied, redirecting to home:", { role });
+        router.push(ROUTER.SITE)
+      } else {
+        console.log("✅ Access granted:", { role });
+      }
+    } else {
+      console.log("⏳ Still loading, waiting...");
+    }
+  }, [role, router, isLoading]) // ✅ Agregamos isLoading como dependencia
+
+  // ✅ Mostrar loading mientras carga
+  if (isLoading) {
+    console.log("⏳ Showing loading state");
+    return <div className="flex items-center justify-center h-screen">Cargando...</div>
+  }
+
+  // ✅ Solo bloquear cuando ya terminó de cargar y no es admin/superadmin
+  if (role !== Role.admin && role !== Role.superadmin) {
+    console.log("🚫 Rendering blocked, role not allowed:", { role });
+    return null
+  }
 
   const activeUsers = mockUsers.filter((u) => u.isActive).length
   const totalBalance = mockUsers.reduce((sum, u) => sum + u.balance, 0)
