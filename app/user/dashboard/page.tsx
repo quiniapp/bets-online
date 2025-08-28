@@ -6,21 +6,38 @@ import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockGames, mockBets, mockTransactions, type User } from "@/lib/mock-data"
+import { mockGames, mockBets, mockTransactions, type User, Role } from "@/lib/mock-data"
 import { UserIcon, Gamepad2, History, TrendingUp } from "lucide-react"
 import Link from "next/link"
+import ROUTER from "@/routes"
 
 export default function UserDashboard() {
-  const { user, role } = useAuth()
+  const { user, role, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (role !== "user") {
-      router.push("/user/login")
+   
+    if (!isLoading) {
+      if (role !== Role.user) {
+        console.log("❌ User dashboard - Access denied, redirecting:", { role });
+        router.push(ROUTER.SITE) 
+      } else {
+        console.log("✅ User dashboard - Access granted:", { role });
+      }
+    } else {
+      console.log("⏳ User dashboard - Still loading...");
     }
-  }, [role, router])
+  }, [role, router, isLoading])
 
-  if (role !== "user" || !user) return null
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Cargando...</div>
+  }
+
+  if (role !== Role.user || !user) {
+
+    return null
+  }
 
   const currentUser = user as User
   const userBets = mockBets.filter((bet) => bet.userId === currentUser.id)

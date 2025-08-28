@@ -1,8 +1,6 @@
 "use client"
 
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,24 +9,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { mockUsers, mockBets, mockGames, type User } from "@/lib/mock-data"
 import { Search, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
+import Box from "@/components/box"
 
 export default function EarningsReport() {
-  const { role } = useAuth()
-  const router = useRouter()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [selectedAgent, setSelectedAgent] = useState("all")
   const [selectedGame, setSelectedGame] = useState("all")
-  const [showAllGames, setShowAllGames] = useState(false)
 
-  useEffect(() => {
-    if (role !== "admin") {
-      router.push("/admin/login")
-    }
-  }, [role, router])
+  /**
+  * 
+  * 
+ useEffect(() => {
+   if (role !== "admin") {
+     router.push("/admin/login")
+   }
+ }, [role, router])
 
-  if (role !== "admin") return null
+ if (role !== "admin") return null
+  */
 
   const filteredUsers = mockUsers.filter(
     (user) => searchTerm === "" || user.username.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -41,7 +42,9 @@ export default function EarningsReport() {
   const calculateUserStats = (user: User) => {
     const userBets = getUserBets(user.id)
     const totalPlayed = userBets.reduce((sum, bet) => sum + bet.amount, 0)
-    const totalWon = userBets.filter((bet) => bet.outcome === "won").reduce((sum, bet) => sum + (bet.payout || 0), 0)
+    const totalWon = userBets
+      .filter((bet) => bet.outcome === "won")
+      .reduce((sum, bet) => sum + (bet.amount * (bet.multiplier || 1)), 0)
     const netLoss = totalPlayed - totalWon
 
     return { totalPlayed, totalWon, netLoss }
@@ -61,7 +64,7 @@ export default function EarningsReport() {
 
   return (
     <DashboardLayout title="Reporte de Ganancias">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <Box className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fichas</CardTitle>
@@ -94,10 +97,10 @@ export default function EarningsReport() {
             <p className="text-xs text-muted-foreground">comparativo</p>
           </CardContent>
         </Card>
-      </div>
+      </Box>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
+      <Box className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <Box className="lg:col-span-1">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Lista de Usuarios</CardTitle>
@@ -126,9 +129,9 @@ export default function EarningsReport() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </Box>
 
-        <div className="lg:col-span-3">
+        <Box className="lg:col-span-3">
           {/* Filters */}
           <Card className="mb-6">
             <CardContent className="p-6">
@@ -223,8 +226,8 @@ export default function EarningsReport() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </Box>
+      </Box>
     </DashboardLayout>
   )
 }

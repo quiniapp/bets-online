@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguage } from "@/contexts/language-context";
+
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -13,122 +11,31 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  BarChart3,
-  Users,
-  FileText,
-  DollarSign,
-  ArrowUpDown,
   ChevronDown,
   ChevronRight,
   LogOut,
   Gamepad2,
-  User,
-  History,
-  CreditCard,
-  Settings,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Role } from "@/lib/mock-data";
+import { useSidebarNavigation } from "@/hooks/useSidebarNavigation";
 
 interface SidebarProps {
   className?: string;
 }
 
 export function Sidebar({ className }: SidebarProps) {
-  const { user, role, logout } = useAuth();
+  const { logout } = useAuth();
   const { t } = useLanguage();
-  const pathname = usePathname();
-  const [usersOpen, setUsersOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(false);
-
-  const adminMenuItems = [
-    {
-      title: t("nav.statistics"),
-      href: "/admin/dashboard",
-      icon: BarChart3,
-    },
-    {
-      title: t("nav.users"),
-      icon: Users,
-      collapsible: true,
-      isOpen: usersOpen,
-      setOpen: setUsersOpen,
-      items: [
-        { title: t("users.list"), href: "/admin/users" },
-        {
-          title: t("users.createManager"),
-          href: "/admin/users/create-manager",
-        },
-        { title: t("users.createUser"), href: "/admin/users/create-user" },
-      ],
-    },
-    {
-      title: t("nav.games"),
-      href: "/admin/games",
-      icon: Gamepad2,
-    },
-    {
-      title: t("nav.reports"),
-      icon: FileText,
-      collapsible: true,
-      isOpen: reportsOpen,
-      setOpen: setReportsOpen,
-      items: [
-        { title: t("reports.bets"), href: "/admin/reports/bets" },
-        { title: t("reports.users"), href: "/admin/reports/users" },
-        { title: t("reports.earnings"), href: "/admin/reports/earnings" },
-      ],
-    },
-    {
-      title: t("nav.earnings"),
-      icon: DollarSign,
-      items: [{ title: t("earnings.calculate"), href: "/admin/balances" }],
-    },
-    {
-      title: t("nav.transactions"),
-      href: "/admin/transactions",
-      icon: ArrowUpDown,
-    },
-    {
-      title: t("nav.settings"),
-      href: "/admin/settings",
-      icon: Settings,
-    },
-  ];
-
-  const userMenuItems = [
-    {
-      title: t("nav.dashboard"),
-      href: "/user/dashboard",
-      icon: BarChart3,
-    },
-    {
-      title: t("nav.profile"),
-      href: "/user/profile",
-      icon: User,
-    },
-    {
-      title: t("nav.games"),
-      href: "/user/games",
-      icon: Gamepad2,
-    },
-    {
-      title: t("nav.myBets"),
-      href: "/user/bets",
-      icon: History,
-    },
-    {
-      title: t("nav.transactions"),
-      href: "/user/transactions",
-      icon: CreditCard,
-    },
-    {
-      title: t("nav.settings"),
-      href: "/user/settings",
-      icon: Settings,
-    },
-  ];
-
-  const menuItems = role === "admin" ? adminMenuItems : userMenuItems;
+  const {
+    user,
+    role,
+    activeItem,
+    menuItems,
+    handleNavigation,
+    getRoleDisplay,
+  } = useSidebarNavigation();
 
   return (
     <div
@@ -175,12 +82,12 @@ export function Sidebar({ className }: SidebarProps) {
                       <Button
                         key={subIndex}
                         variant={
-                          pathname === subItem.href ? "secondary" : "ghost"
+                          activeItem === subItem.href ? "secondary" : "ghost"
                         }
                         className="w-full justify-start pl-8 font-normal"
-                        asChild
+                        onClick={() => handleNavigation(subItem.href)}
                       >
-                        <Link href={subItem.href}>{subItem.title}</Link>
+                        {subItem.title}
                       </Button>
                     ))}
                   </CollapsibleContent>
@@ -196,26 +103,24 @@ export function Sidebar({ className }: SidebarProps) {
                       <Button
                         key={subIndex}
                         variant={
-                          pathname === subItem.href ? "secondary" : "ghost"
+                          activeItem === subItem.href ? "secondary" : "ghost"
                         }
                         className="w-full justify-start pl-8 font-normal"
-                        asChild
+                        onClick={() => handleNavigation(subItem.href)}
                       >
-                        <Link href={subItem.href}>{subItem.title}</Link>
+                        {subItem.title}
                       </Button>
                     ))}
                   </div>
                 </div>
               ) : (
                 <Button
-                  variant={pathname === item.href ? "secondary" : "ghost"}
+                  variant={activeItem === item.href ? "secondary" : "ghost"}
                   className="w-full justify-start font-normal"
-                  asChild
+                  onClick={() => handleNavigation(item.href!)}
                 >
-                  <Link href={item.href!}>
-                    <item.icon className="mr-2 h-4 w-4" />
-                    {item.title}
-                  </Link>
+                  <item.icon className="mr-2 h-4 w-4" />
+                  {item.title}
                 </Button>
               )}
             </div>
@@ -225,8 +130,9 @@ export function Sidebar({ className }: SidebarProps) {
 
       {/* User info and logout */}
       <div className="border-t p-4">
-        <div className="mb-2 text-sm text-muted-foreground">
-          {role === "admin" ? t("common.admin") : t("common.user")}
+        <div className="mb-2 text-sm text-muted-foreground flex items-center gap-2">
+          {role === Role.superadmin && <Shield className="h-3 w-3" />}
+          {getRoleDisplay()}
         </div>
         <div className="mb-3 text-sm font-medium">{user?.username}</div>
         <Button

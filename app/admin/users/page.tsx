@@ -1,8 +1,7 @@
 "use client"
 
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+
+import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,11 +11,12 @@ import { mockUsers, mockGames, type User } from "@/lib/mock-data"
 import { Search, Edit, Ban, CheckCircle } from "lucide-react"
 
 export default function AdminUsers() {
-  const { role } = useAuth()
-  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [users, setUsers] = useState<User[]>(mockUsers)
 
+  /**
+   * 
+   * 
   useEffect(() => {
     if (role !== "admin") {
       router.push("/admin/login")
@@ -24,6 +24,7 @@ export default function AdminUsers() {
   }, [role, router])
 
   if (role !== "admin") return null
+   */
 
   const filteredUsers = users.filter(
     (user) =>

@@ -22,6 +22,10 @@ export default function AdminBalances() {
   const [adjustmentAmount, setAdjustmentAmount] = useState("")
   const [adjustmentReason, setAdjustmentReason] = useState("")
 
+
+   /**
+   * 
+   * 
   useEffect(() => {
     if (role !== "admin") {
       router.push("/admin/login")
@@ -29,6 +33,7 @@ export default function AdminBalances() {
   }, [role, router])
 
   if (role !== "admin") return null
+   */
 
   const filteredUsers = users.filter(
     (user) =>

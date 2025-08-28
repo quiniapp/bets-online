@@ -9,7 +9,7 @@ interface LoginFormData {
   password: string;
 }
 
-const useLogin = (userType: "admin" | "user" = "admin") => {
+const useLogin = (userType?: "admin" | "user") => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { login } = useAuth();
@@ -30,24 +30,37 @@ const useLogin = (userType: "admin" | "user" = "admin") => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log("📝 Form submitted with:", data); // DEBUG
+    console.log("📝 Form submitted with:", data);
     setError("");
     setIsLoading(true);
     
     try {
-      console.log("🚀 Attempting login..."); // DEBUG
-      const success = await login(
+      console.log("🚀 Attempting login...");
+      
+      // ✅ Primero intentar como admin/superadmin
+      let success = await login(
         { 
           username: data.email,
           password: data.password 
         }, 
-        userType
+        "admin"
       );
 
-      console.log("📊 Login success:", success); // DEBUG
+      // ✅ Si falla admin, intentar como user
+      if (!success) {
+        success = await login(
+          { 
+            username: data.email,
+            password: data.password 
+          }, 
+          "user"
+        );
+      }
+
+      console.log("📊 Login success:", success);
 
       if (success) {
-        console.log("✅ Login exitoso, redirecting..."); // DEBUG
+        console.log("✅ Login exitoso, redirecting...");
         
         // DEBUG: Verificar el estado antes de redirigir
         setTimeout(() => {
@@ -59,25 +72,28 @@ const useLogin = (userType: "admin" | "user" = "admin") => {
           });
         }, 100);
         
-        // ✅ Redirigir según el tipo de usuario
-        if (userType === "admin") {
-          console.log("🧭 Navigating to /admin/dashboard"); // DEBUG
-          
-          // Prueba con window.location para descartar problemas del router
-          setTimeout(() => {
-            window.location.href = "/admin/dashboard";
-          }, 100);
-          
+        // ✅ Redirigir según el role del usuario logueado
+        const userRole = localStorage.getItem("auth_role");
+        console.log("🧭 User role for redirect:", userRole);
+        
+        if (userRole === "superadmin" || userRole === "admin") {
+          console.log("🧭 Navigating to admin dashboard");
+          router.push("/admin/dashboard");
+        } else if (userRole === "user") {
+          console.log("🧭 Navigating to user dashboard");
+          router.push("/user/dashboard");
         } else {
-          router.push("/dashboard"); // o la ruta que uses para usuarios normales
+          console.log("🧭 Unknown role, navigating to home");
+          router.push("/");
         }
+        
       } else {
-        console.log("❌ Login failed, setting error"); // DEBUG
+        console.log("❌ Login failed, setting error");
         setError("Credenciales inválidas. Por favor, inténtalo de nuevo.");
       }
       
     } catch (error: any) {
-      console.error("🚨 Error en login:", error); // DEBUG
+      console.error("🚨 Error en login:", error);
       setError(error?.message || "Error al iniciar sesión");
     } finally {
       setIsLoading(false);

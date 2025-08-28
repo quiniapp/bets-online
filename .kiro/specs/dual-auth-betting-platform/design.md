@@ -123,6 +123,7 @@ interface Bet {
   outcome: 'pending' | 'won' | 'lost';
   createdAt: Date;
   settledAt?: Date;
+  payout: number;
 }
 
 interface Transaction {

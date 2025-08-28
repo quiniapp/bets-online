@@ -24,15 +24,18 @@ import {
 } from "recharts"
 import Link from "next/link"
 import ROUTER from "@/routes"
+import UserActivity from "@/components/user-activity"
+import { PriorityGames } from "@/feature/admin-dashboard/priority-games"
+import { BetsPerDay } from "@/feature/admin-dashboard/bets-per-day"
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth() // ✅ Agregamos isLoading
   const router = useRouter()
 
   // ✅ Debug completo
-  console.log("🏠 AdminDashboard - Current state:", { 
-    user: user?.username, 
-    role, 
+  console.log("🏠 AdminDashboard - Current state:", {
+    user: user?.username,
+    role,
     isLoading, // ✅ Mostrar estado de carga
     Role_admin: Role.admin,
     Role_superadmin: Role.superadmin,
@@ -42,12 +45,10 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    console.log("🔄 AdminDashboard useEffect triggered:", { role, isLoading });
-    
-    // ✅ Solo validar cuando ya terminó de cargar
+  
     if (!isLoading) {
       if (role !== Role.admin && role !== Role.superadmin) {
-        console.log("❌ Access denied, redirecting to home:", { role });
+
         router.push(ROUTER.SITE)
       } else {
         console.log("✅ Access granted:", { role });
@@ -55,17 +56,17 @@ export default function AdminDashboard() {
     } else {
       console.log("⏳ Still loading, waiting...");
     }
-  }, [role, router, isLoading]) // ✅ Agregamos isLoading como dependencia
+  }, [role, router, isLoading])
 
-  // ✅ Mostrar loading mientras carga
+
   if (isLoading) {
-    console.log("⏳ Showing loading state");
+   
     return <div className="flex items-center justify-center h-screen">Cargando...</div>
   }
 
-  // ✅ Solo bloquear cuando ya terminó de cargar y no es admin/superadmin
+
   if (role !== Role.admin && role !== Role.superadmin) {
-    console.log("🚫 Rendering blocked, role not allowed:", { role });
+
     return null
   }
 
@@ -161,50 +162,9 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingresos Diarios</CardTitle>
-            <CardDescription>Ingresos y número de apuestas por día</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={dailyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      <BetsPerDay dailyRevenue={[]} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Popularidad de Juegos</CardTitle>
-            <CardDescription>Distribución de apuestas por tipo de juego</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={gamePopularity}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {gamePopularity.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+       <PriorityGames  gamePopularity={[]} />
 
         <Card>
           <CardHeader>
@@ -241,6 +201,7 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        <UserActivity maxItems={4} activities={userAc} />
       </div>
 
       {/* Quick Actions */}
@@ -293,3 +254,15 @@ export default function AdminDashboard() {
     </DashboardLayout>
   )
 }
+
+const userAc = [{
+  id: '33333',
+  type: 'login' as const,
+  title: 'Login',
+  description: 'entro en el site',
+  timestamp: '200299309388893',
+  user: {
+    name: 'Juan',
+    avatar: '',
+  }
+}]

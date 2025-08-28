@@ -8,7 +8,7 @@ import ROUTER from "@/routes"
 
 interface AuthContextType {
   user: User | Admin | null
-  role: Role | null // ❌ Faltaba | null
+  role: Role | null  
   login: (credentials: { username: string; password: string }, role: "user" | "admin") => Promise<boolean> // ❌ Cambiado Role por string literal
   logout: () => void
   isLoading: boolean
@@ -27,16 +27,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, role]);
 
   useEffect(() => {
-    console.log("🚀 AuthProvider initializing..."); // DEBUG
-    // Check for existing session in localStorage
+  
     const savedUser = localStorage.getItem("auth_user")
     const savedRole = localStorage.getItem("auth_role")
 
-    console.log("💾 localStorage check:", { savedUser: savedUser ? "exists" : "null", savedRole }); // DEBUG
 
     if (savedUser && savedRole) {
       const parsedUser = JSON.parse(savedUser)
-      console.log("✅ Restoring session:", { user: parsedUser.username, role: savedRole }); // DEBUG
       setUser(parsedUser)
       setRole(savedRole as Role)
     }
@@ -47,7 +44,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     credentials: { username: string; password: string },
     userRole: "user" | "admin",
   ): Promise<boolean> => {
-    console.log("🔐 Login attempt:", { credentials, userRole }); // DEBUG
     setIsLoading(true)
 
     try {
@@ -55,13 +51,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userRole === "user") {
         authenticatedUser = authenticateUser(credentials.username, credentials.password)
-        console.log("👤 User auth result:", authenticatedUser); // DEBUG
         if (authenticatedUser) {
           setRole(Role.user)
         }
       } else {
         authenticatedUser = authenticateAdmin(credentials.username, credentials.password)
-        console.log("👑 Admin auth result:", authenticatedUser); // DEBUG
         if (authenticatedUser) {
           setRole((authenticatedUser as Admin).role)
         }
@@ -69,9 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (authenticatedUser) {
         setUser(authenticatedUser)
-        console.log("✅ User set:", authenticatedUser); // DEBUG
-        console.log("✅ Role set:", userRole === "user" ? Role.user : (authenticatedUser as Admin).role); // DEBUG
-
+      
         // Save to localStorage for persistence
         localStorage.setItem("auth_user", JSON.stringify(authenticatedUser))
         localStorage.setItem("auth_role", userRole === "user" ? Role.user : (authenticatedUser as Admin).role)
@@ -79,10 +71,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true
       }
 
-      console.log("❌ Authentication failed"); // DEBUG
+    
       return false
     } catch (error) {
-      console.error("🚨 Login error:", error); // DEBUG
+     
       return false
     } finally {
       setIsLoading(false)
