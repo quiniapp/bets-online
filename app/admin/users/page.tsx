@@ -2,7 +2,7 @@
 
 
 import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -55,9 +55,9 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border">
+      <Card className="">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b font-medium text-sm text-gray-700">
+        <div className="grid grid-cols-12 gap-4 p-4   border-b font-medium text-sm  ">
           <div className="col-span-2">Usuario</div>
           <div className="col-span-2">Email</div>
           <div className="col-span-1">Estado</div>
@@ -70,7 +70,7 @@ export default function AdminUsers() {
         {/* Table Body */}
         <div className="divide-y">
           {filteredUsers.map((user) => (
-            <div key={user.id} className="grid grid-cols-12 gap-4 p-4 hover:bg-gray-50 transition-colors">
+            <div key={user.id} className="grid grid-cols-12 gap-4 p-4   transition-colors">
               <div className="col-span-2">
                 <div className="font-semibold">{user.username}</div>
               </div>
@@ -121,7 +121,7 @@ export default function AdminUsers() {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {filteredUsers.length === 0 && (
         <Card>
