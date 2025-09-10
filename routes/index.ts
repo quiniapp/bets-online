@@ -7,6 +7,7 @@ const ROUTER = {
     ADMIN_USERS: "/admin/users",
     ADMIN_GAMES: "/admin/games",
     ADMIN_BALANCES: "/admin/balances",
+    EDIT_USER: "/admin/users/edit-user",
 }
 
 export default ROUTER

@@ -6,6 +6,7 @@ import {UserIcon} from "lucide-react";
 import { ThemeToggle } from "../theme-toggle";
 
 import ROUTER from "@/routes";
+import { Flex } from "../flex";
 
 
 const HeaderIndex = () => {
@@ -16,7 +17,7 @@ const HeaderIndex = () => {
     }
     return (
         <header className="flex justify-between p-4 border-b-1">
-            <div> logo </div>
+            <Flex className="items-center justify-center"> logo </Flex>
             <nav>
                 <Button variant='ghost' onClick={goToPage} role='button' aria-label='ingresar'>
                    <UserIcon /> Ingresar

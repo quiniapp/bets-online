@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -120,12 +120,51 @@
   }
   body {
     @apply bg-background text-foreground;
-    
   }
+}
+
+html,
+body {
+  height: 100dvh;
+}
+
+@layer components {
+}
+
+.carousel {
+  overflow-x: auto;
+  scroll-behavior: smooth;
+
+ scroll-snap-type: x mandatory;
+  gap: 1em;
+}
+
+.carousel::-webkit-scrollbar{
+  display: none;
+}
+.carousel::scroll-button(right),
+.carousel::scroll-button(left) {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  
+ 
+}
+.carousel::scroll-button(right) {
+  content: "->";
+ 
+  background-color: aqua;
+}
+.carousel::scroll-button(left) {
+  content: "<-";
+ background-color: pink;
  
 }
 
-html, body{
- 
-  height: 100dvh;
+.card {
+  flex: 0 0 95%;
+  background-color: azure;
 }

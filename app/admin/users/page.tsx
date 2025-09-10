@@ -9,8 +9,11 @@ import { Input } from "@/components/ui/input"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { mockUsers, mockGames, type User } from "@/lib/mock-data"
 import { Search, Edit, Ban, CheckCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import ROUTER from "@/routes"
 
 export default function AdminUsers() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [users, setUsers] = useState<User[]>(mockUsers)
 
@@ -38,6 +41,10 @@ export default function AdminUsers() {
 
   const getGameName = (gameId: string) => {
     return mockGames.find((g) => g.id === gameId)?.name || "Juego desconocido"
+  }
+
+  const handleEditUserPage = () =>{
+    return router.push(ROUTER.EDIT_USER)
   }
 
   return (
@@ -106,8 +113,8 @@ export default function AdminUsers() {
               </div>
               <div className="col-span-1">
                 <div className="flex gap-1">
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-3 w-3" />
+                  <Button variant="outline" size="sm" onClick={handleEditUserPage}>
+                    <Edit className="h-3 w-3" /> 
                   </Button>
                   <Button
                     variant={user.isActive ? "destructive" : "default"}
