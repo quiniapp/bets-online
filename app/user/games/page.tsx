@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { mockGames, mockBets, type User, type Bet } from "@/lib/mock-data"
 import { ArrowLeft, Play, DollarSign } from "lucide-react"
 import Link from "next/link"
+import { DashboardLayout } from "@/components/dashboard-layout"
 
 export default function UserGames() {
   const { user, role } = useAuth()
@@ -19,13 +20,7 @@ export default function UserGames() {
   const [betAmount, setBetAmount] = useState("")
   const [bets, setBets] = useState<Bet[]>(mockBets)
 
-  useEffect(() => {
-    if (role !== "user") {
-      router.push("/user/login")
-    }
-  }, [role, router])
 
-  if (role !== "user" || !user) return null
 
   const currentUser = user as User
   const availableGames = mockGames.filter((game) => game.isActive && currentUser.enabledGames.includes(game.id))
@@ -75,7 +70,8 @@ export default function UserGames() {
   const userBets = bets.filter((bet) => bet.userId === currentUser.id).slice(0, 5)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <DashboardLayout title="Mi Dashboard">
+    <div className="min-h-screen">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
@@ -220,5 +216,6 @@ export default function UserGames() {
         </div>
       </main>
     </div>
+    </DashboardLayout>
   )
 }

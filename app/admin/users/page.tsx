@@ -70,7 +70,7 @@ export default function AdminUsers() {
         {/* Table Body */}
         <div className="divide-y">
           {filteredUsers.map((user) => (
-            <div key={user.id} className="grid grid-cols-12 gap-4 p-4   transition-colors">
+            <div key={user.id} className="grid grid-cols-12 gap-4 p-4    transition-colors">
               <div className="col-span-2">
                 <div className="font-semibold">{user.username}</div>
               </div>
