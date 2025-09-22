@@ -10,9 +10,9 @@ export default function LandingPage() {
   return (
     <Box className="grid grid-rows-[auto_1fr_auto] h-full">
       <HeaderIndex />
-      <FlexCol className="carousel">
+      <FlexCol className="items-center">
         <HeroBannerIndex />
-        <Flex className="p-4 border-t-1 justify-center">
+        <Flex className="p-4 border-t-1 justify-center h-full">
           <GamesList />
         </Flex>
       </FlexCol>
