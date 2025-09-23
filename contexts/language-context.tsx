@@ -15,13 +15,13 @@ const translations = {
     // Navigation
     "nav.statistics": "Estadísticas",
     "nav.users": "Usuarios",
-    "nav.games": "Juegos",
+    "nav.games": "Casino",
     "nav.reports": "Reportes",
     "nav.earnings": "Ganancias",
     "nav.transactions": "Cargas y Descargas",
     "nav.dashboard": "Dashboard",
     "nav.profile": "Perfil",
-    "nav.myBets": "Mis Apuestas",
+    "nav.myBets": "Favoritos",
     "nav.settings": "Configuración",
 
     // User Management

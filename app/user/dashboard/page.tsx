@@ -97,7 +97,7 @@ export default function UserDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Gamepad2 className="h-5 w-5" />
-              Juegos
+              Casino
             </CardTitle>
             <CardDescription>Acceder a juegos disponibles</CardDescription>
           </CardHeader>

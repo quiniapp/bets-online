@@ -26,6 +26,7 @@ import {
   Menu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Role } from "@/lib/mock-data"
 
 interface MobileSidebarProps {
   className?: string
@@ -124,7 +125,9 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
     },
   ]
 
-  const menuItems = role === "admin" ? adminMenuItems : userMenuItems
+  
+  const isAdminRole = role === "admin" || role === "superadmin";
+const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
 
   const handleLinkClick = () => {
     setOpen(false)
