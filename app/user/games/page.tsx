@@ -23,9 +23,9 @@ export default function UserGames() {
 
 
   const currentUser = user as User
-  const availableGames = mockGames.filter((game) => game.isActive && currentUser?.enabledGames.includes(game.id))
+  const availableGames = mockGames.filter((game) => game.isActive && currentUser?.enabledGames.includes(game?.id))
 
-  const selectedGameData = mockGames.find((g) => g.id === selectedGame)
+  const selectedGameData = mockGames.find((g) => g?.id === selectedGame)
 
   const placeBet = () => {
     if (!selectedGame || !betAmount || !selectedGameData) return
@@ -43,7 +43,7 @@ export default function UserGames() {
 
     const newBet: Bet = {
       id: `bet${Date.now()}`,
-      userId: currentUser.id,
+      userId: currentUser?.id,
       gameId: selectedGame,
       amount: amount,
       outcome: "pending",
@@ -61,13 +61,13 @@ export default function UserGames() {
 
       setBets((prev) =>
         prev.map((bet) =>
-          bet.id === newBet.id ? { ...bet, outcome: randomOutcome, multiplier, settledAt: new Date() } : bet,
+          bet?.id === newBet?.id ? { ...bet, outcome: randomOutcome, multiplier, settledAt: new Date() } : bet,
         ),
       )
     }, 3000)
   }
 
-  const userBets = bets.filter((bet) => bet.userId === currentUser.id).slice(0, 5)
+  const userBets = bets.filter((bet) => bet.userId === currentUser?.id).slice(0, 5)
 
   return (
     <DashboardLayout title="Mi Dashboard">
@@ -95,11 +95,11 @@ export default function UserGames() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {availableGames.map((game) => (
                   <Card
-                    key={game.id}
+                    key={game?.id}
                     className={`cursor-pointer transition-all ${
-                      selectedGame === game.id ? "ring-2 ring-blue-500" : ""
+                      selectedGame === game?.id ? "ring-2 ring-blue-500" : ""
                     }`}
-                    onClick={() => setSelectedGame(game.id)}
+                    onClick={() => setSelectedGame(game?.id)}
                   >
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
@@ -185,9 +185,9 @@ export default function UserGames() {
               <CardContent>
                 <div className="space-y-3">
                   {userBets.map((bet) => {
-                    const game = mockGames.find((g) => g.id === bet.gameId)
+                    const game = mockGames.find((g) => g?.id === bet.gameId)
                     return (
-                      <div key={bet.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={bet?.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <p className="font-medium">{game?.name}</p>
                           <p className="text-sm text-gray-500">
