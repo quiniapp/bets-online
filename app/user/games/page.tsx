@@ -36,7 +36,7 @@ export default function UserGames() {
       return
     }
 
-    if (amount > currentUser.balance) {
+    if (amount > currentUser?.balance) {
       alert("Balance insuficiente")
       return
     }
@@ -139,7 +139,7 @@ export default function UserGames() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">${currentUser.balance.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-green-600">${currentUser?.balance.toFixed(2)}</div>
               </CardContent>
             </Card>
 
@@ -156,7 +156,7 @@ export default function UserGames() {
                       type="number"
                       step="0.01"
                       min={selectedGameData.minBet}
-                      max={Math.min(selectedGameData.maxBet, currentUser.balance)}
+                      max={Math.min(selectedGameData.maxBet, currentUser?.balance)}
                       placeholder={`${selectedGameData.minBet} - ${selectedGameData.maxBet}`}
                       value={betAmount}
                       onChange={(e) => setBetAmount(e.target.value)}
@@ -168,7 +168,7 @@ export default function UserGames() {
 
                   <Button
                     onClick={placeBet}
-                    disabled={!betAmount || Number.parseFloat(betAmount) > currentUser.balance}
+                    disabled={!betAmount || Number.parseFloat(betAmount) > currentUser?.balance}
                     className="w-full"
                   >
                     Apostar ${betAmount || "0.00"}
