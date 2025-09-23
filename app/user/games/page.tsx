@@ -23,7 +23,7 @@ export default function UserGames() {
 
 
   const currentUser = user as User
-  const availableGames = mockGames.filter((game) => game.isActive && currentUser.enabledGames.includes(game.id))
+  const availableGames = mockGames.filter((game) => game.isActive && currentUser?.enabledGames.includes(game.id))
 
   const selectedGameData = mockGames.find((g) => g.id === selectedGame)
 
