@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { mockGames, type User } from "@/lib/mock-data"
-import { ArrowLeft, Save, UserIcon, Activity, Users, CreditCard, Upload, Gamepad2, Bell } from "lucide-react"
+import { ArrowLeft, Save, UserIcon, Activity, Users, CreditCard, Upload, Gamepad2, Bell, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { Flex, FlexCol } from "@/components/flex"
 
 export default function UserProfile() {
   const { user, role } = useAuth()
@@ -22,11 +23,15 @@ export default function UserProfile() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
   const [showBalance, setShowBalance] = useState(true)
   const [activeSection, setActiveSection] = useState("estadisticas")
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Estado para controlar sidebar móvil
   const [formData, setFormData] = useState({
     username: "",
     email: "",
   })
 
+  /**
+   * 
+   * 
   useEffect(() => {
     if (role !== "user") {
       router.push("/user/login")
@@ -37,8 +42,9 @@ export default function UserProfile() {
       })
     }
   }, [role, user, router])
+   */
 
-  if (role !== "user" || !user) return null
+  //if (role !== "user" || !user) return null
 
   const currentUser = user as User
 
@@ -51,6 +57,12 @@ export default function UserProfile() {
     return mockGames.find((g) => g.id === gameId)?.name || "Juego desconocido"
   }
 
+  // Cerrar sidebar al seleccionar una opción en móvil
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId)
+    setIsSidebarOpen(false) // Cerrar sidebar en móvil después de seleccionar
+  }
+
   const recentActivity = [
     { action: "Login", timestamp: new Date(Date.now() - 1000 * 60 * 30), ip: "192.168.1.1" },
     { action: "Bet Placed", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), ip: "192.168.1.1" },
@@ -59,11 +71,9 @@ export default function UserProfile() {
 
   const sidebarItems = [
     { id: "estadisticas", label: "Estadísticas", icon: Activity },
-
     { id: "cuenta", label: "Cuenta corriente", icon: CreditCard },
-
     { id: "datos", label: "Datos Personales", icon: UserIcon },
-    { id: "juegos", label: "Juegos Habilitados / Información", icon: Gamepad2 },
+    { id: "juegos", label: "Juegos Habilitados ", icon: Gamepad2 },
     { id: "eventos", label: "Eventos", icon: Bell },
   ]
 
@@ -92,21 +102,30 @@ export default function UserProfile() {
                 </div>
 
                 {/* Stats Table with divs */}
-                <div className="bg-muted/50 rounded-lg overflow-hidden">
-                  <div className="grid grid-cols-2 gap-0">
-                    <div className="bg-slate-700 text-white p-3 font-medium">Jugado:</div>
-                    <div className="bg-background p-3 text-right font-medium">{userStats.jugado.toFixed(2)}</div>
+                <div className="rounded-lg overflow-hidden">
+                  <FlexCol className=" w-full max-w-xxl bg-muted/30 ">
+                  <Flex>
 
-                    <div className="bg-slate-700 text-white p-3 font-medium">Ganado:</div>
-                    <div className="bg-background p-3 text-right font-medium">{userStats.ganado.toFixed(2)}</div>
+                    <div className=" flex-1 text-white p-3 font-medium">Jugado:</div>
+                    <div className="  flex-1 p-3   font-medium">{userStats.jugado.toFixed(2)}</div>
+                  </Flex>
+                  <Flex>
 
-                    <div className="bg-slate-700 text-white p-3 font-medium">NetLoss:</div>
-                    <div className="bg-background p-3 text-right font-medium">{userStats.netLoss.toFixed(2)}</div>
+                    <div className=" flex-1 text-white p-3 font-medium">Ganado:</div>
+                    <div className=" flex-1 p-3  font-medium">{userStats.ganado.toFixed(2)}</div>
+                    </Flex>
+                    <Flex>
 
-                    <div className="bg-slate-700 text-white p-3 font-medium">Mes pasado:</div>
-                    <div className="bg-background p-3 text-right font-medium">{userStats.mesPasado.toFixed(2)}</div>
+                    <div className=" flex-1 text-white p-3 font-medium">NetLoss:</div>
+                    <div className=" flex-1 p-3  font-medium">{userStats.netLoss.toFixed(2)}</div>
+                    </Flex>
+
+                    <Flex>
+                      <div className="flex-1  text-white p-3 font-medium">Mes pasado:</div>
+                    <div className=" flex-1 p-3  font-medium">{userStats.mesPasado.toFixed(2)}</div>
+                    </Flex>
+                </FlexCol>
                   </div>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -227,76 +246,116 @@ export default function UserProfile() {
 
   return (
     <DashboardLayout title="Mi Perfil">
+      <div className="min-h-screen bg-background">
+        {/* Botón hamburguesa para móvil */}
+        <div className="lg:hidden p-4 border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="flex items-center gap-2"
+          >
+            {isSidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            <span>{isSidebarOpen ? 'Cerrar' : 'Menú'}</span>
+          </Button>
+        </div>
 
-    <div className="min-h-screen bg-background">
-       
+        <div className="flex">
+          {/* Sidebar - Responsive */}
+          <aside 
+            className={`
+              w-64 bg-background border-r min-h-screen transition-transform duration-300 ease-in-out
+              lg:translate-x-0 lg:static lg:block
+              ${isSidebarOpen 
+                ? 'fixed inset-y-0 left-0 z-50 translate-x-0' 
+                : 'fixed inset-y-0 left-0 z-50 -translate-x-full lg:translate-x-0'
+              }
+            `}
+          >
+            {/* Header del sidebar en móvil */}
+            <div className="lg:hidden p-4 border-b flex items-center justify-between">
+              <h2 className="font-semibold">Menú</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
 
-      <div className="flex">
-        <aside className="w-64 bg-background border-r min-h-screen">
-          <nav className="p-4">
-            <ul className="space-y-2">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon
-                return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => setActiveSection(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors ${
-                        activeSection === item.id
-                          ? "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span className="text-sm">{item.label}</span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </nav>
-        </aside>
+            <nav className="p-4">
+              <ul className="space-y-2">
+                {sidebarItems.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => handleSectionChange(item.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors ${
+                          activeSection === item.id
+                            ? "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="text-sm">{item.label}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </nav>
+          </aside>
 
-        <main className="flex-1 flex">
-          <div className="flex-1 p-6">{renderContent()}</div>
+          {/* Overlay para móvil cuando sidebar está abierto */}
+          {isSidebarOpen && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
 
-          {/* Right sidebar with user info */}
-          <aside className="w-64 bg-muted/30 p-4 border-l">
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Moneda:</Label>
-                <p className="text-lg font-semibold">ARS</p>
-              </div>
+          <main className="flex-1 flex min-w-0">
+            <div className="flex-1 p-4 lg:p-6 min-w-0">{renderContent()}</div>
 
-              <div>
-                <Label className="text-sm font-medium">Estado:</Label>
-                <div className="mt-1">
-                  <Badge variant={currentUser.isActive ? "default" : "secondary"} className="bg-green-500">
-                    {currentUser.isActive ? "Activo" : "Inactivo"}
-                  </Badge>
+            {/* Right sidebar - Se oculta en pantallas pequeñas */}
+            <aside className="hidden xl:block w-64 bg-muted/30 p-4 border-l">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Moneda:</Label>
+                  <p className="text-lg font-semibold">ARS</p>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Estado:</Label>
+                  <div className="mt-1">
+                    <Badge variant={currentUser.isActive ? "default" : "secondary"} className="bg-green-500">
+                      {currentUser.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium">Último ingreso:</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date().toLocaleDateString("es-ES", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}{" "}
+                    {new Date().toLocaleTimeString("es-ES", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    hs
+                  </p>
                 </div>
               </div>
-
-              <div>
-                <Label className="text-sm font-medium">Último ingreso:</Label>
-                <p className="text-sm text-muted-foreground">
-                  {new Date().toLocaleDateString("es-ES", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  })}{" "}
-                  {new Date().toLocaleTimeString("es-ES", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  hs
-                </p>
-              </div>
-            </div>
-          </aside>
-        </main>
+            </aside>
+          </main>
+        </div>
       </div>
-    </div>
     </DashboardLayout>
   )
 }
