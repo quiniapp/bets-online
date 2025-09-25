@@ -125,9 +125,9 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
     },
   ]
 
-  
+
   const isAdminRole = role === "admin" || role === "superadmin";
-const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
+  const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
 
   const handleLinkClick = () => {
     setOpen(false)
@@ -142,7 +142,7 @@ const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
         <div className="flex h-full flex-col">
-          {/* Logo */}
+    
           <div className="flex h-16 items-center border-b px-6">
             <div className="flex items-center gap-2 font-semibold">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -157,7 +157,7 @@ const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
             <nav className="space-y-2">
               {menuItems.map((item, index) => (
                 <div key={index}>
-                  {item.collapsible ? (
+                  {'collapsible' in item && item.collapsible && 'isOpen' in item && 'setOpen' in item ? (
                     <Collapsible open={item.isOpen} onOpenChange={item.setOpen}>
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" className="w-full justify-between font-normal">
@@ -169,7 +169,7 @@ const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
                         </Button>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="space-y-1">
-                        {item.items?.map((subItem, subIndex) => (
+                        {item?.items?.map((subItem, subIndex) => (
                           <Button
                             key={subIndex}
                             variant={pathname === subItem.href ? "secondary" : "ghost"}
@@ -182,7 +182,7 @@ const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
                         ))}
                       </CollapsibleContent>
                     </Collapsible>
-                  ) : item.items ? (
+                  ) : 'items' in item && item.items ? (
                     <div>
                       <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium">
                         <item.icon className="h-4 w-4" />
@@ -220,7 +220,7 @@ const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
             </nav>
           </ScrollArea>
 
-          {/* User info and logout */}
+
           <div className="border-t p-4">
             <div className="mb-2 text-sm text-muted-foreground">
               {role === "admin" ? t("common.admin") : t("common.user")}

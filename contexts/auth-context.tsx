@@ -9,7 +9,7 @@ import ROUTER from "@/routes"
 interface AuthContextType {
   user: User | Admin | null
   role: Role | null  
-  login: (credentials: { username: string; password: string }, role: "user" | "admin") => Promise<boolean> // ❌ Cambiado Role por string literal
+  login: (credentials: { username: string; password: string }, role: "user" | "admin") => Promise<boolean> 
   logout: () => void
   isLoading: boolean
 }

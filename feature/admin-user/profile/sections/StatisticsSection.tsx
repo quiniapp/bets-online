@@ -30,19 +30,19 @@ export function StatisticsSection({ user }: StatisticsSectionProps) {
           <div className="rounded-lg overflow-hidden">
             <FlexCol className="w-full max-w-xxl bg-muted/30">
               <Flex>
-                <div className="flex-1 text-white p-3 font-medium">Jugado:</div>
+                <div className="flex-1  p-3 font-medium">Jugado:</div>
                 <div className="flex-1 p-3 font-medium">{userStats.jugado.toFixed(2)}</div>
               </Flex>
               <Flex>
-                <div className="flex-1 text-white p-3 font-medium">Ganado:</div>
+                <div className="flex-1  p-3 font-medium">Ganado:</div>
                 <div className="flex-1 p-3 font-medium">{userStats.ganado.toFixed(2)}</div>
               </Flex>
               <Flex>
-                <div className="flex-1 text-white p-3 font-medium">NetLoss:</div>
+                <div className="flex-1  p-3 font-medium">NetLoss:</div>
                 <div className="flex-1 p-3 font-medium">{userStats.netLoss.toFixed(2)}</div>
               </Flex>
               <Flex>
-                <div className="flex-1 text-white p-3 font-medium">Mes pasado:</div>
+                <div className="flex-1  p-3 font-medium">Mes pasado:</div>
                 <div className="flex-1 p-3 font-medium">{userStats.mesPasado.toFixed(2)}</div>
               </Flex>
             </FlexCol>

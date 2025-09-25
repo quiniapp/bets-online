@@ -19,7 +19,7 @@ export function UserInfoPanel({ user }: UserInfoPanelProps) {
           <Label className="text-sm font-medium">Estado:</Label>
           <div className="mt-1">
             <Badge variant={user?.isActive ? "default" : "secondary"} className="bg-green-500">
-              {user.isActive ? "Activo" : "Inactivo"}
+              {user?.isActive ? "Activo" : "Inactivo"}
             </Badge>
           </div>
         </div>

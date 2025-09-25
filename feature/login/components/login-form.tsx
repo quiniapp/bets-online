@@ -28,11 +28,11 @@ const LoginForm = () => {
   };
 
   return (
-    <Card>
+    <Card >
 
    
     <form
-      className="w-md flex flex-col gap-lg items-start  p-6 rounded-sm"
+      className="w-full flex flex-col gap-lg items-start  p-6 rounded-sm xs:mpx-4" 
       onSubmit={handleSubmit}
     >
       <FlexCol className="w-full gap-8">
