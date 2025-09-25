@@ -113,11 +113,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
       href: "/user/bets",
       icon: History,
     },
-    {
-      title: t("nav.transactions"),
-      href: "/user/transactions",
-      icon: CreditCard,
-    },
+
     {
       title: t("nav.settings"),
       href: "/user/settings",
