@@ -70,21 +70,9 @@ export default function UserGames() {
   const userBets = bets.filter((bet) => bet.userId === currentUser?.id).slice(0, 5)
 
   return (
-    <DashboardLayout title="Mi Dashboard">
+    <DashboardLayout title="Casino">
     <div className="min-h-screen">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Link href="/user/dashboard">
-              <Button variant="ghost" size="sm" className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Juegos</h1>
-          </div>
-        </div>
-      </header>
+      
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

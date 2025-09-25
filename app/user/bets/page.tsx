@@ -9,21 +9,26 @@ import { Badge } from "@/components/ui/badge"
 import { mockGames, mockBets, type User } from "@/lib/mock-data"
 import { ArrowLeft, TrendingUp, TrendingDown, Clock } from "lucide-react"
 import Link from "next/link"
+import { DashboardLayout } from "@/components/dashboard-layout"
 
 export default function UserBets() {
   const { user, role } = useAuth()
-  const router = useRouter()
+ // const router = useRouter()
 
+  /**
+   * 
+   * 
   useEffect(() => {
     if (role !== "user") {
       router.push("/user/login")
     }
   }, [role, router])
+   */
 
-  if (role !== "user" || !user) return null
+ // if (role !== "user" || !user) return null
 
   const currentUser = user as User
-  const userBets = mockBets.filter((bet) => bet.userId === currentUser.id)
+  const userBets = mockBets?.filter((bet) => bet?.userId === currentUser?.id)
 
   const wonBets = userBets.filter((bet) => bet.outcome === "won")
   const lostBets = userBets.filter((bet) => bet.outcome === "lost")
@@ -48,20 +53,10 @@ export default function UserBets() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16">
-            <Link href="/user/dashboard">
-              <Button variant="ghost" size="sm" className="mr-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Mis Apuestas</h1>
-          </div>
-        </div>
-      </header>
+    <DashboardLayout title="Favoritos">
+
+    <div className="min-h-screen ">
+       
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
@@ -163,5 +158,6 @@ export default function UserBets() {
         </Card>
       </main>
     </div>
+    </DashboardLayout>
   )
 }

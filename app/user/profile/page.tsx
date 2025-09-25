@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { mockGames, type User } from "@/lib/mock-data"
 import { ArrowLeft, Save, UserIcon, Activity, Users, CreditCard, Upload, Gamepad2, Bell } from "lucide-react"
 import Link from "next/link"
+import { DashboardLayout } from "@/components/dashboard-layout"
 
 export default function UserProfile() {
   const { user, role } = useAuth()
@@ -58,9 +59,9 @@ export default function UserProfile() {
 
   const sidebarItems = [
     { id: "estadisticas", label: "Estadísticas", icon: Activity },
-    { id: "jugadores", label: "Jugadores del gerente", icon: Users },
+
     { id: "cuenta", label: "Cuenta corriente", icon: CreditCard },
-    { id: "cargas", label: "Cargas y Descargas", icon: Upload },
+
     { id: "datos", label: "Datos Personales", icon: UserIcon },
     { id: "juegos", label: "Juegos Habilitados / Información", icon: Gamepad2 },
     { id: "eventos", label: "Eventos", icon: Bell },
@@ -225,32 +226,10 @@ export default function UserProfile() {
   }
 
   return (
+    <DashboardLayout title="Mi Perfil">
+
     <div className="min-h-screen bg-background">
-      <header className="bg-blue-500 text-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/user/dashboard">
-                <Button variant="ghost" size="sm" className="mr-4 text-white hover:bg-blue-600">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver
-                </Button>
-              </Link>
-              <div>
-                <span className="text-lg font-semibold">
-                  {role === "user" ? "Usuario" : "Gerente"}: {currentUser.username.toUpperCase()}
-                </span>
-                <span className="ml-2 text-blue-100">
-                  ({role === "user" ? "Usuario" : "Gerente"} {currentUser.username})
-                </span>
-              </div>
-            </div>
-            <Button variant="secondary" className="bg-orange-500 hover:bg-orange-600 text-white">
-              Cambiar
-            </Button>
-          </div>
-        </div>
-      </header>
+       
 
       <div className="flex">
         <aside className="w-64 bg-background border-r min-h-screen">
@@ -318,5 +297,6 @@ export default function UserProfile() {
         </main>
       </div>
     </div>
+    </DashboardLayout>
   )
 }
