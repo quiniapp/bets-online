@@ -1,0 +1,232 @@
+import {
+  UserRole,
+  UserStatus,
+  ChipMovementType,
+  CompensationType,
+  SettlementStatus,
+  PanelStatus,
+  RecoveryMode,
+  RecoveryStatus
+} from './enums.types';
+
+/**
+ * User Model
+ */
+export interface User {
+  id: string;
+  parentUserId: string | null;
+  role: UserRole;
+  username: string;
+  email: string;
+  passwordHash?: string;
+  status: UserStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * User Create DTO
+ */
+export interface CreateUserDto {
+  parentUserId?: string;
+  role: UserRole;
+  username: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * User Update DTO
+ */
+export interface UpdateUserDto {
+  username?: string;
+  email?: string;
+  status?: UserStatus;
+}
+
+/**
+ * Balance Model
+ */
+export interface Balance {
+  id: string;
+  userId: string;
+  chipBalance: number;
+  lastUpdatedAt: Date;
+}
+
+/**
+ * Chip Movement Model
+ */
+export interface ChipMovement {
+  id: string;
+  userId: string;
+  relatedUserId?: string | null;
+  type: ChipMovementType;
+  amount: number;
+  description?: string;
+  previousBalance: number;
+  newBalance: number;
+  createdAt: Date;
+}
+
+/**
+ * Create Chip Movement DTO
+ */
+export interface CreateChipMovementDto {
+  userId: string;
+  relatedUserId?: string;
+  type: ChipMovementType;
+  amount: number;
+  description?: string;
+}
+
+/**
+ * Cashier Compensation Mode
+ */
+export interface CashierCompensationMode {
+  id: string;
+  cashierId: string;
+  type: CompensationType;
+  percentage?: number | null;
+  activeFrom: Date;
+  activeTo?: Date | null;
+  createdAt: Date;
+}
+
+/**
+ * Create Compensation Mode DTO
+ */
+export interface CreateCompensationModeDto {
+  cashierId: string;
+  type: CompensationType;
+  percentage?: number;
+}
+
+/**
+ * Cashier Settlement (for percentage model)
+ */
+export interface CashierSettlement {
+  id: string;
+  cashierId: string;
+  periodStart: Date;
+  periodEnd: Date;
+  totalSales: number;
+  totalPrizesPaid: number;
+  profit: number;
+  payableAmount: number;
+  status: SettlementStatus;
+  createdAt: Date;
+  paidAt?: Date | null;
+}
+
+/**
+ * Create Settlement DTO
+ */
+export interface CreateSettlementDto {
+  cashierId: string;
+  periodStart: Date;
+  periodEnd: Date;
+}
+
+/**
+ * Chip Panel (for panel model)
+ */
+export interface ChipPanel {
+  id: string;
+  cashierId: string;
+  buyPricePerChip: number;
+  sellPricePerChip: number;
+  totalChips: number;
+  soldChips: number;
+  status: PanelStatus;
+  createdAt: Date;
+  settledAt?: Date | null;
+}
+
+/**
+ * Create Panel DTO
+ */
+export interface CreatePanelDto {
+  cashierId: string;
+  buyPricePerChip: number;
+  sellPricePerChip: number;
+  totalChips: number;
+}
+
+/**
+ * Recovery Model
+ */
+export interface Recovery {
+  id: string;
+  adminId: string;
+  cashierId: string;
+  relatedMovementId?: string | null;
+  amount: number;
+  recoveryMode: RecoveryMode;
+  status: RecoveryStatus;
+  amountPaid: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Create Recovery DTO
+ */
+export interface CreateRecoveryDto {
+  adminId: string;
+  cashierId: string;
+  relatedMovementId?: string;
+  amount: number;
+  recoveryMode: RecoveryMode;
+}
+
+/**
+ * User Game Provider Blocklist
+ */
+export interface UserGameProviderBlocklist {
+  id: string;
+  userId: string;
+  providerId: string;
+  blockedBy: string;
+  createdAt: Date;
+}
+
+/**
+ * Session Model
+ */
+export interface Session {
+  id: string;
+  userId: string;
+  token: string;
+  refreshToken: string;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+/**
+ * Auth Tokens
+ */
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * JWT Payload
+ */
+export interface JwtPayload {
+  userId: string;
+  role: UserRole;
+  sessionId: string;
+  iat?: number;
+  exp?: number;
+}
+
+/**
+ * User Tree Node (for hierarchy visualization)
+ */
+export interface UserTreeNode {
+  user: User;
+  balance: Balance;
+  children: UserTreeNode[];
+}
