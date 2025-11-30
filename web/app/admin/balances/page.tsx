@@ -1,7 +1,5 @@
 "use client"
 
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,31 +7,46 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockUsers, mockTransactions, type User, type Transaction } from "@/lib/mock-data"
-import { Plus, Minus, Search, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
+import { useUsers } from "@/hooks/useUsers"
+import { apiService } from "@/services/api.service"
+import { Plus, Minus, Search, DollarSign } from "lucide-react"
+import { UserStatus, type User, type Balance } from "helper"
 
 export default function AdminBalances() {
-  const { role, user: currentUser } = useAuth()
-  const router = useRouter()
-  const [users, setUsers] = useState<User[]>(mockUsers)
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions)
+  const { users, loading: usersLoading } = useUsers()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [adjustmentAmount, setAdjustmentAmount] = useState("")
   const [adjustmentReason, setAdjustmentReason] = useState("")
+  const [userBalances, setUserBalances] = useState<Record<string, number>>({})
+  const [loadingBalances, setLoadingBalances] = useState(false)
 
-
-   /**
-   * 
-   * 
+  // Load balances for all users
   useEffect(() => {
-    if (role !== "admin") {
-      router.push("/admin/login")
-    }
-  }, [role, router])
+    const loadBalances = async () => {
+      if (users.length === 0) return
 
-  if (role !== "admin") return null
-   */
+      setLoadingBalances(true)
+      const balances: Record<string, number> = {}
+
+      for (const user of users) {
+        try {
+          const response = await apiService.get<Balance>(`/chips/balance/${user.id}`)
+          if (response.success && response.data) {
+            balances[user.id] = response.data.chipBalance
+          }
+        } catch (error) {
+          console.error(`Failed to load balance for user ${user.id}:`, error)
+          balances[user.id] = 0
+        }
+      }
+
+      setUserBalances(balances)
+      setLoadingBalances(false)
+    }
+
+    loadBalances()
+  }, [users])
 
   const filteredUsers = users.filter(
     (user) =>
@@ -41,45 +54,44 @@ export default function AdminBalances() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleBalanceAdjustment = (type: "add" | "subtract") => {
+  const handleBalanceAdjustment = async (type: "add" | "subtract") => {
     if (!selectedUser || !adjustmentAmount || !adjustmentReason) return
 
     const amount = Number.parseFloat(adjustmentAmount)
     if (isNaN(amount) || amount <= 0) return
 
-    const finalAmount = type === "add" ? amount : -amount
+    try {
+      // Note: You'll need to implement an adjustment endpoint in the API
+      // For now, this is a placeholder
+      console.log('Balance adjustment:', { type, amount, reason: adjustmentReason })
 
-    // Update user balance
-    setUsers((prev) =>
-      prev.map((user) => (user.id === selectedUser.id ? { ...user, balance: user.balance + finalAmount } : user)),
-    )
+      // Reset form
+      setAdjustmentAmount("")
+      setAdjustmentReason("")
+      setSelectedUser(null)
 
-    // Add transaction record
-    const newTransaction: Transaction = {
-      id: `tx${Date.now()}`,
-      userId: selectedUser.id,
-      type: "adjustment",
-      amount: finalAmount,
-      description: adjustmentReason,
-      adminId: currentUser?.id,
-      createdAt: new Date(),
+      // Reload balance for the selected user
+      const response = await apiService.get<Balance>(`/chips/balance/${selectedUser.id}`)
+      if (response.success && response.data) {
+        setUserBalances(prev => ({
+          ...prev,
+          [selectedUser.id]: response.data!.chipBalance
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to adjust balance:', error)
     }
-
-    setTransactions((prev) => [newTransaction, ...prev])
-
-    // Reset form
-    setAdjustmentAmount("")
-    setAdjustmentReason("")
-    setSelectedUser(null)
   }
 
-  const getUserTransactions = (userId: string) => {
-    return transactions.filter((tx) => tx.userId === userId).slice(0, 3)
-  }
+  const totalSystemBalance = Object.values(userBalances).reduce((sum, balance) => sum + balance, 0)
 
-  const totalSystemBalance = users.reduce((sum, user) => sum + user.balance, 0)
-  const highestBalance = Math.max(...users.map((u) => u.balance))
-  const lowestBalance = Math.min(...users.map((u) => u.balance))
+  if (usersLoading || loadingBalances) {
+    return (
+      <DashboardLayout title="Gestión de Balances">
+        <div className="text-center py-8">Cargando balances...</div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout title="Gestión de Balances">
@@ -92,28 +104,6 @@ export default function AdminBalances() {
           <CardContent>
             <div className="text-2xl font-bold">${totalSystemBalance.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">en {users.length} cuentas</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance Más Alto</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">${highestBalance.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">usuario premium</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance Más Bajo</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">${lowestBalance.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">requiere atención</p>
           </CardContent>
         </Card>
       </div>
@@ -141,32 +131,14 @@ export default function AdminBalances() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">{user.username}</h3>
-                        <Badge variant={user.isActive ? "default" : "secondary"}>
-                          {user.isActive ? "Activo" : "Inactivo"}
+                        <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"}>
+                          {user.status}
                         </Badge>
                       </div>
                       <p className="text-gray-600 mb-2">{user.email}</p>
-                      <p className="text-2xl font-bold text-green-600 mb-3">${user.balance.toFixed(2)}</p>
-
-                      {/* Recent transactions */}
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-2">Transacciones recientes:</p>
-                        <div className="space-y-1">
-                          {getUserTransactions(user.id).map((tx) => (
-                            <div key={tx.id} className="flex justify-between text-xs">
-                              <span className="text-gray-600 truncate mr-2">{tx.description}</span>
-                              <span
-                                className={tx.amount > 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"}
-                              >
-                                {tx.amount > 0 ? "+" : ""}${tx.amount.toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                          {getUserTransactions(user.id).length === 0 && (
-                            <span className="text-xs text-gray-400">Sin transacciones recientes</span>
-                          )}
-                        </div>
-                      </div>
+                      <p className="text-2xl font-bold text-green-600 mb-3">
+                        ${(userBalances[user.id] || 0).toFixed(2)}
+                      </p>
                     </div>
                     <Button
                       variant={selectedUser?.id === user.id ? "default" : "outline"}
@@ -193,7 +165,9 @@ export default function AdminBalances() {
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <Label className="text-sm font-medium">Usuario seleccionado:</Label>
                     <p className="text-lg font-semibold">{selectedUser.username}</p>
-                    <p className="text-sm text-gray-600">Balance actual: ${selectedUser.balance.toFixed(2)}</p>
+                    <p className="text-sm text-gray-600">
+                      Balance actual: ${(userBalances[selectedUser.id] || 0).toFixed(2)}
+                    </p>
                   </div>
 
                   <div>

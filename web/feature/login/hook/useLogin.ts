@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
+import { UserRole } from "helper";
 
-// ✅ Interfaz para los datos del formulario
 interface LoginFormData {
   email: string;
   password: string;
 }
 
-const useLogin = (userType?: "admin" | "user") => {
+const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const { login } = useAuth();
@@ -21,7 +21,7 @@ const useLogin = (userType?: "admin" | "user") => {
     formState: { errors, isValid },
     watch,
     reset,
-  } = useForm<LoginFormData>({ // ✅ Tipado del useForm
+  } = useForm<LoginFormData>({
     mode: "onChange",
     defaultValues: {
       email: "",
@@ -30,89 +30,61 @@ const useLogin = (userType?: "admin" | "user") => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log("📝 Form submitted with:", data);
     setError("");
     setIsLoading(true);
-    
+
     try {
-      console.log("🚀 Attempting login...");
-      
-      // ✅ Primero intentar como admin/superadmin
-      let success = await login(
-        { 
-          username: data.email,
-          password: data.password 
-        }, 
-        "admin"
-      );
-
-      // ✅ Si falla admin, intentar como user
-      if (!success) {
-        success = await login(
-          { 
-            username: data.email,
-            password: data.password 
-          }, 
-          "user"
-        );
-      }
-
-      console.log("📊 Login success:", success);
+      const success = await login({
+        username: data.email,
+        password: data.password
+      });
 
       if (success) {
-        console.log("✅ Login exitoso, redirecting...");
-        
-        // DEBUG: Verificar el estado antes de redirigir
+        // Wait for role to be set
         setTimeout(() => {
-          console.log("🔍 Auth state after login:", { 
-            localStorage: {
-              user: localStorage.getItem("auth_user"),
-              role: localStorage.getItem("auth_role")
-            }
-          });
+          const userRole = localStorage.getItem("auth_role") as UserRole;
+
+          // Redirect based on role
+          switch (userRole) {
+            case UserRole.OWNER:
+            case UserRole.ADMIN:
+              router.push("/admin/dashboard");
+              break;
+            case UserRole.CASHIER:
+              router.push("/cashier/dashboard");
+              break;
+            case UserRole.PLAYER:
+              router.push("/user/dashboard");
+              break;
+            default:
+              router.push("/");
+          }
         }, 100);
-        
-        // ✅ Redirigir según el role del usuario logueado
-        const userRole = localStorage.getItem("auth_role");
-        console.log("🧭 User role for redirect:", userRole);
-        
-        if (userRole === "superadmin" || userRole === "admin") {
-          console.log("🧭 Navigating to admin dashboard");
-          router.push("/admin/dashboard");
-        } else if (userRole === "user") {
-          console.log("🧭 Navigating to user dashboard");
-          router.push("/user/dashboard");
-        } else {
-          console.log("🧭 Unknown role, navigating to home");
-          router.push("/");
-        }
-        
       } else {
-        console.log("❌ Login failed, setting error");
         setError("Credenciales inválidas. Por favor, inténtalo de nuevo.");
       }
-      
+
     } catch (error: any) {
-      console.error("🚨 Error en login:", error);
+      console.error("Error en login:", error);
       setError(error?.message || "Error al iniciar sesión");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleError = (errors: any) => { // ✅ Tipado del error handler
+  const handleError = (errors: any) => {
     console.log("Errores de validación:", errors);
   };
 
   const validationRules = {
     email: {
-      required: "El email/usuario es requerido",
+      required: "El usuario es requerido",
     },
     password: {
       required: "La contraseña es requerida",
       minLength: {
-        value: 3,
-        message: "La contraseña debe tener al menos 3 caracteres"
+        value: 8,
+        message: "La contraseña debe tener al menos 8 caracteres"
       }
     }
   };
@@ -127,9 +99,9 @@ const useLogin = (userType?: "admin" | "user") => {
     errors,
     isValid,
     watch,
-    reset,   
+    reset,
     isLoading,
-    error, 
+    error,
     validationRules,
     onSubmit,
     clearError,

@@ -2,86 +2,83 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { type User, type Admin, authenticateUser, authenticateAdmin, Role } from "@/lib/mock-data"
 import { useRouter } from "next/navigation"
+import { apiService } from "@/services/api.service"
+import type { User, UserRole } from "helper"
 import ROUTER from "@/routes"
 
 interface AuthContextType {
-  user: User | Admin | null
-  role: Role | null  
-  login: (credentials: { username: string; password: string }, role: "user" | "admin") => Promise<boolean> // ❌ Cambiado Role por string literal
+  user: User | null
+  role: UserRole | null
+  login: (credentials: { username: string; password: string }) => Promise<boolean>
   logout: () => void
   isLoading: boolean
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | Admin | null>(null)
-  const [role, setRole] = useState<Role | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [role, setRole] = useState<UserRole | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  // Load user on mount
   useEffect(() => {
-    console.log("🔄 Auth state changed:", { user: user?.username, role }); // DEBUG
-  }, [user, role]);
-
-  useEffect(() => {
-  
-    const savedUser = localStorage.getItem("auth_user")
-    const savedRole = localStorage.getItem("auth_role")
-
-
-    if (savedUser && savedRole) {
-      const parsedUser = JSON.parse(savedUser)
-      setUser(parsedUser)
-      setRole(savedRole as Role)
-    }
-    setIsLoading(false)
+    loadUser()
   }, [])
 
-  const login = async (
-    credentials: { username: string; password: string },
-    userRole: "user" | "admin",
-  ): Promise<boolean> => {
+  const loadUser = async () => {
+    setIsLoading(true)
+    try {
+      const token = apiService.getAccessToken()
+      if (token) {
+        const response = await apiService.getCurrentUser()
+        if (response.success && response.data) {
+          setUser(response.data)
+          setRole(response.data.role)
+        } else {
+          // Token invalid, clear it
+          apiService.setAccessToken(null)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user:', error)
+      apiService.setAccessToken(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const login = async (credentials: { username: string; password: string }): Promise<boolean> => {
     setIsLoading(true)
 
     try {
-      let authenticatedUser: User | Admin | null = null
+      const response = await apiService.login(credentials.username, credentials.password)
 
-      if (userRole === "user") {
-        authenticatedUser = authenticateUser(credentials.username, credentials.password)
-        if (authenticatedUser) {
-          setRole(Role.user)
-        }
-      } else {
-        authenticatedUser = authenticateAdmin(credentials.username, credentials.password)
-        if (authenticatedUser) {
-          setRole((authenticatedUser as Admin).role)
-        }
-      }
+      if (response.success && response.data) {
+        setUser(response.data.user)
+        setRole(response.data.user.role)
 
-      if (authenticatedUser) {
-        setUser(authenticatedUser)
-      
-        // Save to localStorage for persistence
-        localStorage.setItem("auth_user", JSON.stringify(authenticatedUser))
-        localStorage.setItem("auth_role", userRole === "user" ? Role.user : (authenticatedUser as Admin).role)
+        // Save user to localStorage for quick access
+        localStorage.setItem("auth_user", JSON.stringify(response.data.user))
+        localStorage.setItem("auth_role", response.data.user.role)
 
         return true
       }
 
-    
       return false
     } catch (error) {
-     
+      console.error('Login failed:', error)
       return false
     } finally {
       setIsLoading(false)
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
+    await apiService.logout()
     setUser(null)
     setRole(null)
     localStorage.removeItem("auth_user")
@@ -89,7 +86,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push(ROUTER.LOGIN)
   }
 
-  return <AuthContext.Provider value={{ user, role, login, logout, isLoading }}>{children}</AuthContext.Provider>
+  const refreshUser = async () => {
+    await loadUser()
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, role, login, logout, isLoading, refreshUser }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

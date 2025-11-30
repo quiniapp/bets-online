@@ -1,33 +1,21 @@
 "use client"
 
-
 import { useState } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockUsers, mockGames, type User } from "@/lib/mock-data"
+import { useUsers } from "@/hooks/useUsers"
 import { Search, Edit, Ban, CheckCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { UserStatus } from "helper"
 import ROUTER from "@/routes"
 
 export default function AdminUsers() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
-  const [users, setUsers] = useState<User[]>(mockUsers)
-
-  /**
-   * 
-   * 
-  useEffect(() => {
-    if (role !== "admin") {
-      router.push("/admin/login")
-    }
-  }, [role, router])
-
-  if (role !== "admin") return null
-   */
+  const { users, loading, blockUser, unblockUser } = useUsers()
 
   const filteredUsers = users.filter(
     (user) =>
@@ -35,16 +23,28 @@ export default function AdminUsers() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const toggleUserStatus = (userId: string) => {
-    setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, isActive: !user.isActive } : user)))
+  const handleToggleUserStatus = async (userId: string, currentStatus: UserStatus) => {
+    try {
+      if (currentStatus === UserStatus.ACTIVE) {
+        await blockUser(userId)
+      } else {
+        await unblockUser(userId)
+      }
+    } catch (error) {
+      console.error('Failed to toggle user status:', error)
+    }
   }
 
-  const getGameName = (gameId: string) => {
-    return mockGames.find((g) => g.id === gameId)?.name || "Juego desconocido"
+  const handleEditUser = (userId: string) => {
+    router.push(`${ROUTER.EDIT_USER}?id=${userId}`)
   }
 
-  const handleEditUserPage = () =>{
-    return router.push(ROUTER.EDIT_USER)
+  if (loading) {
+    return (
+      <DashboardLayout title="Lista de Usuarios">
+        <div className="text-center py-8">Cargando usuarios...</div>
+      </DashboardLayout>
+    )
   }
 
   return (
@@ -62,66 +62,60 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <Card className="">
+      <Card>
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-4 p-4   border-b font-medium text-sm  ">
+        <div className="grid grid-cols-12 gap-4 p-4 border-b font-medium text-sm">
           <div className="col-span-2">Usuario</div>
-          <div className="col-span-2">Email</div>
+          <div className="col-span-3">Email</div>
+          <div className="col-span-1">Rol</div>
           <div className="col-span-1">Estado</div>
-          <div className="col-span-2">Balance</div>
           <div className="col-span-2">Registro</div>
-          <div className="col-span-2">Juegos</div>
+          <div className="col-span-2">Última Act.</div>
           <div className="col-span-1">Acciones</div>
         </div>
 
         {/* Table Body */}
         <div className="divide-y">
           {filteredUsers.map((user) => (
-            <div key={user.id} className="grid grid-cols-12 gap-4 p-4    transition-colors">
+            <div key={user.id} className="grid grid-cols-12 gap-4 p-4 transition-colors">
               <div className="col-span-2">
                 <div className="font-semibold">{user.username}</div>
               </div>
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <div className="text-sm text-gray-600">{user.email}</div>
               </div>
               <div className="col-span-1">
-                <Badge variant={user.isActive ? "default" : "secondary"}>{user.isActive ? "Activo" : "Inactivo"}</Badge>
+                <Badge variant="outline">{user.role}</Badge>
+              </div>
+              <div className="col-span-1">
+                <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"}>
+                  {user.status}
+                </Badge>
               </div>
               <div className="col-span-2">
-                <div className="font-semibold text-green-600">${user.balance.toFixed(2)}</div>
+                <div className="text-sm text-gray-600">
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </div>
               </div>
               <div className="col-span-2">
-                <div className="text-sm text-gray-600">{user.createdAt.toLocaleDateString()}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="flex flex-wrap gap-1">
-                  {user.enabledGames.length > 0 ? (
-                    user.enabledGames.slice(0, 2).map((gameId) => (
-                      <Badge key={gameId} variant="outline" className="text-xs">
-                        {getGameName(gameId)}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-gray-400">Sin juegos</span>
-                  )}
-                  {user.enabledGames.length > 2 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{user.enabledGames.length - 2}
-                    </Badge>
-                  )}
+                <div className="text-sm text-gray-600">
+                  {new Date(user.updatedAt).toLocaleDateString()}
                 </div>
               </div>
               <div className="col-span-1">
                 <div className="flex gap-1">
-                  <Button variant="outline" size="sm" onClick={handleEditUserPage}>
-                    <Edit className="h-3 w-3" /> 
+                  <Button variant="outline" size="sm" onClick={() => handleEditUser(user.id)}>
+                    <Edit className="h-3 w-3" />
                   </Button>
                   <Button
-                    variant={user.isActive ? "destructive" : "default"}
+                    variant={user.status === UserStatus.ACTIVE ? "destructive" : "default"}
                     size="sm"
-                    onClick={() => toggleUserStatus(user.id)}
+                    onClick={() => handleToggleUserStatus(user.id, user.status)}
                   >
-                    {user.isActive ? <Ban className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                    {user.status === UserStatus.ACTIVE ?
+                      <Ban className="h-3 w-3" /> :
+                      <CheckCircle className="h-3 w-3" />
+                    }
                   </Button>
                 </div>
               </div>
@@ -133,7 +127,9 @@ export default function AdminUsers() {
       {filteredUsers.length === 0 && (
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">No se encontraron usuarios que coincidan con la búsqueda.</p>
+            <p className="text-muted-foreground">
+              No se encontraron usuarios que coincidan con la búsqueda.
+            </p>
           </CardContent>
         </Card>
       )}
