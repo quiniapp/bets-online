@@ -9,10 +9,7 @@ export const config = {
     apiUrl: process.env.API_URL || 'http://localhost:3001'
   },
   database: {
-    url: process.env.DATABASE_URL || '',
-    supabaseUrl: process.env.SUPABASE_URL || '',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || ''
+    url: process.env.DATABASE_URL || ''
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'default-secret-change-this',

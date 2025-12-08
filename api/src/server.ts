@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 import { config } from './config';
+import { testConnection } from './config/database';
 import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
@@ -56,10 +57,22 @@ app.use(errorHandler);
 // Start server
 const PORT = config.server.port;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📚 API Documentation available at ${config.server.apiUrl}/doc`);
-  console.log(`🌍 Environment: ${config.server.env}`);
-});
+const startServer = async () => {
+  try {
+    // Test database connection
+    await testConnection();
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📚 API Documentation available at ${config.server.apiUrl}/doc`);
+      console.log(`🌍 Environment: ${config.server.env}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 export default app;

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
+import { ApiResponseBuilder, SUCCESS_MESSAGES, ChipMovementType } from 'helper';
 import { chipsDomain } from '../domain/chips/chips.domain';
 
 export class ChipsController {
@@ -266,7 +266,7 @@ export class ChipsController {
           limit: limit ? parseInt(limit as string) : undefined,
           startDate: startDate ? new Date(startDate as string) : undefined,
           endDate: endDate ? new Date(endDate as string) : undefined,
-          type: type as any
+          type: type as ChipMovementType | undefined
         }
       );
 

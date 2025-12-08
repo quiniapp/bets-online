@@ -39,7 +39,8 @@ export class AuthDomain {
     const tokens = await this.createSession(user);
 
     // Remove password hash from response
-    const { passwordHash, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword as User,
@@ -88,7 +89,8 @@ export class AuthDomain {
     });
 
     // Remove password hash from response
-    const { passwordHash: _, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _passwordHash2, ...userWithoutPassword } = user;
 
     return userWithoutPassword as User;
   }

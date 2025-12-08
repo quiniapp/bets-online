@@ -6,7 +6,7 @@ export class AppError extends Error {
     public statusCode: number,
     public code: ErrorCode,
     message: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'AppError';

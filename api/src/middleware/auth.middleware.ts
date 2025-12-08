@@ -5,6 +5,7 @@ import { config } from '../config';
 import { AppError } from './error.middleware';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: JwtPayload;

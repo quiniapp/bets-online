@@ -1,62 +1,51 @@
-import { supabase } from '../../config/database';
+import { BalanceModel } from '../models';
 import { Balance } from 'helper';
+import { Op } from 'sequelize';
 
 export class BalancesRepository {
   async findByUserId(userId: string): Promise<Balance | null> {
-    const { data, error } = await supabase
-      .from('balances')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return this.mapToBalance(data);
+    const balance = await BalanceModel.findOne({
+      where: { userId }
+    });
+    if (!balance) return null;
+    return this.mapToBalance(balance);
   }
 
   async findByUserIds(userIds: string[]): Promise<Balance[]> {
-    const { data, error } = await supabase
-      .from('balances')
-      .select('*')
-      .in('user_id', userIds);
-
-    if (error) throw error;
-
-    return data?.map(this.mapToBalance) || [];
+    const balances = await BalanceModel.findAll({
+      where: {
+        userId: {
+          [Op.in]: userIds
+        }
+      }
+    });
+    return balances.map(this.mapToBalance);
   }
 
   async create(userId: string, initialBalance = 0): Promise<Balance> {
-    const { data, error } = await supabase
-      .from('balances')
-      .insert({
-        user_id: userId,
-        chip_balance: initialBalance
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return this.mapToBalance(data);
+    const balance = await BalanceModel.create({
+      userId,
+      chipBalance: initialBalance,
+      lastUpdatedAt: new Date()
+    });
+    return this.mapToBalance(balance);
   }
 
   async updateBalance(userId: string, newBalance: number): Promise<Balance> {
-    const { data, error } = await supabase
-      .from('balances')
-      .update({
-        chip_balance: newBalance,
-        last_updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
+    const balance = await BalanceModel.findOne({
+      where: { userId }
+    });
 
-    if (error) throw error;
+    if (!balance) {
+      throw new Error('Balance not found');
+    }
 
-    return this.mapToBalance(data);
+    await balance.update({
+      chipBalance: newBalance,
+      lastUpdatedAt: new Date()
+    });
+
+    return this.mapToBalance(balance);
   }
 
   async incrementBalance(userId: string, amount: number): Promise<Balance> {
@@ -78,12 +67,12 @@ export class BalancesRepository {
     return this.incrementBalance(userId, -amount);
   }
 
-  private mapToBalance(data: any): Balance {
+  private mapToBalance(data: Record<string, unknown>): Balance {
     return {
       id: data.id,
-      userId: data.user_id,
-      chipBalance: parseFloat(data.chip_balance),
-      lastUpdatedAt: new Date(data.last_updated_at)
+      userId: data.userId || data.user_id,
+      chipBalance: parseFloat(data.chipBalance || data.chip_balance),
+      lastUpdatedAt: new Date(data.lastUpdatedAt || data.last_updated_at)
     };
   }
 }

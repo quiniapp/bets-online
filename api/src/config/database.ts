@@ -1,19 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-import { config } from './index';
+import { sequelize, testConnection } from './sequelize';
 
-if (!config.database.supabaseUrl || !config.database.supabaseServiceKey) {
-  throw new Error('Missing Supabase configuration');
-}
+// Export Sequelize instance as the main database connection
+export { sequelize, testConnection };
 
-export const supabase = createClient(
-  config.database.supabaseUrl,
-  config.database.supabaseServiceKey,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-export default supabase;
+// Default export
+export default sequelize;

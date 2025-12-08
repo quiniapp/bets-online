@@ -1,152 +1,131 @@
-import { supabase } from '../../config/database';
+import { UserModel } from '../models';
 import { User, CreateUserDto, UpdateUserDto, UserStatus } from 'helper';
+import { sequelize } from '../../config/sequelize';
 
 export class UsersRepository {
   async findById(id: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return this.mapToUser(data);
+    const user = await UserModel.findByPk(id);
+    if (!user) return null;
+    return this.mapToUser(user);
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('username', username)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return this.mapToUser(data);
+    const user = await UserModel.findOne({
+      where: { username }
+    });
+    if (!user) return null;
+    return this.mapToUser(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return this.mapToUser(data);
+    const user = await UserModel.findOne({
+      where: { email }
+    });
+    if (!user) return null;
+    return this.mapToUser(user);
   }
 
   async findByParentId(parentId: string): Promise<User[]> {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('parent_user_id', parentId);
-
-    if (error) throw error;
-
-    return data?.map(this.mapToUser) || [];
+    const users = await UserModel.findAll({
+      where: { parentUserId: parentId }
+    });
+    return users.map(this.mapToUser);
   }
 
   async create(userData: CreateUserDto & { passwordHash: string }): Promise<User> {
-    const { password, ...rest } = userData as any;
+    const transaction = await sequelize.transaction();
 
-    const { data, error } = await supabase
-      .from('users')
-      .insert({
-        parent_user_id: rest.parentUserId || null,
-        role: rest.role,
-        username: rest.username,
-        email: rest.email,
-        password_hash: rest.passwordHash,
-        status: 'ACTIVE'
-      })
-      .select()
-      .single();
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _password, ...rest } = userData as CreateUserDto & { passwordHash: string };
 
-    if (error) throw error;
+      const user = await UserModel.create(
+        {
+          parentUserId: rest.parentUserId || null,
+          role: rest.role,
+          username: rest.username,
+          email: rest.email,
+          passwordHash: rest.passwordHash,
+          status: 'ACTIVE'
+        },
+        { transaction }
+      );
 
-    // Create initial balance
-    await supabase.from('balances').insert({
-      user_id: data.id,
-      chip_balance: 0
-    });
+      // Create initial balance using raw query to avoid circular import
+      await sequelize.query(
+        'INSERT INTO balances (id, user_id, chip_balance, last_updated_at) VALUES (gen_random_uuid(), :userId, 0, NOW())',
+        {
+          replacements: { userId: user.id },
+          transaction
+        }
+      );
 
-    return this.mapToUser(data);
+      await transaction.commit();
+      return this.mapToUser(user);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   async update(id: string, updateData: UpdateUserDto): Promise<User> {
-    const updateFields: any = {};
+    const user = await UserModel.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
 
+    const updateFields: Partial<UpdateUserDto> = {};
     if (updateData.username) updateFields.username = updateData.username;
     if (updateData.email) updateFields.email = updateData.email;
     if (updateData.status) updateFields.status = updateData.status;
 
-    const { data, error } = await supabase
-      .from('users')
-      .update(updateFields)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return this.mapToUser(data);
+    await user.update(updateFields);
+    return this.mapToUser(user);
   }
 
   async updatePassword(id: string, passwordHash: string): Promise<void> {
-    const { error } = await supabase
-      .from('users')
-      .update({ password_hash: passwordHash })
-      .eq('id', id);
-
-    if (error) throw error;
+    const user = await UserModel.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await user.update({ passwordHash });
   }
 
   async updateStatus(id: string, status: UserStatus): Promise<User> {
-    const { data, error } = await supabase
-      .from('users')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return this.mapToUser(data);
+    const user = await UserModel.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await user.update({ status });
+    return this.mapToUser(user);
   }
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    const user = await UserModel.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await user.destroy();
   }
 
   async findDescendants(userId: string): Promise<User[]> {
-    // Recursive query to get all descendants
-    const { data, error } = await supabase.rpc('get_user_descendants', {
-      user_id: userId
+    // Use recursive CTE to get all descendants
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT * FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.* FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT * FROM descendants WHERE id != :userId
+    `;
+
+    const results = await sequelize.query(query, {
+      replacements: { userId },
+      type: 'SELECT'
     });
 
-    if (error) {
-      // If function doesn't exist, fall back to manual recursive approach
-      return this.getDescendantsManually(userId);
-    }
-
-    return data?.map(this.mapToUser) || [];
+    return (results as Record<string, unknown>[]).map(this.mapToUser);
   }
 
   private async getDescendantsManually(userId: string): Promise<User[]> {
@@ -162,17 +141,17 @@ export class UsersRepository {
     return descendants;
   }
 
-  private mapToUser(data: any): User {
+  private mapToUser(data: Record<string, unknown>): User {
     return {
       id: data.id,
-      parentUserId: data.parent_user_id,
+      parentUserId: data.parentUserId || data.parent_user_id,
       role: data.role,
       username: data.username,
       email: data.email,
-      passwordHash: data.password_hash,
+      passwordHash: data.passwordHash || data.password_hash,
       status: data.status,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
+      createdAt: new Date(data.createdAt || data.created_at),
+      updatedAt: new Date(data.updatedAt || data.updated_at)
     };
   }
 }

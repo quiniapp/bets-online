@@ -1,5 +1,6 @@
-import { supabase } from '../../config/database';
+import { SessionModel } from '../models';
 import { Session } from 'helper';
+import { Op } from 'sequelize';
 
 export class SessionsRepository {
   async create(
@@ -8,99 +9,77 @@ export class SessionsRepository {
     refreshToken: string,
     expiresAt: Date
   ): Promise<Session> {
-    const { data, error } = await supabase
-      .from('sessions')
-      .insert({
-        user_id: userId,
-        token,
-        refresh_token: refreshToken,
-        expires_at: expiresAt.toISOString()
-      })
-      .select()
-      .single();
+    const session = await SessionModel.create({
+      userId,
+      token,
+      refreshToken,
+      expiresAt
+    });
 
-    if (error) throw error;
-
-    return this.mapToSession(data);
+    return this.mapToSession(session);
   }
 
   async findByToken(token: string): Promise<Session | null> {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('token', token)
-      .single();
+    const session = await SessionModel.findOne({
+      where: { token }
+    });
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return this.mapToSession(data);
+    if (!session) return null;
+    return this.mapToSession(session);
   }
 
   async findByRefreshToken(refreshToken: string): Promise<Session | null> {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('refresh_token', refreshToken)
-      .single();
+    const session = await SessionModel.findOne({
+      where: { refreshToken }
+    });
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return this.mapToSession(data);
+    if (!session) return null;
+    return this.mapToSession(session);
   }
 
   async findByUserId(userId: string): Promise<Session[]> {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('expires_at', new Date().toISOString());
+    const sessions = await SessionModel.findAll({
+      where: {
+        userId,
+        expiresAt: {
+          [Op.gte]: new Date()
+        }
+      }
+    });
 
-    if (error) throw error;
-
-    return data?.map(this.mapToSession) || [];
+    return sessions.map(this.mapToSession);
   }
 
   async deleteByToken(token: string): Promise<void> {
-    const { error } = await supabase
-      .from('sessions')
-      .delete()
-      .eq('token', token);
-
-    if (error) throw error;
+    await SessionModel.destroy({
+      where: { token }
+    });
   }
 
   async deleteByUserId(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('sessions')
-      .delete()
-      .eq('user_id', userId);
-
-    if (error) throw error;
+    await SessionModel.destroy({
+      where: { userId }
+    });
   }
 
   async deleteExpired(): Promise<void> {
-    const { error } = await supabase
-      .from('sessions')
-      .delete()
-      .lt('expires_at', new Date().toISOString());
-
-    if (error) throw error;
+    await SessionModel.destroy({
+      where: {
+        expiresAt: {
+          [Op.lt]: new Date()
+        }
+      }
+    });
   }
 
-  private mapToSession(data: any): Session {
+  private mapToSession(data: Record<string, unknown>): Session {
     return {
       id: data.id,
-      userId: data.user_id,
+      userId: data.userId || data.user_id,
       token: data.token,
-      refreshToken: data.refresh_token,
-      expiresAt: new Date(data.expires_at),
-      createdAt: new Date(data.created_at)
+      refreshToken: data.refreshToken || data.refresh_token,
+      expiresAt: new Date(data.expiresAt || data.expires_at),
+      createdAt: new Date(data.createdAt || data.created_at)
     };
   }
 }

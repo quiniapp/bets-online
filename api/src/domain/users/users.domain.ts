@@ -74,7 +74,8 @@ export class UsersDomain {
     }
 
     // Remove password hash
-    const { passwordHash, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
     return userWithoutPassword as User;
   }
@@ -104,7 +105,8 @@ export class UsersDomain {
     const children = await usersRepository.findByParentId(targetId);
 
     // Remove password hashes
-    return children.map(({ passwordHash, ...user }) => user as User);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    return children.map(({ passwordHash: _passwordHash, ...user }) => user as User);
   }
 
   async getUserTree(requesterId: string, userId?: string): Promise<UserTreeNode> {
@@ -174,7 +176,8 @@ export class UsersDomain {
     const updatedUser = await usersRepository.update(userId, updateData);
 
     // Remove password hash
-    const { passwordHash, ...userWithoutPassword } = updatedUser;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _passwordHash2, ...userWithoutPassword } = updatedUser;
 
     return userWithoutPassword as User;
   }
@@ -244,7 +247,8 @@ export class UsersDomain {
     );
 
     // Remove password hash
-    const { passwordHash, ...userWithoutPassword } = user;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _passwordHash3, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword as User,
