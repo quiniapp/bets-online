@@ -1,33 +1,38 @@
-import dotenv from 'dotenv';
+import { envs } from './envs';
 
-dotenv.config();
+/**
+ * CONFIGURACIÓN PRINCIPAL DE LA APLICACIÓN
+ *
+ * Este archivo re-exporta la configuración desde envs.ts
+ * Usa este objeto para acceder a todas las variables de entorno
+ *
+ * Para cambiar de entorno:
+ *   APP_ENV=local pnpm dev       -> usa .env.local
+ *   APP_ENV=development pnpm dev -> usa .env.development
+ *   APP_ENV=production pnpm dev  -> usa .env.production
+ */
 
 export const config = {
   server: {
-    port: parseInt(process.env.PORT || '3001', 10),
-    env: process.env.NODE_ENV || 'development',
-    apiUrl: process.env.API_URL || 'http://localhost:3001'
+    port: envs.PORT,
+    env: envs.NODE_ENV,
+    apiUrl: envs.API_URL
   },
   database: {
-    url: process.env.DATABASE_URL || ''
+    url: envs.DATABASE_URL,
+    // URLs alternativas por entorno (si están configuradas)
+    local: envs.database.local,
+    dev: envs.database.dev,
+    prod: envs.database.prod
   },
-  jwt: {
-    secret: process.env.JWT_SECRET || 'default-secret-change-this',
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'default-refresh-secret-change-this',
-    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d'
-  },
-  session: {
-    secret: process.env.SESSION_SECRET || 'default-session-secret-change-this'
-  },
-  cors: {
-    allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',')
-  },
-  admin: {
-    email: process.env.ADMIN_EMAIL || 'admin@casino.com',
-    password: process.env.ADMIN_PASSWORD || 'change-this-password',
-    username: process.env.ADMIN_USERNAME || 'owner'
-  }
+  jwt: envs.jwt,
+  session: envs.session,
+  cors: envs.cors,
+  admin: envs.admin,
+  supabase: envs.supabase
 };
+
+// Re-exportar envs para uso directo
+export { envs, Environment } from './envs';
 
 export default config;

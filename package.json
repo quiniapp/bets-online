@@ -8,16 +8,22 @@
     "helper"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=api\" \"npm run dev --workspace=web\"",
-    "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces",
-    "test:watch": "npm run test:watch --workspaces",
-    "lint": "npm run lint --workspaces",
-    "format": "npm run format --workspaces",
-    "type-check": "npm run type-check --workspaces",
-    "api:dev": "npm run dev --workspace=api",
-    "web:dev": "npm run dev --workspace=web",
-    "helper:build": "npm run build --workspace=helper"
+    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
+    "build": "pnpm --filter '*' build",
+    "test": "pnpm --filter '*' test",
+    "test:watch": "pnpm --filter '*' test:watch",
+    "lint": "pnpm --filter '*' lint",
+    "format": "pnpm --filter '*' format",
+    "type-check": "pnpm --filter '*' type-check",
+    "api:dev": "pnpm --filter api dev",
+    "web:dev": "pnpm --filter web dev",
+    "helper:build": "pnpm --filter helper build",
+    "run:api": "pnpm --filter api dev",
+    "run:web": "pnpm --filter web dev",
+    "install:api": "pnpm --filter api install",
+    "install:web": "pnpm --filter web install",
+    "install:helper": "pnpm --filter helper install",
+    "install:all": "pnpm install"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
