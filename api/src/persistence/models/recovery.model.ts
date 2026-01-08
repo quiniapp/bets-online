@@ -102,7 +102,7 @@ RecoveryModel.init(
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     validate: {
-      amountPaidCheck() {
+      amountPaidCheck(this: RecoveryModel) {
         if (this.amountPaid > this.amount) {
           throw new Error('amount_paid cannot exceed amount');
         }

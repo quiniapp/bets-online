@@ -88,12 +88,12 @@ ChipPanelModel.init(
     tableName: 'chip_panels',
     timestamps: false,
     validate: {
-      priceCheck() {
+      priceCheck(this: ChipPanelModel) {
         if (this.sellPricePerChip <= this.buyPricePerChip) {
           throw new Error('sell_price_per_chip must be greater than buy_price_per_chip');
         }
       },
-      soldChipsCheck() {
+      soldChipsCheck(this: ChipPanelModel) {
         if (this.soldChips > this.totalChips) {
           throw new Error('sold_chips cannot exceed total_chips');
         }

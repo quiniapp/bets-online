@@ -1,4 +1,7 @@
 packages:
-  - 'api'
-  - 'web'
-  - 'helper'
+  - api
+  - web
+  - helper
+
+ignoredBuiltDependencies:
+  - bcrypt

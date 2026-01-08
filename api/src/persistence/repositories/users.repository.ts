@@ -128,6 +128,9 @@ export class UsersRepository {
     return (results as Record<string, unknown>[]).map(this.mapToUser);
   }
 
+  // Fallback method for getting descendants without recursive CTE
+  // Keeping this for reference in case recursive CTE doesn't work in some databases
+  /*
   private async getDescendantsManually(userId: string): Promise<User[]> {
     const descendants: User[] = [];
     const children = await this.findByParentId(userId);
@@ -140,18 +143,22 @@ export class UsersRepository {
 
     return descendants;
   }
+  */
 
-  private mapToUser(data: Record<string, unknown>): User {
+  private mapToUser(data: UserModel | Record<string, unknown>): User {
+    // Convert Sequelize model to plain object if needed
+    const plain = data instanceof UserModel ? data.get({ plain: true }) : data;
+
     return {
-      id: data.id,
-      parentUserId: data.parentUserId || data.parent_user_id,
-      role: data.role,
-      username: data.username,
-      email: data.email,
-      passwordHash: data.passwordHash || data.password_hash,
-      status: data.status,
-      createdAt: new Date(data.createdAt || data.created_at),
-      updatedAt: new Date(data.updatedAt || data.updated_at)
+      id: plain.id as string,
+      parentUserId: (plain.parentUserId || plain.parent_user_id) as string | null,
+      role: plain.role as User['role'],
+      username: plain.username as string,
+      email: plain.email as string,
+      passwordHash: (plain.passwordHash || plain.password_hash) as string,
+      status: plain.status as UserStatus,
+      createdAt: new Date(plain.createdAt || plain.created_at),
+      updatedAt: new Date(plain.updatedAt || plain.updated_at)
     };
   }
 }

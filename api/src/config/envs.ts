@@ -8,7 +8,8 @@ import path from 'path';
 export enum Environment {
   LOCAL = 'local',
   DEVELOPMENT = 'development',
-  PRODUCTION = 'production'
+  PRODUCTION = 'production',
+  TEST = 'test'
 }
 
 /**
@@ -29,7 +30,8 @@ const getEnvFile = (): string => {
   const envFiles: Record<Environment, string> = {
     [Environment.LOCAL]: '.env.local',
     [Environment.DEVELOPMENT]: '.env.development',
-    [Environment.PRODUCTION]: '.env.production'
+    [Environment.PRODUCTION]: '.env.production',
+    [Environment.TEST]: '.env.test'
   };
 
   return envFiles[environment] || '.env.local';
@@ -55,7 +57,7 @@ if (result.error) {
 const envSchema = z.object({
   // Server
   NODE_ENV: z
-    .enum([Environment.LOCAL, Environment.DEVELOPMENT, Environment.PRODUCTION])
+    .enum([Environment.LOCAL, Environment.DEVELOPMENT, Environment.PRODUCTION, Environment.TEST])
     .default(Environment.LOCAL),
   PORT: z.string().default('3001').transform(Number),
   API_URL: z.string().url().default('http://localhost:3001'),
@@ -144,6 +146,7 @@ export const envs = {
   isProduction: envVars.NODE_ENV === Environment.PRODUCTION,
   isDevelopment: envVars.NODE_ENV === Environment.DEVELOPMENT,
   isLocal: envVars.NODE_ENV === Environment.LOCAL,
+  isTest: envVars.NODE_ENV === Environment.TEST,
 
   // Server
   PORT: envVars.PORT,

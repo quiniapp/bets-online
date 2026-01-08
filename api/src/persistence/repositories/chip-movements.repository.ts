@@ -43,13 +43,14 @@ export class ChipMovementsRepository {
     }
 
     if (options?.startDate || options?.endDate) {
-      where.createdAt = {};
+      const createdAtFilter: Record<symbol, Date> = {};
       if (options.startDate) {
-        where.createdAt[Op.gte] = options.startDate;
+        createdAtFilter[Op.gte] = options.startDate;
       }
       if (options.endDate) {
-        where.createdAt[Op.lte] = options.endDate;
+        createdAtFilter[Op.lte] = options.endDate;
       }
+      where.createdAt = createdAtFilter;
     }
 
     const { count, rows } = await ChipMovementModel.findAndCountAll({
@@ -82,13 +83,14 @@ export class ChipMovementsRepository {
     }
 
     if (options?.startDate || options?.endDate) {
-      where.createdAt = {};
+      const createdAtFilter: Record<symbol, Date> = {};
       if (options.startDate) {
-        where.createdAt[Op.gte] = options.startDate;
+        createdAtFilter[Op.gte] = options.startDate;
       }
       if (options.endDate) {
-        where.createdAt[Op.lte] = options.endDate;
+        createdAtFilter[Op.lte] = options.endDate;
       }
+      where.createdAt = createdAtFilter;
     }
 
     const { count, rows } = await ChipMovementModel.findAndCountAll({
@@ -141,17 +143,20 @@ export class ChipMovementsRepository {
     return { totalSales, totalPrizes };
   }
 
-  private mapToMovement(data: Record<string, unknown>): ChipMovement {
+  private mapToMovement(data: ChipMovementModel | Record<string, unknown>): ChipMovement {
+    // Convert Sequelize model to plain object if needed
+    const plain = data instanceof ChipMovementModel ? data.get({ plain: true }) : data;
+
     return {
-      id: data.id,
-      userId: data.userId || data.user_id,
-      relatedUserId: data.relatedUserId || data.related_user_id,
-      type: data.type,
-      amount: parseFloat(data.amount),
-      description: data.description,
-      previousBalance: parseFloat(data.previousBalance || data.previous_balance),
-      newBalance: parseFloat(data.newBalance || data.new_balance),
-      createdAt: new Date(data.createdAt || data.created_at)
+      id: plain.id as string,
+      userId: (plain.userId || plain.user_id) as string,
+      relatedUserId: (plain.relatedUserId || plain.related_user_id) as string | null,
+      type: plain.type as ChipMovementType,
+      amount: parseFloat(String(plain.amount)),
+      description: (plain.description || undefined) as string | undefined,
+      previousBalance: parseFloat(String(plain.previousBalance || plain.previous_balance)),
+      newBalance: parseFloat(String(plain.newBalance || plain.new_balance)),
+      createdAt: new Date(plain.createdAt || plain.created_at)
     };
   }
 }

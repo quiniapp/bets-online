@@ -91,7 +91,7 @@ CashierSettlementModel.init(
     tableName: 'cashier_settlements',
     timestamps: false,
     validate: {
-      periodCheck() {
+      periodCheck(this: CashierSettlementModel) {
         if (this.periodEnd <= this.periodStart) {
           throw new Error('period_end must be after period_start');
         }

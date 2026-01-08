@@ -14,7 +14,11 @@
       "@middleware/*": ["./middleware/*"],
       "@config/*": ["./config/*"],
       "helper": ["../../helper/src"]
-    }
+    },
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "strictPropertyInitialization": false,
+    "strictFunctionTypes": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]

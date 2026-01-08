@@ -67,12 +67,15 @@ export class BalancesRepository {
     return this.incrementBalance(userId, -amount);
   }
 
-  private mapToBalance(data: Record<string, unknown>): Balance {
+  private mapToBalance(data: BalanceModel | Record<string, unknown>): Balance {
+    // Convert Sequelize model to plain object if needed
+    const plain = data instanceof BalanceModel ? data.get({ plain: true }) : data;
+
     return {
-      id: data.id,
-      userId: data.userId || data.user_id,
-      chipBalance: parseFloat(data.chipBalance || data.chip_balance),
-      lastUpdatedAt: new Date(data.lastUpdatedAt || data.last_updated_at)
+      id: plain.id as string,
+      userId: (plain.userId || plain.user_id) as string,
+      chipBalance: parseFloat(String(plain.chipBalance || plain.chip_balance || 0)),
+      lastUpdatedAt: new Date(plain.lastUpdatedAt || plain.last_updated_at)
     };
   }
 }

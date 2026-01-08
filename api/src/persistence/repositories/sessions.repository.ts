@@ -72,14 +72,17 @@ export class SessionsRepository {
     });
   }
 
-  private mapToSession(data: Record<string, unknown>): Session {
+  private mapToSession(data: SessionModel | Record<string, unknown>): Session {
+    // Convert Sequelize model to plain object if needed
+    const plain = data instanceof SessionModel ? data.get({ plain: true }) : data;
+
     return {
-      id: data.id,
-      userId: data.userId || data.user_id,
-      token: data.token,
-      refreshToken: data.refreshToken || data.refresh_token,
-      expiresAt: new Date(data.expiresAt || data.expires_at),
-      createdAt: new Date(data.createdAt || data.created_at)
+      id: plain.id as string,
+      userId: (plain.userId || plain.user_id) as string,
+      token: plain.token as string,
+      refreshToken: (plain.refreshToken || plain.refresh_token) as string,
+      expiresAt: new Date(plain.expiresAt || plain.expires_at),
+      createdAt: new Date(plain.createdAt || plain.created_at)
     };
   }
 }
