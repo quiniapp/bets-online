@@ -10,7 +10,7 @@ import ROUTER from "@/routes"
 interface AuthContextType {
   user: User | null
   role: UserRole | null
-  login: (credentials: { username: string; password: string }) => Promise<boolean>
+  login: (credentials: { username: string; password: string }) => Promise<User | null>
   logout: () => void
   isLoading: boolean
   refreshUser: () => Promise<void>
@@ -22,12 +22,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
+
+  // Ensure we're mounted before hydrating
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Load user on mount
   useEffect(() => {
-    loadUser()
-  }, [])
+    if (mounted) {
+      loadUser()
+    }
+  }, [mounted])
 
   const loadUser = async () => {
     setIsLoading(true)
@@ -51,27 +59,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const login = async (credentials: { username: string; password: string }): Promise<boolean> => {
+  const login = async (credentials: { username: string; password: string }): Promise<User | null> => {
     setIsLoading(true)
 
     try {
       const response = await apiService.login(credentials.username, credentials.password)
 
       if (response.success && response.data) {
-        setUser(response.data.user)
-        setRole(response.data.user.role)
+        const loggedInUser = response.data.user
+        setUser(loggedInUser)
+        setRole(loggedInUser.role)
 
         // Save user to localStorage for quick access
-        localStorage.setItem("auth_user", JSON.stringify(response.data.user))
-        localStorage.setItem("auth_role", response.data.user.role)
+        localStorage.setItem("auth_user", JSON.stringify(loggedInUser))
+        localStorage.setItem("auth_role", loggedInUser.role)
 
-        return true
+        return loggedInUser
       }
 
-      return false
+      return null
     } catch (error) {
       console.error('Login failed:', error)
-      return false
+      return null
     } finally {
       setIsLoading(false)
     }

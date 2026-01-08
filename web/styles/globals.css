@@ -6,6 +6,10 @@
   --breakpoint-xs: 475px;
 }
 
+html {
+  font-family: var(--font-sans), sans-serif;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
