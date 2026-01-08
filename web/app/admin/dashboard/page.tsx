@@ -6,7 +6,8 @@ import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockUsers, mockBets, mockGameAccessRequests, Role } from "@/lib/mock-data"
+import { mockUsers, mockBets, mockGameAccessRequests } from "@/lib/mock-data"
+import { UserRole } from "helper"
 import { Users, Gamepad2, DollarSign, TrendingUp, Clock, ArrowUp, ArrowDown } from "lucide-react"
 import {
   LineChart,
@@ -32,41 +33,24 @@ export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth() // ✅ Agregamos isLoading
   const router = useRouter()
 
-  // ✅ Debug completo
-  console.log("🏠 AdminDashboard - Current state:", {
-    user: user?.username,
-    role,
-    isLoading, // ✅ Mostrar estado de carga
-    Role_admin: Role.admin,
-    Role_superadmin: Role.superadmin,
-    comparison1: role !== Role.admin,
-    comparison2: role !== Role.superadmin,
-    shouldRedirect: role !== Role.admin && role !== Role.superadmin
-  });
-
   useEffect(() => {
-  
     if (!isLoading) {
-      if (role !== Role.admin && role !== Role.superadmin) {
-
+      // Allow OWNER and ADMIN roles
+      if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
+        console.log("❌ Access denied. Redirecting to home...", { role });
         router.push(ROUTER.SITE)
       } else {
         console.log("✅ Access granted:", { role });
       }
-    } else {
-      console.log("⏳ Still loading, waiting...");
     }
   }, [role, router, isLoading])
 
-
   if (isLoading) {
-   
     return <div className="flex items-center justify-center h-screen">Cargando...</div>
   }
 
-
-  if (role !== Role.admin && role !== Role.superadmin) {
-
+  // Allow OWNER and ADMIN roles
+  if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
     return null
   }
 

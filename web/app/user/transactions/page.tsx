@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { mockTransactions, type User } from "@/lib/mock-data"
+import { mockTransactions } from "@/lib/mock-data"
+import { UserRole } from "helper"
 import { ArrowUp, ArrowDown, DollarSign, Settings } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 
@@ -16,15 +17,15 @@ export default function UserTransactions() {
   const router = useRouter()
 
   useEffect(() => {
-    if (role !== "user") {
+    if (role !== UserRole.PLAYER) {
       router.push("/user/login")
     }
   }, [role, router])
 
-  if (role !== "user" || !user) return null
+  if (role !== UserRole.PLAYER || !user) return null
 
-  const currentUser = user as User
-  const userTransactions = mockTransactions.filter((tx) => tx.userId === currentUser.id)
+  // Use mock data with user id for demonstration
+  const userTransactions = mockTransactions.filter((tx) => tx.userId === user.id)
 
   const deposits = userTransactions.filter((tx) => tx.type === "deposit")
   const withdrawals = userTransactions.filter((tx) => tx.type === "withdrawal")

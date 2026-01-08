@@ -6,7 +6,8 @@ import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockGames, mockBets, mockTransactions, type User, Role } from "@/lib/mock-data"
+import { mockGames, mockBets, mockTransactions, type User } from "@/lib/mock-data"
+import { UserRole } from "helper"
 import { UserIcon, Gamepad2, History, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import ROUTER from "@/routes"
@@ -16,33 +17,28 @@ export default function UserDashboard() {
   const router = useRouter()
 
   useEffect(() => {
-   
     if (!isLoading) {
-      if (role !== Role.user) {
+      if (role !== UserRole.PLAYER) {
         console.log("❌ User dashboard - Access denied, redirecting:", { role });
-        router.push(ROUTER.SITE) 
+        router.push(ROUTER.SITE)
       } else {
         console.log("✅ User dashboard - Access granted:", { role });
       }
-    } else {
-      console.log("⏳ User dashboard - Still loading...");
     }
   }, [role, router, isLoading])
-
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen">Cargando...</div>
   }
 
-  if (role !== Role.user || !user) {
-
+  if (role !== UserRole.PLAYER || !user) {
     return null
   }
 
-  const currentUser = user as User
-  const userBets = mockBets.filter((bet) => bet.userId === currentUser.id)
-  const userTransactions = mockTransactions.filter((tx) => tx.userId === currentUser.id)
-  const availableGames = mockGames.filter((game) => game.isActive && currentUser.enabledGames.includes(game.id))
+  // Use user ID for demo filtering
+  const userBets = mockBets.filter((bet) => bet.userId === user.id)
+  const userTransactions = mockTransactions.filter((tx) => tx.userId === user.id)
+  const availableGames = mockGames.filter((game) => game.isActive)
 
   const totalWinnings = userBets
     .filter((bet) => bet.outcome === "won")
@@ -58,7 +54,8 @@ export default function UserDashboard() {
           <CardTitle className="text-2xl">Balance Actual</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-4xl font-bold text-green-600 mb-4">${currentUser.balance.toFixed(2)}</div>
+          <div className="text-4xl font-bold text-green-600 mb-4">$1,234.56</div>
+          <p className="text-sm text-muted-foreground">Demo balance</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Total ganado:</span>

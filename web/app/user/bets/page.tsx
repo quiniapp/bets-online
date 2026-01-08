@@ -6,29 +6,18 @@ import { useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { mockGames, mockBets, type User } from "@/lib/mock-data"
+import { mockGames, mockBets } from "@/lib/mock-data"
 import { ArrowLeft, TrendingUp, TrendingDown, Clock } from "lucide-react"
 import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 
 export default function UserBets() {
   const { user, role } = useAuth()
- // const router = useRouter()
 
-  /**
-   * 
-   * 
-  useEffect(() => {
-    if (role !== "user") {
-      router.push("/user/login")
-    }
-  }, [role, router])
-   */
+  if (!user) return null
 
- // if (role !== "user" || !user) return null
-
-  const currentUser = user as User
-  const userBets = mockBets?.filter((bet) => bet?.userId === currentUser?.id)
+  // Use mock data with user id for demonstration
+  const userBets = mockBets?.filter((bet) => bet?.userId === user.id)
 
   const wonBets = userBets.filter((bet) => bet.outcome === "won")
   const lostBets = userBets.filter((bet) => bet.outcome === "lost")

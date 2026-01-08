@@ -18,7 +18,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Role } from "@/lib/mock-data";
+import { UserRole } from "helper";
 import { useSidebarNavigation } from "@/hooks/useSidebarNavigation";
 
 interface SidebarProps {
@@ -133,7 +133,7 @@ export function Sidebar({ className }: SidebarProps) {
       {/* User info and logout */}
       <div className="border-t p-4">
         <div className="mb-2 text-sm text-muted-foreground flex items-center gap-2">
-          {role === Role.superadmin && <Shield className="h-3 w-3" />}
+          {role === UserRole.OWNER && <Shield className="h-3 w-3" />}
           {getRoleDisplay()}
         </div>
         <div className="mb-3 text-sm font-medium">{user?.username}</div>

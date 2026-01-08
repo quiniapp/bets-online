@@ -14,7 +14,8 @@
       "Bash(grep:*)",
       "Bash(curl:*)",
       "Bash(pnpm dev:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(pnpm type-check:*)"
     ],
     "deny": [],
     "ask": []
