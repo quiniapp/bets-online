@@ -1,0 +1,103 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: # Allows manual trigger
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: false # Don't cancel in-progress deployments
+
+jobs:
+  deploy-development:
+    name: Deploy to Development Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: https://dev-bets-online.vercel.app # Update with your actual dev URL
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build all packages
+        run: pnpm build
+        env:
+          NODE_ENV: development
+          # Add your development environment variables here
+          # These should be configured in GitHub Secrets
+          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.DEV_JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.DEV_JWT_REFRESH_SECRET }}
+          SESSION_SECRET: ${{ secrets.DEV_SESSION_SECRET }}
+          ALLOWED_ORIGINS: ${{ secrets.DEV_ALLOWED_ORIGINS }}
+          API_URL: ${{ secrets.DEV_API_URL }}
+
+      # Example: Deploy Frontend to Vercel
+      # Uncomment when you set up Vercel
+      # - name: Deploy Frontend to Vercel (Development)
+      #   uses: amondnet/vercel-action@v25
+      #   with:
+      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      #     vercel-args: '--prod'
+      #     scope: ${{ secrets.VERCEL_ORG_ID }}
+      #     alias-domains: dev-bets-online.vercel.app
+
+      # Example: Deploy Backend to Railway/Render
+      # Uncomment when you set up your backend hosting
+      # - name: Deploy Backend to Railway (Development)
+      #   run: |
+      #     npm install -g @railway/cli
+      #     railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+      #     railway up --service api --environment development
+
+      - name: Notify deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = context.sha.substring(0, 7);
+            const message = `✅ **Development deployment successful!**
+
+            - **Commit**: ${commit}
+            - **Branch**: \`develop\`
+            - **Environment**: Development
+            - **Frontend**: https://dev-bets-online.vercel.app
+            - **API**: https://dev-api-bets-online.railway.app
+            - **Docs**: https://dev-api-bets-online.railway.app/doc
+
+            <sub>Deployed at ${new Date().toISOString()}</sub>
+            `;
+
+            // You can send this to Slack, Discord, or create a GitHub issue
+            console.log(message);
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = context.sha.substring(0, 7);
+            core.setFailed(`❌ Development deployment failed for commit ${commit}`);

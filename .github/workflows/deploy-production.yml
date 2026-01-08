@@ -1,0 +1,136 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Allows manual trigger
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # Never cancel production deployments
+
+jobs:
+  deploy-production:
+    name: Deploy to Production Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://bets-online.vercel.app # Update with your actual prod URL
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run all tests
+        run: pnpm test
+
+      - name: Build all packages
+        run: pnpm build
+        env:
+          NODE_ENV: production
+          # Add your production environment variables here
+          # These should be configured in GitHub Secrets
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.PROD_JWT_REFRESH_SECRET }}
+          SESSION_SECRET: ${{ secrets.PROD_SESSION_SECRET }}
+          ALLOWED_ORIGINS: ${{ secrets.PROD_ALLOWED_ORIGINS }}
+          API_URL: ${{ secrets.PROD_API_URL }}
+
+      # Example: Deploy Frontend to Vercel
+      # Uncomment when you set up Vercel
+      # - name: Deploy Frontend to Vercel (Production)
+      #   uses: amondnet/vercel-action@v25
+      #   with:
+      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      #     vercel-args: '--prod'
+      #     scope: ${{ secrets.VERCEL_ORG_ID }}
+      #     alias-domains: bets-online.vercel.app
+
+      # Example: Deploy Backend to Railway/Render
+      # Uncomment when you set up your backend hosting
+      # - name: Deploy Backend to Railway (Production)
+      #   run: |
+      #     npm install -g @railway/cli
+      #     railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+      #     railway up --service api --environment production
+
+      - name: Create deployment tag
+        if: success()
+        run: |
+          TAG="v$(date +'%Y%m%d')-${GITHUB_SHA::7}"
+          git tag $TAG
+          git push origin $TAG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify deployment success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = context.sha.substring(0, 7);
+            const message = `🚀 **Production deployment successful!**
+
+            - **Commit**: ${commit}
+            - **Branch**: \`main\`
+            - **Environment**: Production
+            - **Frontend**: https://bets-online.vercel.app
+            - **API**: https://api-bets-online.railway.app
+            - **Docs**: https://api-bets-online.railway.app/doc
+
+            ⚠️ **Please monitor:**
+            - Application logs
+            - Error rates
+            - Performance metrics
+
+            <sub>Deployed at ${new Date().toISOString()}</sub>
+            `;
+
+            console.log(message);
+
+            // Optional: Create a release
+            // await github.rest.repos.createRelease({
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   tag_name: `v${new Date().toISOString().split('T')[0]}-${context.sha.substring(0, 7)}`,
+            //   name: `Production Release ${new Date().toISOString().split('T')[0]}`,
+            //   body: message,
+            //   draft: false,
+            //   prerelease: false
+            // });
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = context.sha.substring(0, 7);
+            core.setFailed(`🚨 PRODUCTION DEPLOYMENT FAILED for commit ${commit}!`);
+
+            // Optional: Create an issue for failed production deployment
+            // await github.rest.issues.create({
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   title: `🚨 Production Deployment Failed - ${commit}`,
+            //   body: `Production deployment failed for commit ${commit}.\n\nPlease investigate immediately.`,
+            //   labels: ['deployment', 'critical', 'production']
+            // });
