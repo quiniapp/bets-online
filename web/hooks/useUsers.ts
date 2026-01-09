@@ -16,10 +16,10 @@ export function useUsers() {
     setError(null);
 
     try {
-      const response = await apiService.get<User[]>('/users/me/children');
+      const response = await apiService.get<{ users: User[] }>('/users/me/children');
 
       if (response.success && response.data) {
-        setUsers(response.data);
+        setUsers(response.data.users);
       } else {
         setError(response.error?.message || 'Failed to load users');
       }
