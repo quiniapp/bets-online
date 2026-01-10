@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   generator: "SudacaDev",
 }
 
+// Force dynamic rendering for all pages
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+
 export default function RootLayout({
   children,
 }: Readonly<{
