@@ -3,7 +3,6 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "composite": true,
     "baseUrl": "./src",
     "paths": {
       "@/*": ["./*"],
@@ -13,12 +12,16 @@
       "@persistence/*": ["./persistence/*"],
       "@middleware/*": ["./middleware/*"],
       "@config/*": ["./config/*"],
-      "helper": ["../../helper/src"]
+      "helper": ["../../helper/dist"]
     },
+    "typeRoots": ["./node_modules/@types", "./src/@types"],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "strictPropertyInitialization": false,
-    "strictFunctionTypes": false
+    "strictFunctionTypes": false,
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedModules": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]
