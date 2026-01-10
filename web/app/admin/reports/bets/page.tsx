@@ -9,12 +9,17 @@ import { Badge } from "@/components/ui/badge"
 import { Download, TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { Bet } from "helper"
+import { BetStatus } from "helper"
 
 // Demo data - In production, this would come from API endpoints
 const mockBets: Bet[] = []
 const mockGames = [
   { id: "1", name: "Roulette" },
   { id: "2", name: "Blackjack" }
+]
+const mockUsers = [
+  { id: "1", username: "user1" },
+  { id: "2", username: "user2" }
 ]
 
 export default function BetsReportPage() {
@@ -24,28 +29,28 @@ export default function BetsReportPage() {
 
   const filteredBets = bets.filter((bet) => {
     const matchesGame = filterGame === "all" || bet.gameId === filterGame
-    const matchesOutcome = filterOutcome === "all" || bet.outcome === filterOutcome
+    const matchesOutcome = filterOutcome === "all" || bet.status === filterOutcome
     return matchesGame && matchesOutcome
   })
 
   const totalBets = bets.length
-  const wonBets = bets.filter((b) => b.outcome === "won").length
-  const lostBets = bets.filter((b) => b.outcome === "lost").length
-  const pendingBets = bets.filter((b) => b.outcome === "pending").length
+  const wonBets = bets.filter((b) => b.status === BetStatus.WON).length
+  const lostBets = bets.filter((b) => b.status === BetStatus.LOST).length
+  const pendingBets = bets.filter((b) => b.status === BetStatus.PENDING).length
 
   const totalBetAmount = bets.reduce((sum, bet) => sum + bet.amount, 0)
   const totalWinAmount = bets
-    .filter((b) => b.outcome === "won")
+    .filter((b) => b.status === BetStatus.WON)
     .reduce((sum, bet) => sum + bet.amount * (bet.multiplier || 1), 0)
   const houseEdge = totalBetAmount > 0 ? ((totalBetAmount - totalWinAmount) / totalBetAmount) * 100 : 0
 
   const getBadgeColor = (outcome: string) => {
     switch (outcome) {
-      case "won":
+      case BetStatus.WON:
         return "bg-green-500"
-      case "lost":
+      case BetStatus.LOST:
         return "bg-red-500"
-      case "pending":
+      case BetStatus.PENDING:
         return "bg-yellow-500"
       default:
         return "bg-gray-500"
@@ -185,9 +190,9 @@ export default function BetsReportPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los resultados</SelectItem>
-                  <SelectItem value="won">Ganadas</SelectItem>
-                  <SelectItem value="lost">Perdidas</SelectItem>
-                  <SelectItem value="pending">Pendientes</SelectItem>
+                  <SelectItem value={BetStatus.WON}>Ganadas</SelectItem>
+                  <SelectItem value={BetStatus.LOST}>Perdidas</SelectItem>
+                  <SelectItem value={BetStatus.PENDING}>Pendientes</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -219,7 +224,7 @@ export default function BetsReportPage() {
                   {filteredBets.map((bet) => {
                     const user = mockUsers.find((u) => u.id === bet.userId)
                     const game = mockGames.find((g) => g.id === bet.gameId)
-                    const winAmount = bet.outcome === "won" ? bet.amount * (bet.multiplier || 1) : 0
+                    const winAmount = bet.status === BetStatus.WON ? bet.amount * (bet.multiplier || 1) : 0
 
                     return (
                       <tr key={bet.id} className="border-b hover:bg-muted/50">
@@ -229,12 +234,12 @@ export default function BetsReportPage() {
                         <td className="p-2">${bet.amount.toFixed(2)}</td>
                         <td className="p-2">{bet.multiplier ? `${bet.multiplier}x` : "-"}</td>
                         <td className="p-2">
-                          <Badge className={getBadgeColor(bet.outcome)}>{bet.outcome}</Badge>
+                          <Badge className={getBadgeColor(bet.status)}>{bet.status}</Badge>
                         </td>
                         <td className="p-2">
-                          {bet.outcome === "won" ? (
+                          {bet.status === BetStatus.WON ? (
                             <span className="text-green-600">${winAmount.toFixed(2)}</span>
-                          ) : bet.outcome === "lost" ? (
+                          ) : bet.status === BetStatus.LOST ? (
                             <span className="text-red-600">$0.00</span>
                           ) : (
                             <span className="text-yellow-600">Pendiente</span>

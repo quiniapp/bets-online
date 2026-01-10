@@ -26,6 +26,7 @@ import {
   Menu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { UserRole } from "helper"
 
 interface MobileSidebarProps {
   className?: string
@@ -121,7 +122,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
   ]
 
 
-  const isAdminRole = role === "admin" || role === "superadmin";
+  const isAdminRole = role === UserRole.ADMIN || role === UserRole.OWNER;
   const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
 
   const handleLinkClick = () => {
@@ -218,7 +219,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
 
           <div className="border-t p-4">
             <div className="mb-2 text-sm text-muted-foreground">
-              {role === "admin" ? t("common.admin") : t("common.user")}
+              {role === UserRole.ADMIN || role === UserRole.OWNER ? t("common.admin") : t("common.user")}
             </div>
             <div className="mb-3 text-sm font-medium">{user?.username}</div>
             <Button variant="outline" size="sm" className="w-full bg-transparent" onClick={logout}>

@@ -8,6 +8,15 @@ export enum BetStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export interface BetResultData {
+  gameType?: string;
+  randomValue?: number;
+  winProbability?: number;
+  timestamp?: string;
+  houseEdge?: number;
+  [key: string]: unknown;
+}
+
 export class BetModel extends Model {
   declare id: string;
   declare userId: string;
@@ -16,7 +25,7 @@ export class BetModel extends Model {
   declare status: BetStatus;
   declare multiplier: number | null;
   declare payout: number | null;
-  declare resultData: any;
+  declare resultData: BetResultData | null;
   declare createdAt: Date;
   declare settledAt: Date | null;
 }
