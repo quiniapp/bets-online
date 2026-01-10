@@ -26,7 +26,7 @@ export default function UserLogin() {
     setError("")
     setIsLoading(true)
 
-    const success = await login({ username, password }, "user")
+    const success = await login({ username, password })
 
     if (success) {
       router.push("/user/dashboard")

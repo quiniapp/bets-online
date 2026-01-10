@@ -1,9 +1,18 @@
 import { Game } from 'helper';
 
+export interface GameResultData {
+  gameType: string;
+  randomValue: number;
+  winProbability: number;
+  timestamp: string;
+  houseEdge: number;
+  [key: string]: unknown;
+}
+
 export interface SimulationResult {
   isWin: boolean;
   multiplier: number;
-  resultData: any;
+  resultData: GameResultData;
 }
 
 export class GameSimulationService {
@@ -136,7 +145,7 @@ export class GameSimulationService {
   simulateMultipleRounds(game: Game, rounds: number = 1000) {
     let wins = 0;
     let totalPayout = 0;
-    let totalWagered = rounds; // Assuming $1 bets
+    const totalWagered = rounds; // Assuming $1 bets
 
     for (let i = 0; i < rounds; i++) {
       const result = this.simulateGameRound(game);

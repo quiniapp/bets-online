@@ -26,7 +26,7 @@ export default function AdminLogin() {
     setError("")
     setIsLoading(true)
 
-    const success = await login({ username, password }, "admin")
+    const success = await login({ username, password })
 
     if (success) {
       router.push("/admin/dashboard")

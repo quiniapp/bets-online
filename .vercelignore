@@ -1,0 +1,13 @@
+# Ignore API directory - deployed separately on Railway
+api/
+
+# Ignore test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Ignore development files
+*.md
+.git
+.github

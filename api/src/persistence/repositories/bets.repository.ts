@@ -1,10 +1,21 @@
 import { BetModel, BetStatus } from '../models/bet.model';
 import { Bet } from 'helper';
-import { Transaction, Op } from 'sequelize';
+import { Transaction, WhereOptions } from 'sequelize';
+
+export interface CreateBetData {
+  userId: string;
+  gameId: string;
+  amount: number;
+  status?: BetStatus;
+  multiplier?: number;
+  payout?: number;
+  resultData?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 export class BetsRepository {
-  async create(betData: any, transaction?: Transaction): Promise<Bet> {
-    const bet = await BetModel.create(betData, { transaction });
+  async create(betData: CreateBetData, transaction?: Transaction): Promise<Bet> {
+    const bet = await BetModel.create(betData as any, { transaction });
     return this.mapToBet(bet);
   }
 
@@ -23,7 +34,7 @@ export class BetsRepository {
       status?: string;
     }
   ): Promise<{ bets: Bet[]; total: number }> {
-    const where: any = { userId };
+    const where: WhereOptions = { userId };
 
     if (options.gameId) {
       where.gameId = options.gameId;

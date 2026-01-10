@@ -38,6 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [mounted])
 
   const loadUser = async () => {
+    // Only run on client
+    if (typeof window === 'undefined') {
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
       const token = apiService.getAccessToken()
@@ -70,10 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(loggedInUser)
         setRole(loggedInUser.role)
 
-        // Save user to localStorage for quick access
-        localStorage.setItem("auth_user", JSON.stringify(loggedInUser))
-        localStorage.setItem("auth_role", loggedInUser.role)
-
         return loggedInUser
       }
 
@@ -90,8 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiService.logout()
     setUser(null)
     setRole(null)
-    localStorage.removeItem("auth_user")
-    localStorage.removeItem("auth_role")
     router.push(ROUTER.LOGIN)
   }
 

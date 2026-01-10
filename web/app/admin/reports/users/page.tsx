@@ -10,14 +10,20 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Download, Users, UserCheck, UserX, DollarSign, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { User } from "helper"
+import { UserStatus } from "helper"
+
+// Extended user type for demo purposes (includes balance from separate Balance model)
+interface UserWithBalance extends User {
+  balance: number
+}
 
 // Demo data - In production, this would come from API endpoints
-const mockUsers: User[] = []
+const mockUsers: UserWithBalance[] = []
 const mockBets: any[] = []
 const mockTransactions: any[] = []
 
 export default function UsersReportPage() {
-  const [users] = useState<User[]>(mockUsers)
+  const [users] = useState<UserWithBalance[]>(mockUsers)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
 
@@ -27,14 +33,14 @@ export default function UsersReportPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesFilter =
       filterStatus === "all" ||
-      (filterStatus === "active" && user.isActive) ||
-      (filterStatus === "inactive" && !user.isActive)
+      (filterStatus === "active" && user.status === UserStatus.ACTIVE) ||
+      (filterStatus === "inactive" && user.status !== UserStatus.ACTIVE)
     return matchesSearch && matchesFilter
   })
 
   const totalUsers = users.length
-  const activeUsers = users.filter((u) => u.isActive).length
-  const inactiveUsers = users.filter((u) => !u.isActive).length
+  const activeUsers = users.filter((u) => u.status === UserStatus.ACTIVE).length
+  const inactiveUsers = users.filter((u) => u.status !== UserStatus.ACTIVE).length
   const totalBalance = users.reduce((sum, user) => sum + user.balance, 0)
 
   // Calculate user statistics
@@ -198,8 +204,8 @@ export default function UsersReportPage() {
                           <span className="font-medium">${user.balance.toFixed(2)}</span>
                         </td>
                         <td className="p-2">
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? "Activo" : "Inactivo"}
+                          <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"}>
+                            {user.status === UserStatus.ACTIVE ? "Activo" : "Inactivo"}
                           </Badge>
                         </td>
                         <td className="p-2">{stats.totalBets}</td>
