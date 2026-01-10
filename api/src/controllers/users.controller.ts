@@ -180,7 +180,11 @@ export class UsersController {
       const userId = req.params.id || req.user.userId;
       const tree = await usersDomain.getUserTree(req.user.userId, userId);
 
-      return res.json(ApiResponseBuilder.success({ tree }));
+      return res.json(ApiResponseBuilder.success({
+        user: tree.user,
+        balance: tree.balance,
+        children: tree.children
+      }));
     } catch (error) {
       return next(error);
     }
@@ -208,7 +212,11 @@ export class UsersController {
 
       const tree = await usersDomain.getUserTree(req.user.userId);
 
-      return res.json(ApiResponseBuilder.success({ tree }));
+      return res.json(ApiResponseBuilder.success({
+        user: tree.user,
+        balance: tree.balance,
+        children: tree.children
+      }));
     } catch (error) {
       return next(error);
     }

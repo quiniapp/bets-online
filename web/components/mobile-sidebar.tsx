@@ -26,7 +26,6 @@ import {
   Menu,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Role } from "@/lib/mock-data"
 
 interface MobileSidebarProps {
   className?: string

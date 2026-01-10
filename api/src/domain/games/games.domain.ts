@@ -1,0 +1,243 @@
+import {
+  Game,
+  CreateGameDto,
+  UpdateGameDto,
+  ErrorCode,
+  UserRole,
+} from 'helper';
+import { gamesRepository } from '../../persistence/repositories/games.repository';
+import { usersRepository } from '../../persistence/repositories/users.repository';
+import { AppError } from '../../middleware/error.middleware';
+
+export class GamesDomain {
+  /**
+   * Create a new game (OWNER/ADMIN only)
+   */
+  async createGame(
+    requesterId: string,
+    gameData: CreateGameDto
+  ): Promise<Game> {
+    // Verify requester has permission
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    }
+
+    if (![UserRole.OWNER, UserRole.ADMIN].includes(requester.role)) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Only OWNER or ADMIN can create games'
+      );
+    }
+
+    // Check if game with same name already exists
+    const existingGame = await gamesRepository.findByName(gameData.name);
+    if (existingGame) {
+      throw new AppError(
+        409,
+        ErrorCode.GAME_ALREADY_EXISTS,
+        'Game with this name already exists'
+      );
+    }
+
+    // Validate bet limits
+    if (gameData.minBet <= 0) {
+      throw new AppError(
+        400,
+        ErrorCode.VALIDATION_ERROR,
+        'Minimum bet must be greater than 0'
+      );
+    }
+
+    if (gameData.maxBet <= gameData.minBet) {
+      throw new AppError(
+        400,
+        ErrorCode.VALIDATION_ERROR,
+        'Maximum bet must be greater than minimum bet'
+      );
+    }
+
+    // Validate house edge
+    if (gameData.houseEdge !== undefined) {
+      if (gameData.houseEdge < 0 || gameData.houseEdge > 100) {
+        throw new AppError(
+          400,
+          ErrorCode.VALIDATION_ERROR,
+          'House edge must be between 0 and 100'
+        );
+      }
+    }
+
+    // Create game
+    return await gamesRepository.create(gameData);
+  }
+
+  /**
+   * Get all games (optionally filter by active status)
+   */
+  async getAllGames(activeOnly: boolean = false): Promise<Game[]> {
+    return await gamesRepository.findAll(activeOnly);
+  }
+
+  /**
+   * Get game by ID
+   */
+  async getGameById(gameId: string): Promise<Game> {
+    const game = await gamesRepository.findById(gameId);
+    if (!game) {
+      throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
+    }
+    return game;
+  }
+
+  /**
+   * Update game (OWNER/ADMIN only)
+   */
+  async updateGame(
+    requesterId: string,
+    gameId: string,
+    updateData: UpdateGameDto
+  ): Promise<Game> {
+    // Verify requester has permission
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    }
+
+    if (![UserRole.OWNER, UserRole.ADMIN].includes(requester.role)) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Only OWNER or ADMIN can update games'
+      );
+    }
+
+    // Verify game exists
+    const game = await gamesRepository.findById(gameId);
+    if (!game) {
+      throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
+    }
+
+    // If updating name, check it doesn't conflict with another game
+    if (updateData.name && updateData.name !== game.name) {
+      const existingGame = await gamesRepository.findByName(updateData.name);
+      if (existingGame) {
+        throw new AppError(
+          409,
+          ErrorCode.GAME_ALREADY_EXISTS,
+          'Game with this name already exists'
+        );
+      }
+    }
+
+    // Validate bet limits if provided
+    if (updateData.minBet !== undefined && updateData.minBet <= 0) {
+      throw new AppError(
+        400,
+        ErrorCode.VALIDATION_ERROR,
+        'Minimum bet must be greater than 0'
+      );
+    }
+
+    if (updateData.maxBet !== undefined && updateData.minBet !== undefined) {
+      if (updateData.maxBet <= updateData.minBet) {
+        throw new AppError(
+          400,
+          ErrorCode.VALIDATION_ERROR,
+          'Maximum bet must be greater than minimum bet'
+        );
+      }
+    } else if (updateData.maxBet !== undefined) {
+      if (updateData.maxBet <= game.minBet) {
+        throw new AppError(
+          400,
+          ErrorCode.VALIDATION_ERROR,
+          'Maximum bet must be greater than minimum bet'
+        );
+      }
+    } else if (updateData.minBet !== undefined) {
+      if (game.maxBet <= updateData.minBet) {
+        throw new AppError(
+          400,
+          ErrorCode.VALIDATION_ERROR,
+          'Maximum bet must be greater than minimum bet'
+        );
+      }
+    }
+
+    // Validate house edge if provided
+    if (updateData.houseEdge !== undefined) {
+      if (updateData.houseEdge < 0 || updateData.houseEdge > 100) {
+        throw new AppError(
+          400,
+          ErrorCode.VALIDATION_ERROR,
+          'House edge must be between 0 and 100'
+        );
+      }
+    }
+
+    // Update game
+    return await gamesRepository.update(gameId, updateData);
+  }
+
+  /**
+   * Toggle game active status (OWNER/ADMIN only)
+   */
+  async toggleGameStatus(requesterId: string, gameId: string): Promise<Game> {
+    // Verify requester has permission
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    }
+
+    if (![UserRole.OWNER, UserRole.ADMIN].includes(requester.role)) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Only OWNER or ADMIN can toggle game status'
+      );
+    }
+
+    // Verify game exists
+    const game = await gamesRepository.findById(gameId);
+    if (!game) {
+      throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
+    }
+
+    // Toggle status
+    return await gamesRepository.update(gameId, {
+      isActive: !game.isActive,
+    });
+  }
+
+  /**
+   * Delete game (OWNER only)
+   */
+  async deleteGame(requesterId: string, gameId: string): Promise<void> {
+    // Verify requester has permission
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    }
+
+    if (requester.role !== UserRole.OWNER) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Only OWNER can delete games'
+      );
+    }
+
+    // Verify game exists
+    const game = await gamesRepository.findById(gameId);
+    if (!game) {
+      throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
+    }
+
+    // Delete game
+    await gamesRepository.delete(gameId);
+  }
+}
+
+export const gamesDomain = new GamesDomain();

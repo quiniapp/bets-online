@@ -51,6 +51,7 @@ export class ChipsController {
       return res.json(
         ApiResponseBuilder.success({
           movement,
+          newBalance: movement.newBalance,
           message: SUCCESS_MESSAGES.CHIPS_SOLD
         })
       );
@@ -107,6 +108,7 @@ export class ChipsController {
       return res.json(
         ApiResponseBuilder.success({
           movement,
+          newBalance: movement.newBalance,
           message: SUCCESS_MESSAGES.PRIZE_PAID
         })
       );
@@ -161,7 +163,11 @@ export class ChipsController {
       );
 
       return res.json(
-        ApiResponseBuilder.success({ movement })
+        ApiResponseBuilder.success({
+          movement,
+          newBalance: movement.newBalance,
+          message: SUCCESS_MESSAGES.LOSS_REGISTERED
+        })
       );
     } catch (error) {
       return next(error);
@@ -214,7 +220,11 @@ export class ChipsController {
       );
 
       return res.json(
-        ApiResponseBuilder.success({ movement })
+        ApiResponseBuilder.success({
+          movement,
+          newBalance: movement.newBalance,
+          message: SUCCESS_MESSAGES.WITHDRAWAL_PROCESSED
+        })
       );
     } catch (error) {
       return next(error);

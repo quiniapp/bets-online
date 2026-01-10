@@ -10,11 +10,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { mockGames } from "@/lib/mock-data"
+import { useGames } from "@/hooks/useGames"
 import { ArrowLeft, Save, User } from "lucide-react"
 
 export default function CreateUserPage() {
   const router = useRouter()
+  const { games } = useGames()
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -193,7 +194,7 @@ export default function CreateUserPage() {
                 <div className="space-y-3">
                   <Label>Juegos Habilitados</Label>
                   <div className="space-y-2">
-                    {mockGames.map((game) => (
+                    {games.map((game) => (
                       <div key={game.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`game-${game.id}`}

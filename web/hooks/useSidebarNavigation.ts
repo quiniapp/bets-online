@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguage } from "@/contexts/language-context";
-import { Role } from "@/lib/mock-data";
+import { UserRole } from "helper";
 import {
   BarChart3,
   Users,
@@ -179,11 +179,11 @@ export const useSidebarNavigation = () => {
   // Seleccionar menu según el role exacto
   const getMenuItems = () => {
     switch (role) {
-      case Role.superadmin:
+      case UserRole.OWNER:
         return superAdminMenuItems;
-      case Role.admin:
+      case UserRole.ADMIN:
         return adminMenuItems;
-      case Role.user:
+      case UserRole.PLAYER:
         return userMenuItems;
       default:
         return userMenuItems;
@@ -193,11 +193,13 @@ export const useSidebarNavigation = () => {
   // Mostrar rol correcto
   const getRoleDisplay = () => {
     switch (role) {
-      case Role.superadmin:
+      case UserRole.OWNER:
+        return "Propietario";
+      case UserRole.ADMIN:
         return "Administrador";
-      case Role.admin:
+      case UserRole.CASHIER:
         return "Cajero";
-      case Role.user:
+      case UserRole.PLAYER:
         return "Usuario";
       default:
         return "Usuario";

@@ -7,9 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { mockUsers, mockBets, mockGames, type User } from "@/lib/mock-data"
-import { Search, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
+import { Search, TrendingUp, TrendingDown, DollarSign, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import Box from "@/components/box"
+import type { User } from "helper"
+
+// Demo data - In production, this would come from API endpoints
+const mockUsers: User[] = []
+const mockBets: any[] = []
+const mockGames: any[] = []
 
 export default function EarningsReport() {
 

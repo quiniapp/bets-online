@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { mockUsers, mockBets, mockTransactions, type User } from "@/lib/mock-data"
-import { Search, Download, Users, UserCheck, UserX, DollarSign } from "lucide-react"
+import { Search, Download, Users, UserCheck, UserX, DollarSign, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import type { User } from "helper"
+
+// Demo data - In production, this would come from API endpoints
+const mockUsers: User[] = []
+const mockBets: any[] = []
+const mockTransactions: any[] = []
 
 export default function UsersReportPage() {
   const [users] = useState<User[]>(mockUsers)

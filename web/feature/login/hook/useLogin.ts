@@ -34,32 +34,27 @@ const useLogin = () => {
     setIsLoading(true);
 
     try {
-      const success = await login({
+      const user = await login({
         username: data.email,
         password: data.password
       });
 
-      if (success) {
-        // Wait for role to be set
-        setTimeout(() => {
-          const userRole = localStorage.getItem("auth_role") as UserRole;
-
-          // Redirect based on role
-          switch (userRole) {
-            case UserRole.OWNER:
-            case UserRole.ADMIN:
-              router.push("/admin/dashboard");
-              break;
-            case UserRole.CASHIER:
-              router.push("/cashier/dashboard");
-              break;
-            case UserRole.PLAYER:
-              router.push("/user/dashboard");
-              break;
-            default:
-              router.push("/");
-          }
-        }, 100);
+      if (user) {
+        // Redirect based on role immediately
+        switch (user.role) {
+          case UserRole.OWNER:
+          case UserRole.ADMIN:
+            router.push("/admin/dashboard");
+            break;
+          case UserRole.CASHIER:
+            router.push("/cashier/dashboard");
+            break;
+          case UserRole.PLAYER:
+            router.push("/user/dashboard");
+            break;
+          default:
+            router.push("/");
+        }
       } else {
         setError("Credenciales inválidas. Por favor, inténtalo de nuevo.");
       }

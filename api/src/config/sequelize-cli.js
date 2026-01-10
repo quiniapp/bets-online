@@ -1,8 +1,16 @@
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' });
 
-module.exports = {
+const config = {
   development: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:55322/postgres',
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: false
+    },
+    logging: console.log
+  },
+  local: {
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:55322/postgres',
     dialect: 'postgres',
     dialectOptions: {
       ssl: false
@@ -21,3 +29,5 @@ module.exports = {
     logging: false
   }
 };
+
+module.exports = config;

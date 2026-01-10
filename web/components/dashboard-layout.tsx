@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { Sidebar } from "@/components/sidebar"
 import { MobileSidebar } from "@/components/mobile-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Role } from "@/lib/mock-data"
+import { UserRole } from "helper"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -16,14 +16,15 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const { user, role } = useAuth()
 
-
   const getRoleDisplay = () => {
     switch (role) {
-      case Role.superadmin:
+      case UserRole.OWNER:
+        return "Propietario"
+      case UserRole.ADMIN:
         return "Administrador"
-      case Role.admin:
+      case UserRole.CASHIER:
         return "Cajero"
-      case Role.user:
+      case UserRole.PLAYER:
         return "Usuario"
       default:
         return "Usuario"

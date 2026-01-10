@@ -102,7 +102,23 @@ casino-management-platform/
 - **PostgreSQL**: >= 15 (o cuenta de Supabase)
 - **Git**: Para clonar el repositorio
 
-## 🚀 Instalación
+## 📖 Complete Integration Guide
+
+For comprehensive setup instructions, API documentation, deployment guide, and troubleshooting:
+
+**👉 See [INTEGRATION.md](./INTEGRATION.md)**
+
+This document includes:
+- Complete API endpoint reference (41 endpoints)
+- Game simulation logic and house edge explanation
+- Frontend integration patterns and custom hooks
+- Database migrations guide
+- Deployment instructions (Railway, Vercel, Heroku)
+- Testing strategies
+- Security best practices
+- Troubleshooting common issues
+
+## 🚀 Quick Start
 
 ### 1. Clonar el repositorio
 
@@ -263,6 +279,8 @@ npm run type-check
 La documentación completa del API está disponible en Swagger:
 
 **Local**: http://localhost:3001/doc
+
+**📘 For complete endpoint documentation with examples, see [INTEGRATION.md](./INTEGRATION.md#api-endpoints-reference)**
 
 ### Endpoints Principales
 

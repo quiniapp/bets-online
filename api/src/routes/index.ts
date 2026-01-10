@@ -2,6 +2,8 @@ import { Router } from 'express';
 import authRoutes from './auth';
 import usersRoutes from './users';
 import chipsRoutes from './chips';
+import gamesRoutes from './games';
+import betsRoutes from './bets';
 
 const router = Router();
 
@@ -30,5 +32,7 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
 router.use('/chips', chipsRoutes);
+router.use('/games', gamesRoutes);
+router.use('/bets', betsRoutes);
 
 export default router;
