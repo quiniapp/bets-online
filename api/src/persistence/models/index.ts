@@ -8,6 +8,8 @@ import ChipPanelModel from './chip-panel.model';
 import RecoveryModel from './recovery.model';
 import UserGameProviderBlocklistModel from './user-game-provider-blocklist.model';
 import AuditLogModel from './audit-log.model';
+import GameModel from './game.model';
+import BetModel from './bet.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -165,6 +167,32 @@ ChipMovementModel.hasMany(RecoveryModel, {
 });
 
 // ===================================
+// GAME AND BET ASSOCIATIONS
+// ===================================
+
+// Game -> Bets (1:N)
+GameModel.hasMany(BetModel, {
+  foreignKey: 'gameId',
+  as: 'bets'
+});
+
+BetModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// User -> Bets (1:N)
+UserModel.hasMany(BetModel, {
+  foreignKey: 'userId',
+  as: 'bets'
+});
+
+BetModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+// ===================================
 // EXPORTS
 // ===================================
 
@@ -178,7 +206,9 @@ export {
   ChipPanelModel,
   RecoveryModel,
   UserGameProviderBlocklistModel,
-  AuditLogModel
+  AuditLogModel,
+  GameModel,
+  BetModel
 };
 
 export default {
@@ -191,5 +221,7 @@ export default {
   ChipPanelModel,
   RecoveryModel,
   UserGameProviderBlocklistModel,
-  AuditLogModel
+  AuditLogModel,
+  GameModel,
+  BetModel
 };

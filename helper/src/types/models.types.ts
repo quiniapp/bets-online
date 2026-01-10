@@ -230,3 +230,86 @@ export interface UserTreeNode {
   balance: Balance;
   children: UserTreeNode[];
 }
+
+/**
+ * Game Model
+ */
+export interface Game {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  minBet: number;
+  maxBet: number;
+  houseEdge: number;
+  providerId?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Bet Status Enum
+ */
+export enum BetStatus {
+  PENDING = 'PENDING',
+  WON = 'WON',
+  LOST = 'LOST',
+  CANCELLED = 'CANCELLED',
+}
+
+/**
+ * Bet Model
+ */
+export interface Bet {
+  id: string;
+  userId: string;
+  gameId: string;
+  amount: number;
+  status: BetStatus;
+  multiplier?: number | null;
+  payout?: number | null;
+  resultData?: any;
+  createdAt: Date;
+  settledAt?: Date | null;
+}
+
+/**
+ * Create Game DTO
+ */
+export interface CreateGameDto {
+  name: string;
+  description: string;
+  minBet: number;
+  maxBet: number;
+  houseEdge?: number;
+  providerId?: string;
+}
+
+/**
+ * Update Game DTO
+ */
+export interface UpdateGameDto {
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+  minBet?: number;
+  maxBet?: number;
+  houseEdge?: number;
+}
+
+/**
+ * Create Bet DTO
+ */
+export interface CreateBetDto {
+  gameId: string;
+  amount: number;
+}
+
+/**
+ * Bet Result (returned after placing bet with simulation)
+ */
+export interface BetResult {
+  bet: Bet;
+  movement?: ChipMovement;
+  newBalance: number;
+}

@@ -6,8 +6,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { mockBets, mockUsers, mockGames, type Bet } from "@/lib/mock-data"
-import { Download, TrendingUp, TrendingDown, Clock } from "lucide-react"
+import { Download, TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import type { Bet } from "helper"
+
+// Demo data - In production, this would come from API endpoints
+const mockBets: Bet[] = []
+const mockGames = [
+  { id: "1", name: "Roulette" },
+  { id: "2", name: "Blackjack" }
+]
 
 export default function BetsReportPage() {
   const [bets] = useState<Bet[]>(mockBets)
@@ -47,6 +55,13 @@ export default function BetsReportPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <Alert className="bg-yellow-50 border-yellow-200">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            Esta página usa datos de demostración. En producción, integrar con endpoints de API para estadísticas agregadas de apuestas.
+          </AlertDescription>
+        </Alert>
+
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Reporte de Apuestas</h1>

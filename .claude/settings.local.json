@@ -15,7 +15,11 @@
       "Bash(curl:*)",
       "Bash(pnpm dev:*)",
       "Bash(docker exec:*)",
-      "Bash(pnpm type-check:*)"
+      "Bash(pnpm type-check:*)",
+      "Bash(ping:*)",
+      "Bash(npm run db:seed:*)",
+      "Bash(npm run db:seed:undo:*)",
+      "Bash(cmd //c \"set APP_ENV=local && npx ts-node src/server.ts\")"
     ],
     "deny": [],
     "ask": []

@@ -86,6 +86,11 @@ export const SUCCESS_MESSAGES = {
   PASSWORD_RESET: 'Password reset successfully',
   CHIPS_SOLD: 'Chips sold successfully',
   PRIZE_PAID: 'Prize paid successfully',
+  LOSS_REGISTERED: 'Loss registered successfully',
+  WITHDRAWAL_PROCESSED: 'Withdrawal processed successfully',
+  BET_PLACED: 'Bet placed successfully',
+  GAME_CREATED: 'Game created successfully',
+  GAME_UPDATED: 'Game updated successfully',
   PANEL_CREATED: 'Panel created successfully',
   RECOVERY_CREATED: 'Recovery created successfully',
   SETTLEMENT_CREATED: 'Settlement created successfully'
