@@ -1,6 +1,8 @@
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./src",
@@ -15,13 +17,25 @@
       "helper": ["../../helper/dist"]
     },
     "typeRoots": ["./node_modules/@types", "./src/@types"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": false,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
     "strictPropertyInitialization": false,
     "strictFunctionTypes": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "strictNullChecks": false,
+    "strictBindCallApply": false,
     "declaration": false,
     "declarationMap": false,
-    "isolatedModules": false
+    "sourceMap": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]

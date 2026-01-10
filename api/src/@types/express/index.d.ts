@@ -1,4 +1,4 @@
-import { User } from "helper"
+import type { User } from "helper"
 
 declare global {
   namespace Express {
