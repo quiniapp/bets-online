@@ -19,7 +19,9 @@
       "Bash(ping:*)",
       "Bash(npm run db:seed:*)",
       "Bash(npm run db:seed:undo:*)",
-      "Bash(cmd //c \"set APP_ENV=local && npx ts-node src/server.ts\")"
+      "Bash(cmd //c \"set APP_ENV=local && npx ts-node src/server.ts\")",
+      "Bash(git add:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
