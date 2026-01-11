@@ -9,6 +9,11 @@ concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
 jobs:
   deploy-preview:
     name: Validate Build for PR
