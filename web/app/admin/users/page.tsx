@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,14 +8,24 @@ import { Input } from "@/components/ui/input"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useUsers } from "@/hooks/useUsers"
 import { Search, Edit, Ban, CheckCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus } from "helper"
 import ROUTER from "@/routes"
 
-export default function AdminUsers() {
+function UsersPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState("")
-  const { users, loading, blockUser, unblockUser } = useUsers()
+  const { users, loading, blockUser, unblockUser, reload } = useUsers()
+
+  // Reload users when refresh param is present
+  useEffect(() => {
+    if (searchParams.get('refresh') === 'true') {
+      reload()
+      // Clean up the URL
+      router.replace('/admin/users')
+    }
+  }, [searchParams, reload, router])
 
   const filteredUsers = users.filter(
     (user) =>
@@ -134,5 +144,17 @@ export default function AdminUsers() {
         </Card>
       )}
     </DashboardLayout>
+  )
+}
+
+export default function AdminUsers() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout title="Lista de Usuarios">
+        <div className="text-center py-8">Cargando usuarios...</div>
+      </DashboardLayout>
+    }>
+      <UsersPageContent />
+    </Suspense>
   )
 }

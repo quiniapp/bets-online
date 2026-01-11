@@ -12,10 +12,14 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useGames } from "@/hooks/useGames"
 import { ArrowLeft, Save, User } from "lucide-react"
+import { apiService } from "@/services/api.service"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CreateUserPage() {
   const router = useRouter()
+  const { toast } = useToast()
   const { games } = useGames()
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -62,19 +66,48 @@ export default function CreateUserPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) {
       return
     }
 
-    // Here you would normally send the data to your backend
-    console.log("Creating user:", formData)
+    setIsLoading(true)
 
-    // Simulate success
-    alert("Usuario creado exitosamente")
-    router.push("/admin/users")
+    try {
+      const response = await apiService.post('/users', {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: 'PLAYER'
+      })
+
+      if (response.success) {
+        toast({
+          title: "Usuario creado",
+          description: "El usuario ha sido creado exitosamente"
+        })
+
+        router.push('/admin/users?refresh=true')
+        router.refresh()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error al crear usuario",
+          description: response.error?.message || "Ocurrió un error al crear el usuario"
+        })
+      }
+    } catch (error) {
+      console.error("Error creating user:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error inesperado. Por favor intente nuevamente."
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleGameToggle = (gameId: string, checked: boolean) => {
@@ -219,12 +252,12 @@ export default function CreateUserPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button type="submit" disabled={isLoading}>
                   <Save className="mr-2 h-4 w-4" />
-                  Crear Usuario
+                  {isLoading ? "Creando..." : "Crear Usuario"}
                 </Button>
               </div>
             </CardContent>
