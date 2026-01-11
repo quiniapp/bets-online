@@ -28,8 +28,8 @@ This is a pnpm monorepo with a **single** `pnpm-lock.yaml` at the root.
 The `api/railpack-plan.json` configures:
 
 1. **Install**: `cd ..` to access root `pnpm-lock.yaml`, then `pnpm install --frozen-lockfile`
-2. **Build**: `pnpm run build` (runs from api directory)
-3. **Start**: `pnpm run start` (runs from api directory)
+2. **Build**: `cd ..` then builds `helper` package first, then `api` package (monorepo-aware)
+3. **Start**: `node dist/server.js` (runs compiled API from api directory)
 
 ## Expected Result
 

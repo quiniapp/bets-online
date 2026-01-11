@@ -3,7 +3,7 @@
     "command": "cd .. && pnpm install --frozen-lockfile"
   },
   "build": {
-    "command": "pnpm run build"
+    "command": "cd .. && pnpm --filter helper build && pnpm --filter api build"
   },
   "start": {
     "command": "node dist/server.js"
