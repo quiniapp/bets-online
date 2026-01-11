@@ -25,9 +25,13 @@ import {
 import { Save, Shield, AlertTriangle } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import AlertWarning from "@/components/alerts/warning";
+import { apiService } from "@/services/api.service";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CreateManagerPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -84,16 +88,51 @@ export default function CreateManagerPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    console.log("Creating manager:", formData);
-    alert("Gerente creado exitosamente");
-    router.push("/admin/users");
+    setIsLoading(true);
+
+    try {
+      // Map the local role to the backend's expected role value
+      const role = formData.role === 'manager' ? 'CASHIER' : 'ADMIN';
+
+      const response = await apiService.post('/users', {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: role
+      });
+
+      if (response.success) {
+        toast({
+          title: "Gerente creado",
+          description: "El gerente ha sido creado exitosamente"
+        });
+
+        router.push('/admin/users?refresh=true');
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error al crear gerente",
+          description: response.error?.message || "Ocurrió un error al crear el gerente"
+        });
+      }
+    } catch (error) {
+      console.error("Error creating manager:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error inesperado. Por favor intente nuevamente."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePermissionChange = (
@@ -330,12 +369,13 @@ export default function CreateManagerPage() {
                     type="button"
                     variant="outline"
                     onClick={() => router.back()}
+                    disabled={isLoading}
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={isLoading}>
                     <Save className="mr-2 h-4 w-4" />
-                    Crear Gerente
+                    {isLoading ? "Creando..." : "Crear Gerente"}
                   </Button>
                 </div>
               </CardContent>

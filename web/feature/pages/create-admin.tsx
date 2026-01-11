@@ -8,9 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UserPlus } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { apiService } from "@/services/api.service"
+import { useToast } from "@/hooks/use-toast"
 
 export default function CreateAdminFeature() {
   const router = useRouter()
+  const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -19,11 +23,65 @@ export default function CreateAdminFeature() {
     role: "ADMIN"
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement API call to create admin
-    console.log("Creating admin:", formData)
-    alert("Funcionalidad en desarrollo - API no implementada")
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Error de validación",
+        description: "Las contraseñas no coinciden"
+      })
+      return
+    }
+
+    // Validate password length
+    if (formData.password.length < 8) {
+      toast({
+        variant: "destructive",
+        title: "Error de validación",
+        description: "La contraseña debe tener al menos 8 caracteres"
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await apiService.post('/users', {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role
+      })
+
+      if (response.success) {
+        toast({
+          title: "Administrador creado",
+          description: "El administrador ha sido creado exitosamente"
+        })
+
+        // Redirect to users list with refresh param
+        router.push('/admin/users?refresh=true')
+        router.refresh()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error al crear administrador",
+          description: response.error?.message || "Ocurrió un error al crear el administrador"
+        })
+      }
+    } catch (error) {
+      console.error("Error creating admin:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error inesperado. Por favor intente nuevamente."
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (field: string, value: string) => {
@@ -112,13 +170,14 @@ export default function CreateAdminFeature() {
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit" className="flex-1">
-                Crear Administrador
+              <Button type="submit" className="flex-1" disabled={isLoading}>
+                {isLoading ? "Creando..." : "Crear Administrador"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
+                disabled={isLoading}
               >
                 Cancelar
               </Button>
