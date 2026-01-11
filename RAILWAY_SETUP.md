@@ -1,40 +1,42 @@
 # Railway Deployment Configuration
 
-## Current Issue
-Railway was failing because it was configured with Root Directory = `api`, which prevented access to the monorepo's `pnpm-lock.yaml`.
+## Monorepo Structure
 
-## Required Configuration Changes
+This is a pnpm monorepo with a **single** `pnpm-lock.yaml` at the root.
+
+- ✅ Root: `pnpm-lock.yaml` (the only lockfile)
+- ✅ `api/`: API package (no lockfile)
+- ✅ `web/`: Web package (no lockfile)
+- ✅ `helper/`: Shared package (no lockfile)
+
+## Required Railway Configuration
 
 ### In Railway Dashboard:
 
 1. **Go to your API service** → Settings
 
 2. **Root Directory**
-   - Change from: `api`
-   - Change to: `.` (dot - represents root of repository)
+   - Set to: `api`
 
-3. **Build Command** (optional, railpack-plan.json handles this)
-   - Can leave empty or set to: `cd api && pnpm run build`
+3. **Build/Install Commands**
+   - Leave empty (railpack-plan.json handles everything)
 
-4. **Start Command** (optional, railpack-plan.json handles this)
-   - Can leave empty or set to: `cd api && pnpm run start`
+4. **Save changes** and trigger a manual redeploy
 
-5. **Install Command** (optional, railpack-plan.json handles this)
-   - Can leave empty or set to: `pnpm install --frozen-lockfile`
+## How It Works
 
-6. **Save changes** and trigger a manual redeploy
+The `api/railpack-plan.json` configures:
 
-## What Changed
-
-- Created `railpack-plan.json` at repository root
-- Moved configuration from `api/railpack-plan.json` to root
-- Commands now execute relative to repository root
+1. **Install**: `cd ..` to access root `pnpm-lock.yaml`, then `pnpm install --frozen-lockfile`
+2. **Build**: `pnpm run build` (runs from api directory)
+3. **Start**: `pnpm run start` (runs from api directory)
 
 ## Expected Result
 
 Railway will:
-1. Install dependencies from root (where pnpm-lock.yaml with bcrypt ^6.0.0 lives)
-2. Build the API package
-3. Start the API server
+1. Set working directory to `api/`
+2. Install dependencies from monorepo root (where pnpm-lock.yaml lives)
+3. Build the API package
+4. Start the API server
 
 The build should complete successfully! ✅
