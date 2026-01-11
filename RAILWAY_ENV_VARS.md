@@ -8,7 +8,22 @@ Go to your Railway project → API service → Variables tab and add these:
 ```bash
 DATABASE_URL=postgresql://user:password@host:port/database
 ```
-**Get this from**: Railway PostgreSQL plugin or your database provider
+
+**IMPORTANT for Supabase users:**
+- ❌ **DO NOT** use "Direct Connection" URL (port 5432) - Railway doesn't support IPv6
+- ✅ **USE** "Session Pooler" URL (port 6543) - Supports IPv4
+
+**Where to find it in Supabase:**
+1. Go to your Supabase project → Settings → Database
+2. Scroll to "Connection string"
+3. Select **"Session mode"** (NOT "Direct connection")
+4. Copy the URI and replace `[YOUR-PASSWORD]` with your database password
+5. Example: `postgresql://postgres.xxxxx:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
+
+**Get this from**:
+- Supabase: Session Pooler connection string (port 6543)
+- Railway PostgreSQL plugin: Direct URL works (internal network)
+- Other providers: Standard PostgreSQL connection URL
 
 ### 2. JWT Secrets (min 32 characters each)
 ```bash
