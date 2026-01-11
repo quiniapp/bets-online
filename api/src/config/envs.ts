@@ -81,7 +81,7 @@ const envSchema = z.object({
   ALLOWED_ORIGINS: z
     .string()
     .default('http://localhost:3000')
-    .transform(origins => origins.split(',')),
+    .transform(origins => origins.split(',').map(o => o.trim())),
 
   // Admin Bootstrap
   ADMIN_EMAIL: z.string().email().optional(),
@@ -194,13 +194,12 @@ export const envs = {
   }
 } as const;
 
-// Log de configuración actual (solo en desarrollo/local)
-if (!envs.isProduction) {
-  console.log('📋 Environment Configuration:');
-  console.log(`  Environment: ${envs.NODE_ENV}`);
-  console.log(`  Port: ${envs.PORT}`);
-  console.log(`  Database: ${envs.DATABASE_URL.substring(0, 50)}...`);
-  console.log(`  CORS Origins: ${envs.cors.allowedOrigins.join(', ')}`);
-}
+// Log de configuración actual
+console.log('✅ Environment Configuration:');
+console.log(`   Environment: ${envs.NODE_ENV}`);
+console.log(`   Port: ${envs.PORT}`);
+console.log(`   Database: ${envs.DATABASE_URL.substring(0, 50)}...`);
+console.log(`   CORS Origins: ${envs.cors.allowedOrigins.join(', ')}`);
+console.log(`   API URL: ${envs.API_URL}`);
 
 export default envs;
