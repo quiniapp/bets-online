@@ -1,0 +1,11 @@
+{
+  "install": {
+    "command": "cd .. && pnpm install --frozen-lockfile && cd api"
+  },
+  "build": {
+    "command": "pnpm run build"
+  },
+  "start": {
+    "command": "pnpm run start"
+  }
+}
