@@ -1,4 +1,4 @@
-name: Preview Deployment
+name: PR Build Validation
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   deploy-preview:
-    name: Deploy Preview Environment
+    name: Validate Build for PR
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
 
@@ -34,15 +34,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build all packages
-        run: pnpm build
+        run: pnpm --filter helper build && pnpm --filter api build && pnpm --filter web build
         env:
-          # These will be replaced with actual preview environment variables
-          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
-          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
-          ALLOWED_ORIGINS: ${{ secrets.PREVIEW_ALLOWED_ORIGINS }}
-          API_URL: ${{ secrets.PREVIEW_API_URL }}
+          # Dummy env vars for build validation (not used in production)
+          # Vercel and Railway handle actual deployments automatically
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/preview
+          JWT_SECRET: preview-secret-min-32-characters-long-for-build-validation
+          JWT_REFRESH_SECRET: preview-refresh-secret-min-32-chars-for-validation
+          SESSION_SECRET: preview-session-secret-min-32-chars-for-validation
+          ALLOWED_ORIGINS: http://localhost:3000
+          API_URL: http://localhost:3001
 
       # Example: Deploy to Vercel (Frontend)
       # Uncomment and configure when you set up Vercel
@@ -77,27 +78,25 @@ jobs:
             const backendUrl = `https://pr-${prNumber}-api-bets-online.railway.app`;
             const docsUrl = `${backendUrl}/doc`;
 
-            const comment = `## 🚀 Preview Deployment Ready!
+            const comment = `## ✅ Build Validation Passed!
 
-            Your preview environment has been deployed successfully.
+            All packages compiled successfully for this PR.
 
-            ### 📱 Frontend Preview
-            🔗 **URL**: [${frontendUrl}](${frontendUrl})
+            ### 📦 Build Status
+            - ✅ **Helper**: Compiled
+            - ✅ **API**: Compiled
+            - ✅ **Web**: Compiled
 
-            ### ⚙️ Backend API Preview
-            🔗 **API**: [${backendUrl}](${backendUrl})
-            📚 **Docs**: [${docsUrl}](${docsUrl})
-
-            ### 🔍 Preview Details
+            ### 🔍 PR Details
             - **PR**: #${prNumber}
             - **Commit**: ${context.sha.substring(0, 7)}
             - **Branch**: \`${context.payload.pull_request.head.ref}\`
 
             ---
 
-            ⚠️ **Note**: This is a preview environment. Data may be reset periodically.
+            ℹ️ **Note**: Actual deployments are handled automatically by Vercel (frontend) and Railway (backend) when merged.
 
-            <sub>Preview deployments are automatically updated on each commit.</sub>
+            <sub>Build validation runs on each commit.</sub>
             `;
 
             // Find existing preview comment
@@ -109,7 +108,7 @@ jobs:
 
             const botComment = comments.find(comment =>
               comment.user.type === 'Bot' &&
-              comment.body.includes('Preview Deployment Ready')
+              comment.body.includes('Build Validation')
             );
 
             if (botComment) {

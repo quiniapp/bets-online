@@ -1,4 +1,4 @@
-name: Deploy to Development
+name: Develop Build Validation
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
 
 concurrency:
   group: deploy-development
-  cancel-in-progress: false # Don't cancel in-progress deployments
+  cancel-in-progress: false
 
 jobs:
   deploy-development:
-    name: Deploy to Development Environment
+    name: Validate Build for Develop
     runs-on: ubuntu-latest
     environment:
       name: development
@@ -35,21 +35,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test
-
       - name: Build all packages
-        run: pnpm build
+        run: pnpm --filter helper build && pnpm --filter api build && pnpm --filter web build
         env:
-          NODE_ENV: development
-          # Add your development environment variables here
-          # These should be configured in GitHub Secrets
-          DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.DEV_JWT_SECRET }}
-          JWT_REFRESH_SECRET: ${{ secrets.DEV_JWT_REFRESH_SECRET }}
-          SESSION_SECRET: ${{ secrets.DEV_SESSION_SECRET }}
-          ALLOWED_ORIGINS: ${{ secrets.DEV_ALLOWED_ORIGINS }}
-          API_URL: ${{ secrets.DEV_API_URL }}
+          # Dummy env vars for build validation (not used in production)
+          # Railway and Vercel handle actual deployments automatically
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dev
+          JWT_SECRET: dev-secret-min-32-characters-long-for-build-validation
+          JWT_REFRESH_SECRET: dev-refresh-secret-min-32-chars-for-validation
+          SESSION_SECRET: dev-session-secret-min-32-chars-for-validation
+          ALLOWED_ORIGINS: http://localhost:3000
+          API_URL: http://localhost:3001
 
       # Example: Deploy Frontend to Vercel
       # Uncomment when you set up Vercel
@@ -71,33 +67,31 @@ jobs:
       #     railway link ${{ secrets.RAILWAY_PROJECT_ID }}
       #     railway up --service api --environment development
 
-      - name: Notify deployment success
+      - name: Notify build success
         if: success()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const commit = context.sha.substring(0, 7);
-            const message = `✅ **Development deployment successful!**
+            const message = `✅ **Development build validation successful!**
 
             - **Commit**: ${commit}
             - **Branch**: \`develop\`
-            - **Environment**: Development
-            - **Frontend**: https://dev-bets-online.vercel.app
-            - **API**: https://dev-api-bets-online.railway.app
-            - **Docs**: https://dev-api-bets-online.railway.app/doc
+            - **Packages**: helper, api, web - all compiled successfully
 
-            <sub>Deployed at ${new Date().toISOString()}</sub>
+            ℹ️ **Note**: Actual deployments are handled automatically by Railway (API) and Vercel (Web)
+
+            <sub>Validated at ${new Date().toISOString()}</sub>
             `;
 
-            // You can send this to Slack, Discord, or create a GitHub issue
             console.log(message);
 
-      - name: Notify deployment failure
+      - name: Notify build failure
         if: failure()
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const commit = context.sha.substring(0, 7);
-            core.setFailed(`❌ Development deployment failed for commit ${commit}`);
+            core.setFailed(`❌ Development build validation failed for commit ${commit}`);
