@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus } from "helper"
 import ROUTER from "@/routes"
 
-export default function AdminUsers() {
+function UsersPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState("")
@@ -144,5 +144,17 @@ export default function AdminUsers() {
         </Card>
       )}
     </DashboardLayout>
+  )
+}
+
+export default function AdminUsers() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout title="Lista de Usuarios">
+        <div className="text-center py-8">Cargando usuarios...</div>
+      </DashboardLayout>
+    }>
+      <UsersPageContent />
+    </Suspense>
   )
 }
