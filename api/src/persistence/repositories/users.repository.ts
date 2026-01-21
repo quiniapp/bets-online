@@ -38,17 +38,17 @@ export class UsersRepository {
     const offset = (page - 1) * limit;
 
     // Build where clause
-    const whereClause: Record<string, unknown> = { parentUserId: parentId };
-
-    // If search is provided, add search conditions
-    if (search && search.length >= 3) {
-      whereClause[Op.or] = [
-        { username: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } }
-      ];
-    }
+    const whereClause = search && search.length >= 3
+      ? {
+          parentUserId: parentId,
+          [Op.or]: [
+            { username: { [Op.iLike]: `%${search}%` } },
+            { email: { [Op.iLike]: `%${search}%` } },
+            { firstName: { [Op.iLike]: `%${search}%` } },
+            { lastName: { [Op.iLike]: `%${search}%` } }
+          ]
+        }
+      : { parentUserId: parentId };
 
     const { count, rows } = await UserModel.findAndCountAll({
       where: whereClause,
