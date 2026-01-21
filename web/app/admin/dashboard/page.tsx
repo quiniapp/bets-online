@@ -25,7 +25,8 @@ import { useGames } from "@/hooks/useGames"
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth()
   const router = useRouter()
-  const { users, loading: loadingUsers } = useUsers()
+  // Use high limit for dashboard stats
+  const { users, loading: loadingUsers, pagination } = useUsers({ limit: 1000 })
   const { games, loading: loadingGames } = useGames()
 
   const [totalBalance, setTotalBalance] = useState(0)

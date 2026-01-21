@@ -10,12 +10,15 @@ import { Label } from "@/components/ui/label"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserTreeView } from "@/components/admin/user-tree"
 import { useUsers } from "@/hooks/useUsers"
-import { Search, Edit, Ban, CheckCircle, TreePine, Table, ChevronDown, ChevronRight } from "lucide-react"
+import { useDebounce } from "@/hooks/useDebounce"
+import { Search, Edit, Ban, CheckCircle, TreePine, Table, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus } from "helper"
 import type { User, UserTreeNode } from "helper"
 import ROUTER from "@/routes"
 import { cn } from "@/lib/utils"
+
+const ITEMS_PER_PAGE = 10
 
 type ViewMode = 'table' | 'tree'
 
@@ -138,11 +141,26 @@ function UsersPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showAllDescendants, setShowAllDescendants] = useState(true)
-  const { users, loading, blockUser, unblockUser, reload, getUserTree } = useUsers()
+
+  const debouncedSearch = useDebounce(searchTerm, 300)
+  const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
+
+  const { users, loading, pagination, blockUser, unblockUser, reload, getUserTree } = useUsers({
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    search: searchQuery
+  })
+
   const [userTree, setUserTree] = useState<UserTreeNode | null>(null)
   const [loadingTree, setLoadingTree] = useState(false)
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   useEffect(() => {
     if (searchParams.get('refresh') === 'true') {
@@ -171,18 +189,11 @@ function UsersPageContent() {
     }
   }
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (user.firstName && user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (user.lastName && user.lastName.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
-
+  // Users are now filtered by the API based on searchQuery
   // Get root users (users without parent or whose parent is the current user)
   const rootUsers = showAllDescendants
-    ? filteredUsers.filter(u => !filteredUsers.some(p => p.id === u.parentUserId))
-    : filteredUsers.filter(u => !u.parentUserId || !filteredUsers.some(p => p.id === u.parentUserId))
+    ? users.filter(u => !users.some(p => p.id === u.parentUserId))
+    : users.filter(u => !u.parentUserId || !users.some(p => p.id === u.parentUserId))
 
   const handleToggleUserStatus = async (userId: string, currentStatus: UserStatus) => {
     try {
@@ -217,7 +228,7 @@ function UsersPageContent() {
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Buscar usuarios por nombre, email..."
+              placeholder="Buscar usuarios (min. 3 caracteres)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -281,13 +292,13 @@ function UsersPageContent() {
                   key={user.id}
                   user={user}
                   level={0}
-                  allUsers={filteredUsers}
+                  allUsers={users}
                   onEdit={handleEditUser}
                   onToggleStatus={handleToggleUserStatus}
                 />
               ))
             ) : (
-              filteredUsers.map((user) => (
+              users.map((user) => (
                 <div key={user.id} className="grid grid-cols-12 gap-4 p-4 transition-colors hover:bg-muted/50">
                   <div className="col-span-2">
                     <div className="font-semibold">{user.username}</div>
@@ -356,11 +367,43 @@ function UsersPageContent() {
         </Card>
       )}
 
-      {filteredUsers.length === 0 && (
+      {/* Pagination */}
+      {viewMode === 'table' && pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <p className="text-sm text-gray-600">
+            Mostrando {users.length} de {pagination.total} usuarios
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </Button>
+            <span className="text-sm px-3">
+              Pagina {currentPage} de {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+              disabled={currentPage >= pagination.totalPages}
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {users.length === 0 && (
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">
-              No se encontraron usuarios que coincidan con la busqueda.
+              No se encontraron usuarios{searchQuery ? " que coincidan con la busqueda" : ""}.
             </p>
           </CardContent>
         </Card>

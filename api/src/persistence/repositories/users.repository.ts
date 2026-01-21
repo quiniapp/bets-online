@@ -25,11 +25,42 @@ export class UsersRepository {
     return this.mapToUser(user);
   }
 
-  async findByParentId(parentId: string): Promise<User[]> {
-    const users = await UserModel.findAll({
-      where: { parentUserId: parentId }
+  async findByParentId(
+    parentId: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+    }
+  ): Promise<{ users: User[]; total: number }> {
+    const { page = 1, limit = 10, search } = options || {};
+    const offset = (page - 1) * limit;
+
+    // Build where clause
+    const whereClause: Record<string, unknown> = { parentUserId: parentId };
+
+    // If search is provided, add search conditions
+    if (search && search.length >= 3) {
+      const { Op } = require('sequelize');
+      whereClause[Op.or] = [
+        { username: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const { count, rows } = await UserModel.findAndCountAll({
+      where: whereClause,
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']]
     });
-    return users.map(this.mapToUser);
+
+    return {
+      users: rows.map(this.mapToUser),
+      total: count
+    };
   }
 
   async create(userData: CreateUserDto & { passwordHash: string }): Promise<User> {

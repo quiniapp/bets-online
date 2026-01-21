@@ -109,9 +109,26 @@ export class UsersController {
    *         required: false
    *         schema:
    *           type: string
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *         description: Page number
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 10
+   *         description: Items per page
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Search term (min 3 characters)
    *     responses:
    *       200:
-   *         description: List of child users
+   *         description: Paginated list of child users
    */
   async getChildren(req: Request, res: Response, next: NextFunction) {
     try {
@@ -122,9 +139,22 @@ export class UsersController {
       }
 
       const userId = req.params.id || req.user.userId;
-      const children = await usersDomain.getUserChildren(req.user.userId, userId);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string | undefined;
 
-      return res.json(ApiResponseBuilder.success({ users: children }));
+      const result = await usersDomain.getUserChildren(
+        req.user.userId,
+        userId,
+        { page, limit, search }
+      );
+
+      return res.json(ApiResponseBuilder.paginated(
+        result.users,
+        result.page,
+        result.limit,
+        result.total
+      ));
     } catch (error) {
       return next(error);
     }
@@ -138,9 +168,27 @@ export class UsersController {
    *     tags: [Users]
    *     security:
    *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           default: 1
+   *         description: Page number
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           default: 10
+   *         description: Items per page
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Search term (min 3 characters)
    *     responses:
    *       200:
-   *         description: List of child users
+   *         description: Paginated list of child users
    */
   async getMyChildren(req: Request, res: Response, next: NextFunction) {
     try {
@@ -150,9 +198,22 @@ export class UsersController {
         );
       }
 
-      const children = await usersDomain.getUserChildren(req.user.userId);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string | undefined;
 
-      return res.json(ApiResponseBuilder.success({ users: children }));
+      const result = await usersDomain.getUserChildren(
+        req.user.userId,
+        undefined,
+        { page, limit, search }
+      );
+
+      return res.json(ApiResponseBuilder.paginated(
+        result.users,
+        result.page,
+        result.limit,
+        result.total
+      ));
     } catch (error) {
       return next(error);
     }
