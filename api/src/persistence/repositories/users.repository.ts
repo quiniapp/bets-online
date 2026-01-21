@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { UserModel } from '../models';
 import { User, CreateUserDto, UpdateUserDto, UserStatus } from 'helper';
 import { sequelize } from '../../config/sequelize';
@@ -41,7 +42,6 @@ export class UsersRepository {
 
     // If search is provided, add search conditions
     if (search && search.length >= 3) {
-      const { Op } = require('sequelize');
       whereClause[Op.or] = [
         { username: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
