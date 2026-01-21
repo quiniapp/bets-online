@@ -7,9 +7,12 @@ export class UserModel extends Model {
   declare parentUserId: string | null;
   declare role: UserRole;
   declare username: string;
-  declare email: string;
+  declare email: string | null;
+  declare firstName: string | null;
+  declare lastName: string | null;
   declare passwordHash: string;
   declare status: UserStatus;
+  declare lastConnection: Date | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -44,12 +47,24 @@ UserModel.init(
     },
     email: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
       unique: true,
       field: 'email',
       validate: {
-        isEmail: true
+        isEmail: {
+          msg: 'Invalid email format'
+        }
       }
+    },
+    firstName: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'first_name'
+    },
+    lastName: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'last_name'
     },
     passwordHash: {
       type: DataTypes.STRING(255),
@@ -61,6 +76,11 @@ UserModel.init(
       allowNull: false,
       defaultValue: UserStatus.ACTIVE,
       field: 'status'
+    },
+    lastConnection: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'last_connection'
     },
     createdAt: {
       type: DataTypes.DATE,

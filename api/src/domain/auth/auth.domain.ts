@@ -35,6 +35,9 @@ export class AuthDomain {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
+    // Update last connection
+    await usersRepository.updateLastConnection(user.id);
+
     // Generate tokens
     const tokens = await this.createSession(user);
 
@@ -43,17 +46,19 @@ export class AuthDomain {
     const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
     return {
-      user: userWithoutPassword as User,
+      user: { ...userWithoutPassword, lastConnection: new Date() } as User,
       tokens
     };
   }
 
   async register(
     username: string,
-    email: string,
     password: string,
     role: UserRole,
-    parentUserId?: string
+    parentUserId?: string,
+    email?: string,
+    firstName?: string,
+    lastName?: string
   ): Promise<User> {
     // Check if username exists
     const existingUsername = await usersRepository.findByUsername(username);
@@ -61,10 +66,12 @@ export class AuthDomain {
       throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'Username already exists');
     }
 
-    // Check if email exists
-    const existingEmail = await usersRepository.findByEmail(email);
-    if (existingEmail) {
-      throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'Email already exists');
+    // Check if email exists (only if email is provided)
+    if (email) {
+      const existingEmail = await usersRepository.findByEmail(email);
+      if (existingEmail) {
+        throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'Email already exists');
+      }
     }
 
     // Validate parent if provided
@@ -84,6 +91,8 @@ export class AuthDomain {
       role,
       username,
       email,
+      firstName,
+      lastName,
       password,
       passwordHash
     });

@@ -20,7 +20,6 @@ export class UsersController {
    *             required:
    *               - role
    *               - username
-   *               - email
    *               - password
    *             properties:
    *               role:
@@ -30,8 +29,16 @@ export class UsersController {
    *                 type: string
    *               email:
    *                 type: string
+   *                 description: Optional email address
+   *               firstName:
+   *                 type: string
+   *                 description: Optional first name
+   *               lastName:
+   *                 type: string
+   *                 description: Optional last name
    *               password:
    *                 type: string
+   *                 description: Must be at least 8 characters, contain 1 uppercase letter and 1 number
    *     responses:
    *       201:
    *         description: User created successfully

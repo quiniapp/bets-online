@@ -44,7 +44,9 @@ export class UsersRepository {
           parentUserId: rest.parentUserId || null,
           role: rest.role,
           username: rest.username,
-          email: rest.email,
+          email: rest.email || null,
+          firstName: rest.firstName || null,
+          lastName: rest.lastName || null,
           passwordHash: rest.passwordHash,
           status: 'ACTIVE'
         },
@@ -76,11 +78,21 @@ export class UsersRepository {
 
     const updateFields: Partial<UpdateUserDto> = {};
     if (updateData.username) updateFields.username = updateData.username;
-    if (updateData.email) updateFields.email = updateData.email;
+    if (updateData.email !== undefined) updateFields.email = updateData.email || undefined;
+    if (updateData.firstName !== undefined) updateFields.firstName = updateData.firstName || undefined;
+    if (updateData.lastName !== undefined) updateFields.lastName = updateData.lastName || undefined;
     if (updateData.status) updateFields.status = updateData.status;
 
     await user.update(updateFields);
     return this.mapToUser(user);
+  }
+
+  async updateLastConnection(id: string): Promise<void> {
+    const user = await UserModel.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await user.update({ lastConnection: new Date() });
   }
 
   async updatePassword(id: string, passwordHash: string): Promise<void> {
@@ -149,14 +161,19 @@ export class UsersRepository {
     // Convert Sequelize model to plain object if needed
     const plain = data instanceof UserModel ? data.get({ plain: true }) : data;
 
+    const lastConn = plain.lastConnection || plain.last_connection;
+
     return {
       id: plain.id as string,
       parentUserId: (plain.parentUserId || plain.parent_user_id) as string | null,
       role: plain.role as User['role'],
       username: plain.username as string,
-      email: plain.email as string,
+      email: (plain.email as string) || null,
+      firstName: (plain.firstName || plain.first_name) as string | null,
+      lastName: (plain.lastName || plain.last_name) as string | null,
       passwordHash: (plain.passwordHash || plain.password_hash) as string,
       status: plain.status as UserStatus,
+      lastConnection: lastConn ? new Date(lastConn as string | Date) : null,
       createdAt: new Date(plain.createdAt || plain.created_at),
       updatedAt: new Date(plain.updatedAt || plain.updated_at)
     };

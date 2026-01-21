@@ -39,10 +39,12 @@ export class UsersDomain {
     // Register user
     const user = await authDomain.register(
       userData.username,
-      userData.email,
       userData.password,
       userData.role,
-      userData.parentUserId
+      userData.parentUserId,
+      userData.email,
+      userData.firstName,
+      userData.lastName
     );
 
     return user;

@@ -2,16 +2,17 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ValidatedInput } from "@/components/ui/validated-input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { useGames } from "@/hooks/useGames"
-import { ArrowLeft, Save, User } from "lucide-react"
+import { Save, User } from "lucide-react"
 import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
 
@@ -23,6 +24,8 @@ export default function CreateUserPage() {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
+    firstName: "",
+    lastName: "",
     password: "",
     confirmPassword: "",
     initialBalance: "0",
@@ -30,58 +33,89 @@ export default function CreateUserPage() {
     enabledGames: [] as string[],
   })
 
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [passwordValid, setPasswordValid] = useState(false)
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }))
+  }
 
-    if (!formData.username.trim()) {
-      newErrors.username = "El nombre de usuario es requerido"
-    } else if (formData.username.length < 3) {
-      newErrors.username = "El nombre de usuario debe tener al menos 3 caracteres"
-    }
+  const validateUsername = (username: string) => {
+    if (!username.trim()) return { state: 'invalid' as const, message: 'El nombre de usuario es requerido' }
+    if (username.length < 3) return { state: 'invalid' as const, message: 'Minimo 3 caracteres' }
+    return { state: 'valid' as const, message: '' }
+  }
 
-    if (!formData.email.trim()) {
-      newErrors.email = "El email es requerido"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "El email no es válido"
-    }
+  const validateEmail = (email: string) => {
+    if (!email.trim()) return { state: 'neutral' as const, message: '' } // Email is optional
+    if (!/\S+@\S+\.\S+/.test(email)) return { state: 'invalid' as const, message: 'El email no es valido' }
+    return { state: 'valid' as const, message: '' }
+  }
 
-    if (!formData.password) {
-      newErrors.password = "La contraseña es requerida"
-    } else if (formData.password.length < 6) {
-      newErrors.password = "La contraseña debe tener al menos 6 caracteres"
-    }
+  const validateConfirmPassword = (confirmPassword: string, password: string) => {
+    if (!confirmPassword) return { state: 'neutral' as const, message: '' }
+    if (confirmPassword !== password) return { state: 'invalid' as const, message: 'Las contrasenas no coinciden' }
+    return { state: 'valid' as const, message: '' }
+  }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Las contraseñas no coinciden"
-    }
+  const usernameValidation = validateUsername(formData.username)
+  const emailValidation = validateEmail(formData.email)
+  const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password)
 
-    const balance = Number.parseFloat(formData.initialBalance)
-    if (isNaN(balance) || balance < 0) {
-      newErrors.initialBalance = "El balance inicial debe ser un número válido mayor o igual a 0"
-    }
+  const handlePasswordValidationChange = useCallback((isValid: boolean) => {
+    setPasswordValid(isValid)
+  }, [])
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+  const isFormValid = () => {
+    return (
+      usernameValidation.state === 'valid' &&
+      (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
+      passwordValid &&
+      confirmPasswordValidation.state === 'valid'
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) {
+    // Mark all fields as touched
+    setTouched({
+      username: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+    })
+
+    if (!isFormValid()) {
+      toast({
+        variant: "destructive",
+        title: "Error de validacion",
+        description: "Por favor corrige los errores en el formulario"
+      })
       return
     }
 
     setIsLoading(true)
 
     try {
-      const response = await apiService.post('/users', {
+      const payload: Record<string, unknown> = {
         username: formData.username,
-        email: formData.email,
         password: formData.password,
         role: 'PLAYER'
-      })
+      }
+
+      // Only include optional fields if they have values
+      if (formData.email.trim()) {
+        payload.email = formData.email
+      }
+      if (formData.firstName.trim()) {
+        payload.firstName = formData.firstName
+      }
+      if (formData.lastName.trim()) {
+        payload.lastName = formData.lastName
+      }
+
+      const response = await apiService.post('/users', payload)
 
       if (response.success) {
         toast({
@@ -95,7 +129,7 @@ export default function CreateUserPage() {
         toast({
           variant: "destructive",
           title: "Error al crear usuario",
-          description: response.error?.message || "Ocurrió un error al crear el usuario"
+          description: response.error?.message || "Ocurrio un error al crear el usuario"
         })
       }
     } catch (error) {
@@ -103,7 +137,7 @@ export default function CreateUserPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Ocurrió un error inesperado. Por favor intente nuevamente."
+        description: "Ocurrio un error inesperado. Por favor intente nuevamente."
       })
     } finally {
       setIsLoading(false)
@@ -121,7 +155,7 @@ export default function CreateUserPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-         
+
           <div>
             <h1 className="text-3xl font-bold">Crear Nuevo Usuario</h1>
             <p className="text-muted-foreground">Registra un nuevo usuario en el sistema</p>
@@ -135,60 +169,88 @@ export default function CreateUserPage() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <User className="mr-2 h-5 w-5" />
-                  Información Básica
+                  Informacion Basica
                 </CardTitle>
                 <CardDescription>Datos principales del usuario</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Nombre de Usuario</Label>
-                  <Input
+                  <Label htmlFor="username">Nombre de Usuario *</Label>
+                  <ValidatedInput
                     id="username"
                     value={formData.username}
                     onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
+                    onBlur={() => handleBlur('username')}
                     placeholder="Ingresa el nombre de usuario"
-                    className={errors.username ? "border-red-500" : ""}
+                    validationState={touched.username ? usernameValidation.state : 'neutral'}
+                    errorMessage={usernameValidation.message}
                   />
-                  {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">Nombre (opcional)</Label>
+                    <ValidatedInput
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
+                      placeholder="Nombre"
+                      validationState={formData.firstName ? 'valid' : 'neutral'}
+                      showValidationIcon={false}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Apellido (opcional)</Label>
+                    <ValidatedInput
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
+                      placeholder="Apellido"
+                      validationState={formData.lastName ? 'valid' : 'neutral'}
+                      showValidationIcon={false}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
+                  <Label htmlFor="email">Email (opcional)</Label>
+                  <ValidatedInput
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    onBlur={() => handleBlur('email')}
                     placeholder="usuario@ejemplo.com"
-                    className={errors.email ? "border-red-500" : ""}
+                    validationState={touched.email ? emailValidation.state : 'neutral'}
+                    errorMessage={emailValidation.message}
                   />
-                  {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña</Label>
-                  <Input
+                  <Label htmlFor="password">Contrasena *</Label>
+                  <PasswordInput
                     id="password"
-                    type="password"
                     value={formData.password}
                     onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                    placeholder="Mínimo 6 caracteres"
-                    className={errors.password ? "border-red-500" : ""}
+                    onBlur={() => handleBlur('password')}
+                    placeholder="Ingresa la contrasena"
+                    showRequirements={true}
+                    onValidationChange={handlePasswordValidationChange}
                   />
-                  {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
-                  <Input
+                  <Label htmlFor="confirmPassword">Confirmar Contrasena *</Label>
+                  <ValidatedInput
                     id="confirmPassword"
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                    placeholder="Repite la contraseña"
-                    className={errors.confirmPassword ? "border-red-500" : ""}
+                    onBlur={() => handleBlur('confirmPassword')}
+                    placeholder="Repite la contrasena"
+                    validationState={touched.confirmPassword ? confirmPasswordValidation.state : 'neutral'}
+                    errorMessage={confirmPasswordValidation.message}
                   />
-                  {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -196,13 +258,13 @@ export default function CreateUserPage() {
             {/* Account Settings */}
             <Card>
               <CardHeader>
-                <CardTitle>Configuración de Cuenta</CardTitle>
+                <CardTitle>Configuracion de Cuenta</CardTitle>
                 <CardDescription>Balance inicial y permisos</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="initialBalance">Balance Inicial ($)</Label>
-                  <Input
+                  <ValidatedInput
                     id="initialBalance"
                     type="number"
                     step="0.01"
@@ -210,9 +272,8 @@ export default function CreateUserPage() {
                     value={formData.initialBalance}
                     onChange={(e) => setFormData((prev) => ({ ...prev, initialBalance: e.target.value }))}
                     placeholder="0.00"
-                    className={errors.initialBalance ? "border-red-500" : ""}
+                    showValidationIcon={false}
                   />
-                  {errors.initialBalance && <p className="text-sm text-red-500">{errors.initialBalance}</p>}
                 </div>
 
                 <div className="flex items-center space-x-2">
