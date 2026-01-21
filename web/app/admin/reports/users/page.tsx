@@ -30,7 +30,7 @@ export default function UsersReportPage() {
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
     const matchesFilter =
       filterStatus === "all" ||
       (filterStatus === "active" && user.status === UserStatus.ACTIVE) ||

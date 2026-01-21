@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -22,11 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Shield, AlertTriangle } from "lucide-react";
+import { Save, Shield } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import AlertWarning from "@/components/alerts/warning";
 import { apiService } from "@/services/api.service";
 import { useToast } from "@/hooks/use-toast";
+import { ValidatedInput } from "@/components/ui/validated-input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function CreateManagerPage() {
   const router = useRouter();
@@ -35,6 +36,8 @@ export default function CreateManagerPage() {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
+    firstName: "",
+    lastName: "",
     password: "",
     confirmPassword: "",
     role: "manager" as "manager" | "admin",
@@ -49,64 +52,101 @@ export default function CreateManagerPage() {
     },
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [passwordValid, setPasswordValid] = useState(false);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
 
-    if (!formData.username.trim()) {
-      newErrors.username = "El nombre de usuario es requerido";
-    } else if (formData.username.length < 3) {
-      newErrors.username =
-        "El nombre de usuario debe tener al menos 3 caracteres";
-    }
+  const validateUsername = (username: string) => {
+    if (!username.trim()) return { state: 'invalid' as const, message: 'El nombre de usuario es requerido' };
+    if (username.length < 3) return { state: 'invalid' as const, message: 'Minimo 3 caracteres' };
+    return { state: 'valid' as const, message: '' };
+  };
 
-    if (!formData.email.trim()) {
-      newErrors.email = "El email es requerido";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "El email no es válido";
-    }
+  const validateEmail = (email: string) => {
+    if (!email.trim()) return { state: 'neutral' as const, message: '' };
+    if (!/\S+@\S+\.\S+/.test(email)) return { state: 'invalid' as const, message: 'El email no es valido' };
+    return { state: 'valid' as const, message: '' };
+  };
 
-    if (!formData.password) {
-      newErrors.password = "La contraseña es requerida";
-    } else if (formData.password.length < 8) {
-      newErrors.password = "La contraseña debe tener al menos 8 caracteres";
-    }
+  const validateConfirmPassword = (confirmPassword: string, password: string) => {
+    if (!confirmPassword) return { state: 'neutral' as const, message: '' };
+    if (confirmPassword !== password) return { state: 'invalid' as const, message: 'Las contrasenas no coinciden' };
+    return { state: 'valid' as const, message: '' };
+  };
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Las contraseñas no coinciden";
-    }
+  const usernameValidation = validateUsername(formData.username);
+  const emailValidation = validateEmail(formData.email);
+  const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password);
 
-    const hasPermissions = Object.values(formData.permissions).some(
-      (permission) => permission
+  const handlePasswordValidationChange = useCallback((isValid: boolean) => {
+    setPasswordValid(isValid);
+  }, []);
+
+  const isFormValid = () => {
+    const hasPermissions = Object.values(formData.permissions).some(p => p);
+    return (
+      usernameValidation.state === 'valid' &&
+      (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
+      passwordValid &&
+      confirmPasswordValidation.state === 'valid' &&
+      hasPermissions
     );
-    if (!hasPermissions) {
-      newErrors.permissions = "Debe seleccionar al menos un permiso";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    setTouched({
+      username: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+    });
+
+    const hasPermissions = Object.values(formData.permissions).some(p => p);
+
+    if (!isFormValid()) {
+      if (!hasPermissions) {
+        toast({
+          variant: "destructive",
+          title: "Error de validacion",
+          description: "Debe seleccionar al menos un permiso"
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error de validacion",
+          description: "Por favor corrige los errores en el formulario"
+        });
+      }
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Map the local role to the backend's expected role value
       const role = formData.role === 'manager' ? 'CASHIER' : 'ADMIN';
 
-      const response = await apiService.post('/users', {
+      const payload: Record<string, unknown> = {
         username: formData.username,
-        email: formData.email,
         password: formData.password,
         role: role
-      });
+      };
+
+      if (formData.email.trim()) {
+        payload.email = formData.email;
+      }
+      if (formData.firstName.trim()) {
+        payload.firstName = formData.firstName;
+      }
+      if (formData.lastName.trim()) {
+        payload.lastName = formData.lastName;
+      }
+
+      const response = await apiService.post('/users', payload);
 
       if (response.success) {
         toast({
@@ -120,7 +160,7 @@ export default function CreateManagerPage() {
         toast({
           variant: "destructive",
           title: "Error al crear gerente",
-          description: response.error?.message || "Ocurrió un error al crear el gerente"
+          description: response.error?.message || "Ocurrio un error al crear el gerente"
         });
       }
     } catch (error) {
@@ -128,7 +168,7 @@ export default function CreateManagerPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Ocurrió un error inesperado. Por favor intente nuevamente."
+        description: "Ocurrio un error inesperado. Por favor intente nuevamente."
       });
     } finally {
       setIsLoading(false);
@@ -152,17 +192,17 @@ export default function CreateManagerPage() {
     manageUsers: "Crear, editar y desactivar usuarios",
     manageGames: "Gestionar juegos y configuraciones",
     manageTransactions: "Ver y gestionar transacciones",
-    viewReports: "Acceso a reportes y estadísticas",
+    viewReports: "Acceso a reportes y estadisticas",
     manageBalances: "Ajustar balances de usuarios",
     systemSettings: "Configuraciones del sistema",
   };
 
   const permissionLabels = {
-    manageUsers: "Gestión de Usuarios",
-    manageGames: "Gestión de Juegos",
-    manageTransactions: "Gestión de Transacciones",
+    manageUsers: "Gestion de Usuarios",
+    manageGames: "Gestion de Juegos",
+    manageTransactions: "Gestion de Transacciones",
     viewReports: "Ver Reportes",
-    manageBalances: "Gestión de Balances",
+    manageBalances: "Gestion de Balances",
     systemSettings: "Configuraciones del Sistema",
   };
 
@@ -179,9 +219,8 @@ export default function CreateManagerPage() {
             </div>
           </div>
 
-          {/* Warning Alert */}
-          <AlertWarning title='Importante' body='Los gerentes tendrán acceso a funciones administrativas
-                    sensibles. Asegúrate de otorgar solo los permisos
+          <AlertWarning title='Importante' body='Los gerentes tendran acceso a funciones administrativas
+                    sensibles. Asegurate de otorgar solo los permisos
                     necesarios.' />
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -191,7 +230,7 @@ export default function CreateManagerPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Shield className="mr-2 h-5 w-5" />
-                    Información Básica
+                    Informacion Basica
                   </CardTitle>
                   <CardDescription>
                     Datos principales del gerente
@@ -199,8 +238,8 @@ export default function CreateManagerPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="username">Nombre de Usuario</Label>
-                    <Input
+                    <Label htmlFor="username">Nombre de Usuario *</Label>
+                    <ValidatedInput
                       id="username"
                       value={formData.username}
                       onChange={(e) =>
@@ -209,17 +248,41 @@ export default function CreateManagerPage() {
                           username: e.target.value,
                         }))
                       }
+                      onBlur={() => handleBlur('username')}
                       placeholder="Ingresa el nombre de usuario"
-                      className={errors.username ? "border-red-500" : ""}
+                      validationState={touched.username ? usernameValidation.state : 'neutral'}
+                      errorMessage={usernameValidation.message}
                     />
-                    {errors.username && (
-                      <p className="text-sm text-red-500">{errors.username}</p>
-                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">Nombre (opcional)</Label>
+                      <ValidatedInput
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
+                        placeholder="Nombre"
+                        validationState={formData.firstName ? 'valid' : 'neutral'}
+                        showValidationIcon={false}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Apellido (opcional)</Label>
+                      <ValidatedInput
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
+                        placeholder="Apellido"
+                        validationState={formData.lastName ? 'valid' : 'neutral'}
+                        showValidationIcon={false}
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
+                    <Label htmlFor="email">Email (opcional)</Label>
+                    <ValidatedInput
                       id="email"
                       type="email"
                       value={formData.email}
@@ -229,19 +292,17 @@ export default function CreateManagerPage() {
                           email: e.target.value,
                         }))
                       }
+                      onBlur={() => handleBlur('email')}
                       placeholder="gerente@ejemplo.com"
-                      className={errors.email ? "border-red-500" : ""}
+                      validationState={touched.email ? emailValidation.state : 'neutral'}
+                      errorMessage={emailValidation.message}
                     />
-                    {errors.email && (
-                      <p className="text-sm text-red-500">{errors.email}</p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">Contraseña</Label>
-                    <Input
+                    <Label htmlFor="password">Contrasena *</Label>
+                    <PasswordInput
                       id="password"
-                      type="password"
                       value={formData.password}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -249,19 +310,18 @@ export default function CreateManagerPage() {
                           password: e.target.value,
                         }))
                       }
-                      placeholder="Mínimo 8 caracteres"
-                      className={errors.password ? "border-red-500" : ""}
+                      onBlur={() => handleBlur('password')}
+                      placeholder="Ingresa la contrasena"
+                      showRequirements={true}
+                      onValidationChange={handlePasswordValidationChange}
                     />
-                    {errors.password && (
-                      <p className="text-sm text-red-500">{errors.password}</p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">
-                      Confirmar Contraseña
+                      Confirmar Contrasena *
                     </Label>
-                    <Input
+                    <ValidatedInput
                       id="confirmPassword"
                       type="password"
                       value={formData.confirmPassword}
@@ -271,14 +331,11 @@ export default function CreateManagerPage() {
                           confirmPassword: e.target.value,
                         }))
                       }
-                      placeholder="Repite la contraseña"
-                      className={errors.confirmPassword ? "border-red-500" : ""}
+                      onBlur={() => handleBlur('confirmPassword')}
+                      placeholder="Repite la contrasena"
+                      validationState={touched.confirmPassword ? confirmPasswordValidation.state : 'neutral'}
+                      errorMessage={confirmPasswordValidation.message}
                     />
-                    {errors.confirmPassword && (
-                      <p className="text-sm text-red-500">
-                        {errors.confirmPassword}
-                      </p>
-                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -320,7 +377,7 @@ export default function CreateManagerPage() {
                 <CardHeader>
                   <CardTitle>Permisos</CardTitle>
                   <CardDescription>
-                    Selecciona los permisos que tendrá este gerente
+                    Selecciona los permisos que tendra este gerente
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -354,9 +411,6 @@ export default function CreateManagerPage() {
                       </div>
                     </div>
                   ))}
-                  {errors.permissions && (
-                    <p className="text-sm text-red-500">{errors.permissions}</p>
-                  )}
                 </CardContent>
               </Card>
             </div>

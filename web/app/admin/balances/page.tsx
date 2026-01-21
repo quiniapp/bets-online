@@ -8,18 +8,37 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useUsers } from "@/hooks/useUsers"
+import { useDebounce } from "@/hooks/useDebounce"
 import { apiService } from "@/services/api.service"
-import { Plus, Minus, Search, DollarSign } from "lucide-react"
+import { Plus, Minus, Search, DollarSign, ChevronLeft, ChevronRight } from "lucide-react"
 import { UserStatus, type User, type Balance } from "helper"
 
+const ITEMS_PER_PAGE = 10
+
 export default function AdminBalances() {
-  const { users, loading: usersLoading } = useUsers()
   const [searchTerm, setSearchTerm] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const debouncedSearch = useDebounce(searchTerm, 300)
+
+  // Only search when 3+ characters or empty
+  const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
+
+  const { users, loading: usersLoading, pagination, reload } = useUsers({
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    search: searchQuery
+  })
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [adjustmentAmount, setAdjustmentAmount] = useState("")
   const [adjustmentReason, setAdjustmentReason] = useState("")
   const [userBalances, setUserBalances] = useState<Record<string, number>>({})
   const [loadingBalances, setLoadingBalances] = useState(false)
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   // Load balances for all users
   useEffect(() => {
@@ -48,11 +67,7 @@ export default function AdminBalances() {
     loadBalances()
   }, [users])
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // Users are now filtered by the API based on searchQuery
 
   const handleBalanceAdjustment = async (type: "add" | "subtract") => {
     if (!selectedUser || !adjustmentAmount || !adjustmentReason) return
@@ -115,7 +130,7 @@ export default function AdminBalances() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Buscar usuarios..."
+                placeholder="Buscar usuarios (min. 3 caracteres)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -124,7 +139,7 @@ export default function AdminBalances() {
           </div>
 
           <div className="space-y-4">
-            {filteredUsers.map((user) => (
+            {users.map((user) => (
               <Card key={user.id} className={selectedUser?.id === user.id ? "ring-2 ring-blue-500" : ""}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -135,7 +150,7 @@ export default function AdminBalances() {
                           {user.status}
                         </Badge>
                       </div>
-                      <p className="text-gray-600 mb-2">{user.email}</p>
+                      <p className="text-gray-600 mb-2">{user.email || '-'}</p>
                       <p className="text-2xl font-bold text-green-600 mb-3">
                         ${(userBalances[user.id] || 0).toFixed(2)}
                       </p>
@@ -151,6 +166,38 @@ export default function AdminBalances() {
               </Card>
             ))}
           </div>
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-gray-600">
+                Mostrando {users.length} de {pagination.total} usuarios
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <span className="text-sm px-3">
+                  Pagina {currentPage} de {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                  disabled={currentPage >= pagination.totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Balance Adjustment Panel */}

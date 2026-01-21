@@ -1,34 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '@/services/api.service';
-import type { User, CreateUserDto, UpdateUserDto, UserTreeNode } from 'helper';
+import type { User, CreateUserDto, UpdateUserDto, UserTreeNode, PaginationMeta } from 'helper';
 
-export function useUsers() {
+interface UseUsersOptions {
+  page?: number;
+  limit?: number;
+  search?: string;
+  autoLoad?: boolean;
+}
+
+export function useUsers(options: UseUsersOptions = {}) {
+  const { page = 1, limit = 10, search, autoLoad = true } = options;
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  // Track if this is the initial load
+  const isInitialMount = useRef(true);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async (params?: { page?: number; limit?: number; search?: string }) => {
+    const queryPage = params?.page ?? page;
+    const queryLimit = params?.limit ?? limit;
+    const querySearch = params?.search ?? search;
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await apiService.get<{ users: User[] }>('/users/me/children');
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', String(queryPage));
+      queryParams.append('limit', String(queryLimit));
+      if (querySearch && querySearch.length >= 3) {
+        queryParams.append('search', querySearch);
+      }
+
+      const response = await apiService.get<User[]>(`/users/me/children?${queryParams.toString()}`);
 
       if (response.success && response.data) {
-        setUsers(response.data.users);
+        setUsers(response.data);
+        if (response.meta) {
+          setPagination(response.meta);
+        }
       } else {
         setError(response.error?.message || 'Failed to load users');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load users');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load users';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, search]);
+
+  useEffect(() => {
+    if (autoLoad) {
+      loadUsers();
+    }
+  }, [loadUsers, autoLoad]);
 
   const createUser = async (userData: CreateUserDto) => {
     try {
@@ -118,6 +148,7 @@ export function useUsers() {
     users,
     loading,
     error,
+    pagination,
     createUser,
     updateUser,
     blockUser,

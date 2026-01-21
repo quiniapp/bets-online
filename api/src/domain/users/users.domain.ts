@@ -39,10 +39,12 @@ export class UsersDomain {
     // Register user
     const user = await authDomain.register(
       userData.username,
-      userData.email,
       userData.password,
       userData.role,
-      userData.parentUserId
+      userData.parentUserId,
+      userData.email,
+      userData.firstName,
+      userData.lastName
     );
 
     return user;
@@ -80,8 +82,17 @@ export class UsersDomain {
     return userWithoutPassword as User;
   }
 
-  async getUserChildren(requesterId: string, userId?: string): Promise<User[]> {
+  async getUserChildren(
+    requesterId: string,
+    userId?: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+    }
+  ): Promise<{ users: User[]; total: number; page: number; limit: number; totalPages: number }> {
     const targetId = userId || requesterId;
+    const { page = 1, limit = 10, search } = options || {};
 
     // Get requester
     const requester = await usersRepository.findById(requesterId);
@@ -101,12 +112,20 @@ export class UsersDomain {
       }
     }
 
-    // Get children
-    const children = await usersRepository.findByParentId(targetId);
+    // Get children with pagination and search
+    const result = await usersRepository.findByParentId(targetId, { page, limit, search });
 
     // Remove password hashes
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    return children.map(({ passwordHash: _passwordHash, ...user }) => user as User);
+    const users = result.users.map(({ passwordHash: _passwordHash, ...user }) => user as User);
+
+    return {
+      users,
+      total: result.total,
+      page,
+      limit,
+      totalPages: Math.ceil(result.total / limit)
+    };
   }
 
   async getUserTree(requesterId: string, userId?: string): Promise<UserTreeNode> {
@@ -240,7 +259,8 @@ export class UsersDomain {
     }
 
     const balance = await balancesRepository.findByUserId(userId);
-    const children = await usersRepository.findByParentId(userId);
+    // For tree view, get all children without pagination
+    const { users: children } = await usersRepository.findByParentId(userId, { limit: 1000 });
 
     const childNodes = await Promise.all(
       children.map(child => this.buildUserTree(child.id))

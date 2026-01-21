@@ -17,9 +17,12 @@ export interface User {
   parentUserId: string | null;
   role: UserRole;
   username: string;
-  email: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
   passwordHash?: string;
   status: UserStatus;
+  lastConnection: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,7 +34,9 @@ export interface CreateUserDto {
   parentUserId?: string;
   role: UserRole;
   username: string;
-  email: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
   password: string;
 }
 
@@ -41,6 +46,8 @@ export interface CreateUserDto {
 export interface UpdateUserDto {
   username?: string;
   email?: string;
+  firstName?: string;
+  lastName?: string;
   status?: UserStatus;
 }
 
