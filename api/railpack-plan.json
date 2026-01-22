@@ -1,0 +1,11 @@
+{
+  "install": {
+    "command": "pnpm install --frozen-lockfile"
+  },
+  "build": {
+    "command": "pnpm --filter helper build && pnpm --filter api build"
+  },
+  "start": {
+    "command": "cd api && node dist/server.js"
+  }
+}

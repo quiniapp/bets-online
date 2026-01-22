@@ -1,0 +1,97 @@
+name: Develop Build Validation
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: # Allows manual trigger
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: false
+
+jobs:
+  deploy-development:
+    name: Validate Build for Develop
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: https://dev-bets-online.vercel.app # Update with your actual dev URL
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages
+        run: pnpm --filter helper build && pnpm --filter api build && pnpm --filter web build
+        env:
+          # Dummy env vars for build validation (not used in production)
+          # Railway and Vercel handle actual deployments automatically
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dev
+          JWT_SECRET: dev-secret-min-32-characters-long-for-build-validation
+          JWT_REFRESH_SECRET: dev-refresh-secret-min-32-chars-for-validation
+          SESSION_SECRET: dev-session-secret-min-32-chars-for-validation
+          ALLOWED_ORIGINS: http://localhost:3000
+          API_URL: http://localhost:3001
+
+      # Example: Deploy Frontend to Vercel
+      # Uncomment when you set up Vercel
+      # - name: Deploy Frontend to Vercel (Development)
+      #   uses: amondnet/vercel-action@v25
+      #   with:
+      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      #     vercel-args: '--prod'
+      #     scope: ${{ secrets.VERCEL_ORG_ID }}
+      #     alias-domains: dev-bets-online.vercel.app
+
+      # Example: Deploy Backend to Railway/Render
+      # Uncomment when you set up your backend hosting
+      # - name: Deploy Backend to Railway (Development)
+      #   run: |
+      #     npm install -g @railway/cli
+      #     railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+      #     railway up --service api --environment development
+
+      - name: Notify build success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = context.sha.substring(0, 7);
+            const message = `✅ **Development build validation successful!**
+
+            - **Commit**: ${commit}
+            - **Branch**: \`develop\`
+            - **Packages**: helper, api, web - all compiled successfully
+
+            ℹ️ **Note**: Actual deployments are handled automatically by Railway (API) and Vercel (Web)
+
+            <sub>Validated at ${new Date().toISOString()}</sub>
+            `;
+
+            console.log(message);
+
+      - name: Notify build failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = context.sha.substring(0, 7);
+            core.setFailed(`❌ Development build validation failed for commit ${commit}`);
