@@ -14,7 +14,7 @@
     "test:watch": "pnpm --filter '*' test:watch",
     "lint": "pnpm --filter '*' lint",
     "format": "pnpm --filter '*' format",
-    "type-check": "pnpm --filter '*' type-check",
+    "type-check": "pnpm -r type-check",
     "api:dev": "pnpm --filter api dev",
     "web:dev": "pnpm --filter web dev",
     "helper:build": "pnpm --filter helper build",
@@ -23,7 +23,8 @@
     "install:api": "pnpm --filter api install",
     "install:web": "pnpm --filter web install",
     "install:helper": "pnpm --filter helper install",
-    "install:all": "pnpm install"
+    "install:all": "pnpm install",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -34,11 +35,24 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.3.0",
     "typescript": "^5.5.0"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "lint-staged": {
+    "api/src/**/*.ts": [
+      "eslint --fix"
+    ],
+    "web/**/*.{ts,tsx}": [
+      "eslint --fix"
+    ],
+    "helper/src/**/*.ts": [
+      "eslint --fix"
+    ]
   }
 }
