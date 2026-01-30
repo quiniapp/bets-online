@@ -11,12 +11,15 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserTreeView } from "@/components/admin/user-tree"
 import { useUsers } from "@/hooks/useUsers"
 import { useDebounce } from "@/hooks/useDebounce"
-import { Search, Edit, Ban, CheckCircle, TreePine, Table, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react"
+import { Search, Edit, Ban, CheckCircle, TreePine, Table, ChevronDown, ChevronRight, ChevronLeft, DollarSign, Minus, History, Lock } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus } from "helper"
 import type { User, UserTreeNode } from "helper"
 import ROUTER from "@/routes"
 import { cn } from "@/lib/utils"
+import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
+import { MovementsHistoryDialog } from "@/components/admin/movements-history-dialog"
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog"
 
 const ITEMS_PER_PAGE = 10
 
@@ -29,9 +32,13 @@ interface CollapsibleRowProps {
   allUsers: User[]
   onEdit: (userId: string) => void
   onToggleStatus: (userId: string, status: UserStatus) => void
+  onSellChips: (user: User) => void
+  onWithdraw: (user: User) => void
+  onHistory: (user: User) => void
+  onResetPassword: (user: User) => void
 }
 
-function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus }: CollapsibleRowProps) {
+function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus, onSellChips, onWithdraw, onHistory, onResetPassword }: CollapsibleRowProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
 
   const directChildren = allUsers.filter(u => u.parentUserId === user.id)
@@ -79,7 +86,7 @@ function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus }: Colla
             )}
           </div>
         </div>
-        <div className="col-span-3">
+        <div className="col-span-2">
           <div className="text-sm text-gray-600">{user.email || '-'}</div>
         </div>
         <div className="col-span-1">
@@ -100,8 +107,40 @@ function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus }: Colla
             {formatDate(user.lastConnection)}
           </div>
         </div>
-        <div className="col-span-1">
-          <div className="flex gap-1">
+        <div className="col-span-2">
+          <div className="flex gap-1 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onSellChips(user)}
+              title="Carga de fichas"
+            >
+              <DollarSign className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onWithdraw(user)}
+              title="Retiro de fichas"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onHistory(user)}
+              title="Ver historial"
+            >
+              <History className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onResetPassword(user)}
+              title="Cambiar contraseña"
+            >
+              <Lock className="h-3 w-3" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => onEdit(user.id)}>
               <Edit className="h-3 w-3" />
             </Button>
@@ -129,6 +168,10 @@ function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus }: Colla
               allUsers={allUsers}
               onEdit={onEdit}
               onToggleStatus={onToggleStatus}
+              onSellChips={onSellChips}
+              onWithdraw={onWithdraw}
+              onHistory={onHistory}
+              onResetPassword={onResetPassword}
             />
           ))}
         </>
@@ -144,6 +187,8 @@ function UsersPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showAllDescendants, setShowAllDescendants] = useState(true)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [dialogType, setDialogType] = useState<'sell' | 'withdraw' | 'history' | 'reset-password' | null>(null)
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
@@ -211,6 +256,31 @@ function UsersPageContent() {
     router.push(`${ROUTER.EDIT_USER}?id=${userId}`)
   }
 
+  const handleSellChips = (user: User) => {
+    setSelectedUser(user)
+    setDialogType('sell')
+  }
+
+  const handleWithdraw = (user: User) => {
+    setSelectedUser(user)
+    setDialogType('withdraw')
+  }
+
+  const handleHistory = (user: User) => {
+    setSelectedUser(user)
+    setDialogType('history')
+  }
+
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user)
+    setDialogType('reset-password')
+  }
+
+  const handleCloseDialog = () => {
+    setSelectedUser(null)
+    setDialogType(null)
+  }
+
   if (loading) {
     return (
       <DashboardLayout title="Lista de Usuarios">
@@ -276,12 +346,12 @@ function UsersPageContent() {
           {/* Table Header */}
           <div className="grid grid-cols-12 gap-4 p-4 border-b font-medium text-sm">
             <div className="col-span-2">Usuario</div>
-            <div className="col-span-3">Email</div>
+            <div className="col-span-2">Email</div>
             <div className="col-span-1">Rol</div>
             <div className="col-span-1">Estado</div>
             <div className="col-span-2">Registro</div>
             <div className="col-span-2">Ultima Conexion</div>
-            <div className="col-span-1">Acciones</div>
+            <div className="col-span-2">Acciones</div>
           </div>
 
           {/* Table Body */}
@@ -295,6 +365,10 @@ function UsersPageContent() {
                   allUsers={users}
                   onEdit={handleEditUser}
                   onToggleStatus={handleToggleUserStatus}
+                  onSellChips={handleSellChips}
+                  onWithdraw={handleWithdraw}
+                  onHistory={handleHistory}
+                  onResetPassword={handleResetPassword}
                 />
               ))
             ) : (
@@ -308,7 +382,7 @@ function UsersPageContent() {
                       </div>
                     )}
                   </div>
-                  <div className="col-span-3">
+                  <div className="col-span-2">
                     <div className="text-sm text-gray-600">{user.email || '-'}</div>
                   </div>
                   <div className="col-span-1">
@@ -329,8 +403,40 @@ function UsersPageContent() {
                       {user.lastConnection ? new Date(user.lastConnection).toLocaleDateString() : '-'}
                     </div>
                   </div>
-                  <div className="col-span-1">
-                    <div className="flex gap-1">
+                  <div className="col-span-2">
+                    <div className="flex gap-1 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSellChips(user)}
+                        title="Carga de fichas"
+                      >
+                        <DollarSign className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleWithdraw(user)}
+                        title="Retiro de fichas"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleHistory(user)}
+                        title="Ver historial"
+                      >
+                        <History className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetPassword(user)}
+                        title="Cambiar contraseña"
+                      >
+                        <Lock className="h-3 w-3" />
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEditUser(user.id)}>
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -407,6 +513,42 @@ function UsersPageContent() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Modales de operaciones */}
+      {selectedUser && (dialogType === 'sell' || dialogType === 'withdraw') && (
+        <ChipOperationDialog
+          user={selectedUser}
+          operationType={dialogType}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog()
+          }}
+          onSuccess={() => reload()}
+        />
+      )}
+
+      {/* Modal de historial */}
+      {selectedUser && dialogType === 'history' && (
+        <MovementsHistoryDialog
+          user={selectedUser}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog()
+          }}
+        />
+      )}
+
+      {/* Modal de cambiar contraseña */}
+      {selectedUser && dialogType === 'reset-password' && (
+        <ResetPasswordDialog
+          user={selectedUser}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog()
+          }}
+          onSuccess={() => reload()}
+        />
       )}
     </DashboardLayout>
   )

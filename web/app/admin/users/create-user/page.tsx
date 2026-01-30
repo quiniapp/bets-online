@@ -241,16 +241,17 @@ export default function CreateUserPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirmar Contrasena *</Label>
-                  <ValidatedInput
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                     onBlur={() => handleBlur('confirmPassword')}
                     placeholder="Repite la contrasena"
-                    validationState={touched.confirmPassword ? confirmPasswordValidation.state : 'neutral'}
-                    errorMessage={confirmPasswordValidation.message}
+                    showRequirements={false}
                   />
+                  {touched.confirmPassword && confirmPasswordValidation.state === 'invalid' && (
+                    <p className="text-sm text-red-500">{confirmPasswordValidation.message}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

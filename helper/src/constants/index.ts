@@ -2,6 +2,24 @@
  * Application Constants
  */
 
+import { ChipMovementType } from '../types/enums.types';
+
+/**
+ * Chip Movement Type Labels (Spanish)
+ */
+export const CHIP_MOVEMENT_TYPE_LABELS: Record<ChipMovementType, string> = {
+  SELL_TO_PLAYER: 'Carga',
+  WITHDRAWAL: 'Retiro',
+  PRIZE: 'Premio',
+  LOSS: 'Pérdida',
+  DEPOSIT: 'Depósito',
+  BUY_FROM_ADMIN: 'Compra',
+  RECOVERY: 'Recuperación',
+  ADJUSTMENT: 'Ajuste',
+  PANEL_ASSIGNMENT: 'Asignación de Panel',
+  PANEL_SALE: 'Venta de Panel'
+};
+
 /**
  * Default Pagination
  */
