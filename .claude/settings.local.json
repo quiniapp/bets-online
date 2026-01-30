@@ -44,7 +44,9 @@
       "Bash(./node_modules/.bin/next lint:*)",
       "Bash(echo:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []
