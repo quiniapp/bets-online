@@ -5,7 +5,6 @@ import { useLanguage } from "@/contexts/language-context"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { UserRole, ChipMovementType } from "helper"
 import { ArrowUp, ArrowDown, DollarSign, Settings, Loader2 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -83,7 +82,7 @@ export default function UserTransactions() {
         return t("transactions.win")
       case ChipMovementType.SELL_TO_PLAYER:
       case ChipMovementType.BUY_FROM_ADMIN:
-        return "Compra de Chips"
+        return "Compra de Fichas"
       case ChipMovementType.ADJUSTMENT:
         return t("transactions.adjustment")
       case ChipMovementType.RECOVERY:

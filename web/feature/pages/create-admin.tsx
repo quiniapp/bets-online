@@ -234,16 +234,17 @@ export default function CreateAdminFeature() {
 
               <div className="grid gap-2">
                 <Label htmlFor="confirmPassword">Confirmar Contrasena *</Label>
-                <ValidatedInput
+                <PasswordInput
                   id="confirmPassword"
-                  type="password"
                   placeholder="Repite la contrasena"
                   value={formData.confirmPassword}
                   onChange={(e) => handleChange("confirmPassword", e.target.value)}
                   onBlur={() => handleBlur('confirmPassword')}
-                  validationState={touched.confirmPassword ? confirmPasswordValidation.state : 'neutral'}
-                  errorMessage={confirmPasswordValidation.message}
+                  showRequirements={false}
                 />
+                {touched.confirmPassword && confirmPasswordValidation.state === 'invalid' && (
+                  <p className="text-sm text-red-500">{confirmPasswordValidation.message}</p>
+                )}
               </div>
             </div>
 
