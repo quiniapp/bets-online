@@ -47,7 +47,9 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(tasklist:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npx next --version)",
+      "Bash(npx eslint .)"
     ],
     "deny": [],
     "ask": []

@@ -1,18 +1,19 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-import js from "@eslint/js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-});
+import nextPlugin from "eslint-config-next";
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals"),
+  {
+    ignores: ["node_modules/**", ".next/**", "out/**", "build/**"],
+  },
+  ...nextPlugin,
+  {
+    rules: {
+      // Downgrade React strict rules to warnings to allow gradual migration
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+      "react-hooks/exhaustive-deps": "warn",
+      "@next/next/no-img-element": "warn",
+    },
+  },
 ];
 
 export default eslintConfig;

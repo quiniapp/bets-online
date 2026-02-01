@@ -76,7 +76,7 @@ export class UsersDomain {
     }
 
     // Remove password hash
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
     return userWithoutPassword as User;
@@ -116,7 +116,7 @@ export class UsersDomain {
     const result = await usersRepository.findByParentId(targetId, { page, limit, search });
 
     // Remove password hashes
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const users = result.users.map(({ passwordHash: _passwordHash, ...user }) => user as User);
 
     return {
@@ -195,7 +195,7 @@ export class UsersDomain {
     const updatedUser = await usersRepository.update(userId, updateData);
 
     // Remove password hash
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { passwordHash: _passwordHash2, ...userWithoutPassword } = updatedUser;
 
     return userWithoutPassword as User;
@@ -267,7 +267,7 @@ export class UsersDomain {
     );
 
     // Remove password hash
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { passwordHash: _passwordHash3, ...userWithoutPassword } = user;
 
     return {
