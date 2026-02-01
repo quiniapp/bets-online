@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
-import type { Balance, ChipMovement, PaginationMeta } from 'helper';
+import type { Balance, ChipMovement, PaginationMeta, ChipMovementType } from 'helper';
 
 export function useChips(userId?: string) {
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -128,6 +128,63 @@ export function useChips(userId?: string) {
     }
   };
 
+  const getMovements = useCallback(async (
+    targetUserId: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      startDate?: Date;
+      endDate?: Date;
+      type?: ChipMovementType;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (options?.page) queryParams.append('page', String(options.page));
+    if (options?.limit) queryParams.append('limit', String(options.limit));
+    if (options?.startDate) queryParams.append('startDate', options.startDate.toISOString());
+    if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
+    if (options?.type) queryParams.append('type', options.type);
+
+    return await apiService.get<ChipMovement[]>(
+      `/chips/movements/${targetUserId}?${queryParams.toString()}`
+    );
+  }, []);
+
+  const exportMovements = useCallback(async (
+    targetUserId: string,
+    options?: {
+      startDate?: Date;
+      endDate?: Date;
+      type?: ChipMovementType;
+    }
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (options?.startDate) queryParams.append('startDate', options.startDate.toISOString());
+    if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
+    if (options?.type) queryParams.append('type', options.type);
+
+    const token = localStorage.getItem('accessToken');
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/chips/movements/${targetUserId}/export?${queryParams.toString()}`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to export movements');
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `movimientos-${targetUserId}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+  }, []);
+
   return {
     balance,
     movements,
@@ -139,5 +196,7 @@ export function useChips(userId?: string) {
     payPrize,
     registerLoss,
     withdraw,
+    getMovements,
+    exportMovements,
   };
 }

@@ -105,7 +105,7 @@ try {
   fs.writeFileSync(envLocalPath, envContent);
   log.success('Credenciales de Supabase configuradas en .env.local');
 
-} catch (error) {
+} catch (_error) {
   log.warning('Supabase no está corriendo o no está disponible');
   log.info('Puedes iniciarlo con: npx supabase start');
   log.info('Luego ejecuta este script nuevamente o configura manualmente .env.local');

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder, SUCCESS_MESSAGES, ChipMovementType } from 'helper';
 import { chipsDomain } from '../domain/chips/chips.domain';
+import { generateMovementsCsv } from '../utils/csv.utils';
 
 export class ChipsController {
   /**
@@ -352,6 +353,75 @@ export class ChipsController {
       const balance = await chipsDomain.getBalance(req.user.userId, req.user.userId);
 
       return res.json(ApiResponseBuilder.success({ balance }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * @swagger
+   * /api/chips/movements/{userId}/export:
+   *   get:
+   *     summary: Export movement history as CSV
+   *     tags: [Chips]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: userId
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: query
+   *         name: startDate
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *       - in: query
+   *         name: endDate
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *       - in: query
+   *         name: type
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: CSV file
+   *         content:
+   *           text/csv:
+   *             schema:
+   *               type: string
+   */
+  async exportMovements(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(
+          ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required')
+        );
+      }
+
+      const { userId } = req.params;
+      const { startDate, endDate, type } = req.query;
+
+      // Get all movements without pagination for export
+      const result = await chipsDomain.getMovementHistory(
+        req.user.userId,
+        userId,
+        {
+          startDate: startDate ? new Date(startDate as string) : undefined,
+          endDate: endDate ? new Date(endDate as string) : undefined,
+          type: type as ChipMovementType | undefined,
+          limit: 10000 // Large limit for export
+        }
+      );
+
+      const csv = generateMovementsCsv(result.movements);
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=movimientos-${userId}-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send('\ufeff' + csv); // UTF-8 BOM for Excel compatibility
     } catch (error) {
       return next(error);
     }

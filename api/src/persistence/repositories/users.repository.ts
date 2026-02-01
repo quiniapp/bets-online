@@ -67,7 +67,7 @@ export class UsersRepository {
     const transaction = await sequelize.transaction();
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { password: _password, ...rest } = userData as CreateUserDto & { passwordHash: string };
 
       const user = await UserModel.create(
