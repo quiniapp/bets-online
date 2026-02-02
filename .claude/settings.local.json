@@ -49,7 +49,8 @@
       "Bash(tasklist:*)",
       "Bash(ls:*)",
       "Bash(npx next --version)",
-      "Bash(npx eslint .)"
+      "Bash(npx eslint .)",
+      "Bash(git worktree:*)"
     ],
     "deny": [],
     "ask": []
