@@ -321,9 +321,8 @@ export default function CreateManagerPage() {
                     <Label htmlFor="confirmPassword">
                       Confirmar Contrasena *
                     </Label>
-                    <ValidatedInput
+                    <PasswordInput
                       id="confirmPassword"
-                      type="password"
                       value={formData.confirmPassword}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -333,9 +332,11 @@ export default function CreateManagerPage() {
                       }
                       onBlur={() => handleBlur('confirmPassword')}
                       placeholder="Repite la contrasena"
-                      validationState={touched.confirmPassword ? confirmPasswordValidation.state : 'neutral'}
-                      errorMessage={confirmPasswordValidation.message}
+                      showRequirements={false}
                     />
+                    {touched.confirmPassword && confirmPasswordValidation.state === 'invalid' && (
+                      <p className="text-sm text-red-500">{confirmPasswordValidation.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

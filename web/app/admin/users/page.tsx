@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
 import { MovementsHistoryDialog } from "@/components/admin/movements-history-dialog"
 import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog"
+import { UserDetailDialog } from "@/components/admin/user-detail-dialog"
 
 const ITEMS_PER_PAGE = 10
 
@@ -36,9 +37,10 @@ interface CollapsibleRowProps {
   onWithdraw: (user: User) => void
   onHistory: (user: User) => void
   onResetPassword: (user: User) => void
+  onViewDetail: (user: User) => void
 }
 
-function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus, onSellChips, onWithdraw, onHistory, onResetPassword }: CollapsibleRowProps) {
+function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus, onSellChips, onWithdraw, onHistory, onResetPassword, onViewDetail }: CollapsibleRowProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
 
   const directChildren = allUsers.filter(u => u.parentUserId === user.id)
@@ -77,14 +79,17 @@ function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus, onSellC
           ) : (
             <div className="w-6" />
           )}
-          <div>
-            <div className="font-semibold">{user.username}</div>
+          <button
+            onClick={() => onViewDetail(user)}
+            className="text-left hover:underline"
+          >
+            <div className="font-semibold text-blue-600">{user.username}</div>
             {(user.firstName || user.lastName) && (
               <div className="text-xs text-muted-foreground">
                 {[user.firstName, user.lastName].filter(Boolean).join(' ')}
               </div>
             )}
-          </div>
+          </button>
         </div>
         <div className="col-span-2">
           <div className="text-sm text-gray-600">{user.email || '-'}</div>
@@ -172,6 +177,7 @@ function CollapsibleRow({ user, level, allUsers, onEdit, onToggleStatus, onSellC
               onWithdraw={onWithdraw}
               onHistory={onHistory}
               onResetPassword={onResetPassword}
+              onViewDetail={onViewDetail}
             />
           ))}
         </>
@@ -188,7 +194,7 @@ function UsersPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showAllDescendants, setShowAllDescendants] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [dialogType, setDialogType] = useState<'sell' | 'withdraw' | 'history' | 'reset-password' | null>(null)
+  const [dialogType, setDialogType] = useState<'sell' | 'withdraw' | 'history' | 'reset-password' | 'detail' | null>(null)
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
@@ -274,6 +280,11 @@ function UsersPageContent() {
   const handleResetPassword = (user: User) => {
     setSelectedUser(user)
     setDialogType('reset-password')
+  }
+
+  const handleViewDetail = (user: User) => {
+    setSelectedUser(user)
+    setDialogType('detail')
   }
 
   const handleCloseDialog = () => {
@@ -369,18 +380,24 @@ function UsersPageContent() {
                   onWithdraw={handleWithdraw}
                   onHistory={handleHistory}
                   onResetPassword={handleResetPassword}
+                  onViewDetail={handleViewDetail}
                 />
               ))
             ) : (
               users.map((user) => (
                 <div key={user.id} className="grid grid-cols-12 gap-4 p-4 transition-colors hover:bg-muted/50">
                   <div className="col-span-2">
-                    <div className="font-semibold">{user.username}</div>
-                    {(user.firstName || user.lastName) && (
-                      <div className="text-xs text-muted-foreground">
-                        {[user.firstName, user.lastName].filter(Boolean).join(' ')}
-                      </div>
-                    )}
+                    <button
+                      onClick={() => handleViewDetail(user)}
+                      className="text-left hover:underline"
+                    >
+                      <div className="font-semibold text-blue-600">{user.username}</div>
+                      {(user.firstName || user.lastName) && (
+                        <div className="text-xs text-muted-foreground">
+                          {[user.firstName, user.lastName].filter(Boolean).join(' ')}
+                        </div>
+                      )}
+                    </button>
                   </div>
                   <div className="col-span-2">
                     <div className="text-sm text-gray-600">{user.email || '-'}</div>
@@ -548,6 +565,18 @@ function UsersPageContent() {
             if (!open) handleCloseDialog()
           }}
           onSuccess={() => reload()}
+        />
+      )}
+
+      {/* Modal de detalle de usuario */}
+      {selectedUser && dialogType === 'detail' && (
+        <UserDetailDialog
+          user={selectedUser}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDialog()
+          }}
+          onOperationSuccess={() => reload()}
         />
       )}
     </DashboardLayout>
