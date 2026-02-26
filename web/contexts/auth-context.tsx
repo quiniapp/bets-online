@@ -44,22 +44,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // No validar si estamos en página de login
+    if (window.location.pathname === ROUTER.LOGIN) {
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
       const token = apiService.getAccessToken()
-      if (token) {
-        const response = await apiService.getCurrentUser()
-        if (response.success && response.data) {
-          setUser(response.data)
-          setRole(response.data.role)
-        } else {
-          // Token invalid, clear it
-          apiService.setAccessToken(null)
-        }
+
+      if (!token) {
+        // No hay token, redirigir a login
+        router.push(ROUTER.LOGIN)
+        return
+      }
+
+      const response = await apiService.getCurrentUser()
+
+      if (response.success && response.data) {
+        setUser(response.data)
+        setRole(response.data.role)
+      } else {
+        // Token inválido o expirado
+        apiService.setAccessToken(null)
+        router.push(ROUTER.LOGIN)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
       apiService.setAccessToken(null)
+      router.push(ROUTER.LOGIN)
     } finally {
       setIsLoading(false)
     }
@@ -98,6 +112,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     await loadUser()
   }
+
+  // Inactivity Timer: Auto-logout after 30 minutes without activity
+  useEffect(() => {
+    // Solo activar si hay usuario logueado
+    if (!user) return
+
+    // No activar en página de login
+    if (typeof window !== 'undefined' && window.location.pathname === ROUTER.LOGIN) {
+      return
+    }
+
+    const INACTIVITY_TIMEOUT = 30 * 60 * 1000 // 30 minutos en ms
+    let inactivityTimer: NodeJS.Timeout
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer)
+      inactivityTimer = setTimeout(() => {
+        console.log('Session expired due to inactivity')
+        logout()
+      }, INACTIVITY_TIMEOUT)
+    }
+
+    // Eventos que indican actividad del usuario
+    const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click']
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, resetTimer, { passive: true })
+    })
+
+    // Iniciar el timer
+    resetTimer()
+
+    // Cleanup
+    return () => {
+      clearTimeout(inactivityTimer)
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, resetTimer)
+      })
+    }
+  }, [user, logout])
+
+  // Multi-tab synchronization: Close session in all tabs when logged out in one
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleStorageChange = (e: StorageEvent) => {
+      // Si el token se eliminó en otra tab
+      if (e.key === 'accessToken' && !e.newValue) {
+        console.log('Session closed in another tab')
+        setUser(null)
+        setRole(null)
+        router.push(ROUTER.LOGIN)
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [router])
 
   return (
     <AuthContext.Provider value={{ user, role, login, logout, isLoading, refreshUser }}>

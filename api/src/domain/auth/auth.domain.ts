@@ -42,7 +42,7 @@ export class AuthDomain {
     const tokens = await this.createSession(user);
 
     // Remove password hash from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
     return {
@@ -98,7 +98,7 @@ export class AuthDomain {
     });
 
     // Remove password hash from response
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     const { passwordHash: _passwordHash2, ...userWithoutPassword } = user;
 
     return userWithoutPassword as User;
@@ -109,7 +109,7 @@ export class AuthDomain {
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(refreshToken, config.jwt.refreshSecret) as JwtPayload;
-    } catch (error) {
+    } catch (_error) {
       throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Invalid refresh token');
     }
 

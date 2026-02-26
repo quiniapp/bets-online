@@ -44,7 +44,13 @@
       "Bash(./node_modules/.bin/next lint:*)",
       "Bash(echo:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(tasklist:*)",
+      "Bash(ls:*)",
+      "Bash(npx next --version)",
+      "Bash(npx eslint .)",
+      "Bash(git worktree:*)"
     ],
     "deny": [],
     "ask": []

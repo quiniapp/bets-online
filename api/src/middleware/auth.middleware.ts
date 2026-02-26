@@ -89,7 +89,7 @@ export const optionalAuth = async (
       const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload;
       req.user = decoded;
     }
-  } catch (error) {
+  } catch (_error) {
     // Ignore errors for optional auth
   }
 

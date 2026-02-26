@@ -61,9 +61,9 @@ export default function TransactionsPage() {
       case ChipMovementType.PRIZE:
         return "Premio"
       case ChipMovementType.SELL_TO_PLAYER:
-        return "Venta Chips"
+        return "Venta Fichas"
       case ChipMovementType.BUY_FROM_ADMIN:
-        return "Compra Chips"
+        return "Compra Fichas"
       case ChipMovementType.ADJUSTMENT:
         return "Ajuste"
       case ChipMovementType.RECOVERY:
@@ -93,7 +93,7 @@ export default function TransactionsPage() {
           <div>
             <h1 className="text-3xl font-bold">Transacciones</h1>
             <p className="text-muted-foreground">
-              Historial de movimientos de chips
+              Historial de movimientos de fichas
             </p>
             <p className="text-xs text-yellow-600 mt-1">
               Nota: Actualmente muestra transacciones del usuario actual. En producción se agregaría endpoint para ver todas las transacciones del árbol.
@@ -175,7 +175,7 @@ export default function TransactionsPage() {
                       <SelectItem value={ChipMovementType.WITHDRAWAL}>Retiros</SelectItem>
                       <SelectItem value={ChipMovementType.LOSS}>Apuestas</SelectItem>
                       <SelectItem value={ChipMovementType.PRIZE}>Premios</SelectItem>
-                      <SelectItem value={ChipMovementType.SELL_TO_PLAYER}>Venta Chips</SelectItem>
+                      <SelectItem value={ChipMovementType.SELL_TO_PLAYER}>Venta Fichas</SelectItem>
                       <SelectItem value={ChipMovementType.ADJUSTMENT}>Ajustes</SelectItem>
                     </SelectContent>
                   </Select>

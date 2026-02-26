@@ -28,6 +28,30 @@ class ApiService {
     return this.accessToken;
   }
 
+  private isAuthError(code?: string): boolean {
+    const authErrorCodes = [
+      'UNAUTHORIZED',
+      'TOKEN_EXPIRED',
+      'INVALID_TOKEN',
+      'SESSION_EXPIRED'
+    ];
+    return authErrorCodes.includes(code || '');
+  }
+
+  private handleAuthError(): void {
+    // Limpiar todos los tokens
+    this.setAccessToken(null);
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('auth_user');
+      localStorage.removeItem('auth_role');
+
+      // Redirect inmediato a login usando window.location para garantizar limpieza completa
+      window.location.href = '/admin/login';
+    }
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -48,18 +72,25 @@ class ApiService {
         headers,
       });
 
+      // Detectar respuestas HTTP de autenticación fallida
+      if (response.status === 401 || response.status === 403) {
+        this.handleAuthError();
+        throw new Error('Session expired');
+      }
+
       const data: ApiResponse<T> = await response.json();
 
-      // Auto-refresh token on 401
-      if (!data.success && data.error?.code === 'TOKEN_EXPIRED') {
+      // Detectar errores de auth en el body
+      if (!data.success && this.isAuthError(data.error?.code)) {
+        // Intentar refresh token primero
         const refreshed = await this.refreshToken();
         if (refreshed) {
           // Retry original request with new token
           return this.request<T>(endpoint, options);
         } else {
           // Refresh failed, logout
-          this.logout();
-          throw new Error('Session expired. Please login again.');
+          this.handleAuthError();
+          throw new Error('Session expired');
         }
       }
 

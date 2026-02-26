@@ -53,4 +53,10 @@ router.get(
   chipsController.getMovements.bind(chipsController)
 );
 
+router.get(
+  '/movements/:userId/export',
+  validateParams(idParamSchema),
+  chipsController.exportMovements.bind(chipsController)
+);
+
 export default router;
