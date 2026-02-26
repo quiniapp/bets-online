@@ -4,16 +4,6 @@ export default function UnderConstructionPage() {
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black"
     >
       {/* Animated radial glow */}
-      <style>{`
-        @keyframes glowPulse {
-          0%, 100% { opacity: 0.15; transform: scale(1); }
-          50% { opacity: 0.28; transform: scale(1.08); }
-        }
-        .glow-pulse {
-          animation: glowPulse 4s ease-in-out infinite;
-        }
-      `}</style>
-
       <div
         className="glow-pulse pointer-events-none absolute inset-0"
         style={{
@@ -32,7 +22,7 @@ export default function UnderConstructionPage() {
           />
           <h1
             className="text-6xl font-bold tracking-widest text-white sm:text-7xl md:text-8xl"
-            style={{ fontFamily: "var(--font-sans)" }}
+            style={{ fontFamily: "var(--font-geist-sans)" }}
           >
             ARENABET
           </h1>

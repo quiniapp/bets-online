@@ -135,3 +135,10 @@ body {
   height: 100dvh;
 }
 
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.28; transform: scale(1.08); }
+}
+.glow-pulse {
+  animation: glowPulse 4s ease-in-out infinite;
+}
