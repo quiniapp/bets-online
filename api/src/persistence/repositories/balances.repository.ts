@@ -84,7 +84,7 @@ export class BalancesRepository {
 
     await balance.update(
       {
-        chipBalance: parseFloat(newBalance),
+        chipBalance: String(newBalance),
         lastUpdatedAt: new Date()
       },
       { transaction }

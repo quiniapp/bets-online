@@ -69,12 +69,13 @@ export const createHmacMiddleware = (config: HmacMiddlewareConfig) => {
       return;
     }
 
-    // Validate signature length before timingSafeEqual (SHA256 hex = 64 chars)
-    const expectedSignature = generateHmac(config.secretKey, canonicalize(req.body));
-    if (receivedSignature.length !== expectedSignature.length) {
-      authFailure(res, 'Invalid signature length');
+    // Validate signature hex format before timingSafeEqual (SHA256 hex = 64 hex chars = 32 bytes)
+    if (!/^[0-9a-fA-F]{64}$/.test(receivedSignature)) {
+      authFailure(res, 'Invalid signature format');
       return;
     }
+
+    const expectedSignature = generateHmac(config.secretKey, canonicalize(req.body));
 
     const isValid = crypto.timingSafeEqual(
       Buffer.from(expectedSignature, 'hex'),

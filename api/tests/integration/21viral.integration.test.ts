@@ -67,7 +67,7 @@ jest.mock('../../src/persistence/repositories/userProviderProfile.repository', (
 jest.mock('../../src/persistence/repositories/balances.repository', () => ({
   balancesRepository: {
     findByUserId: jest.fn(),
-    findByUserIdWithTransaction: jest.fn()
+    findByUserIdWithLock: jest.fn()
   }
 }));
 
