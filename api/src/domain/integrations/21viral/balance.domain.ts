@@ -22,10 +22,6 @@ export class BalanceDomain {
       throw new ViralError(ViralErrorCode.PlayerNotActive, 'Player profile not found');
     }
 
-    if (!profile.isActive) {
-      throw new ViralError(ViralErrorCode.PlayerNotActive, 'Player provider profile is inactive');
-    }
-
     const user = await usersRepository.findById(profile.userId);
 
     if (!user) {
@@ -38,6 +34,10 @@ export class BalanceDomain {
 
     if (user.status !== 'ACTIVE') {
       throw new ViralError(ViralErrorCode.PlayerNotActive, 'Player is not active');
+    }
+
+    if (!profile.isActive) {
+      throw new ViralError(ViralErrorCode.PlayerNotActive, 'Player provider profile is inactive');
     }
 
     const balance = await balancesRepository.findByUserId(profile.userId);
