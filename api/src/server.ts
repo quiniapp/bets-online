@@ -86,6 +86,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start the HTTP server when this file is run directly (not when imported in tests)
+if (require.main === module) {
+  startServer();
+}
 
 export default app;
