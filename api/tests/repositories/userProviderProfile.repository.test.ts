@@ -1,0 +1,12 @@
+import { UserProviderProfileRepository } from '../../src/persistence/repositories/userProviderProfile.repository';
+
+describe('UserProviderProfileRepository', () => {
+  const repo = new UserProviderProfileRepository();
+
+  describe('findByProviderPlayerId', () => {
+    it('should return null when profile does not exist', async () => {
+      const result = await repo.findByProviderPlayerId('21viral', '99999999');
+      expect(result).toBeNull();
+    });
+  });
+});
