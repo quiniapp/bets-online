@@ -91,7 +91,12 @@ const envSchema = z.object({
   // Supabase (opcional si usas Supabase directamente)
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_ANON_KEY: z.string().optional(),
-  SUPABASE_SERVICE_KEY: z.string().optional()
+  SUPABASE_SERVICE_KEY: z.string().optional(),
+
+  // 21Viral provider integration
+  VIRAL_USERNAME: z.string().default(''),
+  VIRAL_SECRET_KEY: z.string().default(''),
+  INTEGRATOR_URL: z.string().default('')
 });
 
 /**
@@ -191,6 +196,13 @@ export const envs = {
     url: envVars.SUPABASE_URL,
     anonKey: envVars.SUPABASE_ANON_KEY,
     serviceKey: envVars.SUPABASE_SERVICE_KEY
+  },
+
+  // 21Viral provider integration
+  viral: {
+    username: envVars.VIRAL_USERNAME,
+    secretKey: envVars.VIRAL_SECRET_KEY,
+    integratorUrl: envVars.INTEGRATOR_URL
   }
 } as const;
 
