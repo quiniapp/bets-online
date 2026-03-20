@@ -10,6 +10,8 @@ import UserGameProviderBlocklistModel from './user-game-provider-blocklist.model
 import AuditLogModel from './audit-log.model';
 import GameModel from './game.model';
 import BetModel from './bet.model';
+import UserProviderProfileModel from './UserProviderProfile.model';
+import ProviderTransactionModel from './ProviderTransaction.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -193,6 +195,32 @@ BetModel.belongsTo(UserModel, {
 });
 
 // ===================================
+// PROVIDER ASSOCIATIONS
+// ===================================
+
+// User -> UserProviderProfiles (1:N)
+UserModel.hasMany(UserProviderProfileModel, {
+  foreignKey: 'userId',
+  as: 'providerProfiles'
+});
+
+UserProviderProfileModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+// User -> ProviderTransactions (1:N)
+UserModel.hasMany(ProviderTransactionModel, {
+  foreignKey: 'userId',
+  as: 'providerTransactions'
+});
+
+ProviderTransactionModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+// ===================================
 // EXPORTS
 // ===================================
 
@@ -208,7 +236,9 @@ export {
   UserGameProviderBlocklistModel,
   AuditLogModel,
   GameModel,
-  BetModel
+  BetModel,
+  UserProviderProfileModel,
+  ProviderTransactionModel
 };
 
 export default {
@@ -223,5 +253,7 @@ export default {
   UserGameProviderBlocklistModel,
   AuditLogModel,
   GameModel,
-  BetModel
+  BetModel,
+  UserProviderProfileModel,
+  ProviderTransactionModel
 };
