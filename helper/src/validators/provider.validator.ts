@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { TransactionType, BetType, GameRoundStatus } from '../types/provider.types';
+import { TransactionType, BetType, GameRoundStatus, AwardType, JackpotType, ReversalOfType } from '../types/provider.types';
 
 const betOutcomeWinSchema = z.object({
   amount: z.string(),
-  awardType: z.string(),
+  awardType: z.nativeEnum(AwardType),
   id: z.string(),
-  type: z.string().optional()
+  type: z.nativeEnum(JackpotType).optional()
 });
 
 export const betOutcomeEventDataSchema = z
@@ -14,7 +14,7 @@ export const betOutcomeEventDataSchema = z
     tournamentWins: z.array(betOutcomeWinSchema).optional(),
     campaignWins: z.array(betOutcomeWinSchema).optional(),
     cashBonusWins: z.array(betOutcomeWinSchema).optional(),
-    reversalOfType: z.string().optional()
+    reversalOfType: z.nativeEnum(ReversalOfType).optional()
   })
   .optional();
 
