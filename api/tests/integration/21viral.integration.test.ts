@@ -79,7 +79,8 @@ jest.mock('../../src/persistence/repositories/users.repository', () => ({
 
 jest.mock('../../src/persistence/repositories/providerTransaction.repository', () => ({
   providerTransactionRepository: {
-    findByProviderTransactionId: jest.fn(),
+    findByIdempotencyKey: jest.fn(),
+    findOriginalForReversal: jest.fn(),
     create: jest.fn()
   }
 }));

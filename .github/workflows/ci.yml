@@ -137,6 +137,11 @@ jobs:
       - name: Build helper package
         run: pnpm --filter helper build
 
+      - name: Run database migrations
+        run: pnpm --filter api db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+
       - name: Run API tests
         run: pnpm --filter api test
         env:
