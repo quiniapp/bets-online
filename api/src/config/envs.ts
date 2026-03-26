@@ -94,9 +94,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_KEY: z.string().optional(),
 
   // 21Viral provider integration
-  VIRAL_USERNAME: z.string().default(''),
-  VIRAL_SECRET_KEY: z.string().default(''),
-  INTEGRATOR_URL: z.string().default('')
+  VIRAL_USERNAME: z.string().min(1, 'VIRAL_USERNAME is required'),
+  VIRAL_SECRET_KEY: z.string().min(32, 'VIRAL_SECRET_KEY must be at least 32 characters'),
+  INTEGRATOR_URL: z.string().url().optional()
 });
 
 /**

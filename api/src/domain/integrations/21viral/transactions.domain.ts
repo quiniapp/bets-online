@@ -76,6 +76,12 @@ export class TransactionsDomain {
           req.transactionType
         );
         if (existingAfterRace) {
+          if (!new Decimal(existingAfterRace.amount).equals(new Decimal(req.amount))) {
+            throw new ViralError(
+              ViralErrorCode.DoubleTransactionWithDifferentAmount,
+              'Same transaction ID with different amount'
+            );
+          }
           return {
             balance: existingAfterRace.balanceAfter,
             currency: profile.currency,
