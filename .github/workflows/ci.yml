@@ -85,6 +85,8 @@ jobs:
           SESSION_SECRET: test-session-secret-min-32-chars-for-build
           ALLOWED_ORIGINS: http://localhost:3000
           API_URL: http://localhost:3001
+          VIRAL_USERNAME: test-integrator
+          VIRAL_SECRET_KEY: test-viral-secret-key-min-32-chars-for-build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -155,6 +157,8 @@ jobs:
           SESSION_SECRET: test-session-secret-min-32-chars-for-tests
           ALLOWED_ORIGINS: http://localhost:3000
           API_URL: http://localhost:3001
+          VIRAL_USERNAME: test-integrator
+          VIRAL_SECRET_KEY: test-viral-secret-key-min-32-chars-for-tests
 
   # Job 4: Tests (Web)
   test-web:
