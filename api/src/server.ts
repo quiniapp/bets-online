@@ -8,6 +8,8 @@ import { config } from './config';
 import { testConnection } from './config/database';
 import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import routes from './routes';
+import viral21Routes from './routes/integrations/21viral';
+import { createHmacMiddleware } from './middleware/hmac.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -41,6 +43,17 @@ app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions))
 // API routes
 app.use('/api', routes);
 
+// 21Viral provider callback routes (HMAC authenticated, no JWT)
+app.use(
+  '/api/integrations/21viral',
+  createHmacMiddleware({
+    username: config.viral.username,
+    secretKey: config.viral.secretKey,
+    providerName: '21viral'
+  }),
+  viral21Routes
+);
+
 // Root endpoint
 app.get('/', (_req, res) => {
   res.json({
@@ -73,6 +86,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start the HTTP server when this file is run directly (not when imported in tests)
+if (require.main === module) {
+  startServer();
+}
 
 export default app;
