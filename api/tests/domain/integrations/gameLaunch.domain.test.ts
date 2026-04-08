@@ -4,7 +4,6 @@ import { gamesRepository } from '../../../src/persistence/repositories/games.rep
 import { userProviderProfileRepository } from '../../../src/persistence/repositories/userProviderProfile.repository';
 import { balancesRepository } from '../../../src/persistence/repositories/balances.repository';
 import { usersRepository } from '../../../src/persistence/repositories/users.repository';
-import { sequelize } from '../../../src/config/sequelize';
 import { UserRole } from 'helper';
 
 jest.mock('../../../src/config', () => ({
