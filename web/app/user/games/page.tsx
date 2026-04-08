@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Play, DollarSign, Loader2 } from "lucide-react"
+import { Play, DollarSign, Loader2, ExternalLink } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { useRouter } from "next/navigation"
 import { useGames } from "@/hooks/useGames"
 import { useBets } from "@/hooks/useBets"
 import { useChips } from "@/hooks/useChips"
@@ -18,6 +19,7 @@ import type { Game } from "helper"
 export default function UserGames() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
   const { games, loading: loadingGames } = useGames(true) // Only active games
   const { bets, placeBet, loadBets } = useBets()
   const { balance, loadBalance } = useChips()
@@ -65,7 +67,7 @@ export default function UserGames() {
       })
 
       if (response.success && response.data) {
-        const { bet, newBalance } = response.data
+        const { bet } = response.data
 
         // Update balance
         loadBalance()
@@ -137,32 +139,60 @@ export default function UserGames() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {games.map((game) => (
-                      <Card
-                        key={game.id}
-                        className={`cursor-pointer transition-all ${
-                          selectedGame?.id === game.id ? "ring-2 ring-blue-500" : ""
-                        }`}
-                        onClick={() => setSelectedGame(game)}
-                      >
-                        <CardHeader>
-                          <CardTitle className="flex items-center justify-between">
-                            {game.name}
-                            <Play className="h-5 w-5" />
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-gray-600 mb-3">{game.description}</p>
-                          <div className="flex justify-between text-sm text-gray-500">
-                            <span>Min: ${game.minBet}</span>
-                            <span>Max: ${game.maxBet}</span>
-                          </div>
-                          <div className="mt-2 text-xs text-gray-400">
-                            House Edge: {game.houseEdge}%
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                    {games.map((game) => {
+                      const isProviderGame = !!game.providerGameId
+                      return (
+                        <Card
+                          key={game.id}
+                          className={`transition-all ${
+                            isProviderGame
+                              ? "cursor-default"
+                              : `cursor-pointer ${selectedGame?.id === game.id ? "ring-2 ring-blue-500" : ""}`
+                          }`}
+                          onClick={() => { if (!isProviderGame) setSelectedGame(game) }}
+                        >
+                          <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                              {game.name}
+                              {isProviderGame ? (
+                                <ExternalLink className="h-5 w-5 text-primary" />
+                              ) : (
+                                <Play className="h-5 w-5" />
+                              )}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {game.defaultLogo && (
+                              <img
+                                src={game.defaultLogo}
+                                alt={game.name}
+                                className="w-full h-28 object-cover rounded-md mb-3"
+                              />
+                            )}
+                            <p className="text-gray-600 mb-3">{game.description}</p>
+                            {isProviderGame ? (
+                              <Button
+                                className="w-full"
+                                onClick={() => router.push(`/user/games/${game.id}/play`)}
+                              >
+                                <Play className="mr-2 h-4 w-4" />
+                                Jugar
+                              </Button>
+                            ) : (
+                              <>
+                                <div className="flex justify-between text-sm text-gray-500">
+                                  <span>Min: ${game.minBet}</span>
+                                  <span>Max: ${game.maxBet}</span>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-400">
+                                  House Edge: {game.houseEdge}%
+                                </div>
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
                   </div>
                 )}
 
