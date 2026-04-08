@@ -29,7 +29,8 @@ export const config = {
   session: envs.session,
   cors: envs.cors,
   admin: envs.admin,
-  supabase: envs.supabase
+  supabase: envs.supabase,
+  viral: envs.viral
 };
 
 // Re-exportar envs para uso directo
