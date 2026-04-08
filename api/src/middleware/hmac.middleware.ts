@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { ViralErrorCode } from 'helper';
+import { canonicalize } from '../utils/hmac.utils';
 
 export interface HmacMiddlewareConfig {
   username: string;
@@ -9,19 +10,6 @@ export interface HmacMiddlewareConfig {
   timestampToleranceSeconds?: number;
 }
 
-function canonicalize(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${(value as unknown[]).map(canonicalize).join(',')}]`;
-  }
-  const obj = value as Record<string, unknown>;
-  const sorted = Object.keys(obj).sort();
-  return `{${sorted.map(k => `${JSON.stringify(k)}:${canonicalize(obj[k])}`).join(',')}}`;
-}
-
-function generateHmac(secretKey: string, canonicalBody: string): string {
-  return crypto.createHmac('sha256', secretKey).update(canonicalBody, 'utf8').digest('hex');
-}
 
 function authFailure(res: Response, message: string) {
   return res.status(401).json({
@@ -75,7 +63,8 @@ export const createHmacMiddleware = (config: HmacMiddlewareConfig) => {
       return;
     }
 
-    const expectedSignature = generateHmac(config.secretKey, canonicalize(req.body));
+    const canonicalBody = canonicalize(req.body);
+    const expectedSignature = crypto.createHmac('sha256', config.secretKey).update(canonicalBody, 'utf8').digest('hex');
 
     const isValid = crypto.timingSafeEqual(
       Buffer.from(expectedSignature, 'hex'),
