@@ -1,10 +1,10 @@
+import crypto from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
-import { doubleCsrf } from 'csrf-csrf';
 import { config } from './config';
 import { testConnection } from './config/database';
 import { swaggerSpec, swaggerUiOptions } from './config/swagger';
@@ -32,29 +32,37 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// CSRF protection (double-submit cookie pattern)
-// Skipped for requests using Authorization header (Bearer/HMAC — not CSRF-vulnerable)
-const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
-  getSecret: () => config.session.secret,
-  getSessionIdentifier: req => (req.cookies as Record<string, string>)['session'] ?? req.ip ?? '',
-  cookieName: config.server.env === 'production' ? '__Host-csrf' : 'csrf-token',
-  cookieOptions: {
-    httpOnly: false,
-    sameSite: 'strict',
-    secure: config.server.env === 'production',
-    path: '/'
-  },
-  size: 64,
-  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
-  getCsrfTokenFromRequest: req => req.headers['x-csrf-token'] as string
-});
+// CSRF protection — double-submit cookie pattern.
+// Frontend: call GET /api/csrf-token to receive the cookie, then include
+// the token value as the x-csrf-token header on every state-changing request.
+const CSRF_COOKIE = 'csrf-token';
+const CSRF_HEADER = 'x-csrf-token';
 
 const csrfMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  // Bearer/HMAC auth — not CSRF-vulnerable
+  // Safe methods — no state change
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  // Bearer/HMAC auth — browser cannot forge the Authorization header cross-site
   if (req.headers.authorization) return next();
-  // 21Viral provider callbacks are HMAC-authenticated server-to-server calls
+  // 21Viral provider callbacks — authenticated server-to-server HMAC calls
   if (req.path.startsWith('/integrations/21viral/players')) return next();
-  doubleCsrfProtection(req, res, next);
+
+  const csrfHeader = req.headers[CSRF_HEADER] as string | undefined;
+  const csrfCookie = (req.cookies as Record<string, string>)[CSRF_COOKIE];
+
+  if (
+    !csrfHeader ||
+    !csrfCookie ||
+    csrfHeader.length !== csrfCookie.length ||
+    !crypto.timingSafeEqual(Buffer.from(csrfHeader), Buffer.from(csrfCookie))
+  ) {
+    res.status(403).json({
+      success: false,
+      error: { code: 'CSRF_INVALID', message: 'Invalid or missing CSRF token' }
+    });
+    return;
+  }
+
+  next();
 };
 
 // Logging
@@ -65,9 +73,17 @@ if (config.server.env !== 'test') {
 // Swagger documentation
 app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
 
-// CSRF token endpoint (must come before csrfMiddleware so it can set the cookie)
-app.get('/api/csrf-token', (req: Request, res: Response) => {
-  res.json({ csrfToken: generateCsrfToken(req, res) });
+// CSRF token endpoint — sets the csrf-token cookie and returns the value.
+// Must be called before any state-changing request that uses cookie auth.
+app.get('/api/csrf-token', (_req: Request, res: Response) => {
+  const token = crypto.randomBytes(32).toString('hex');
+  res.cookie(CSRF_COOKIE, token, {
+    httpOnly: false,
+    sameSite: 'strict',
+    secure: config.server.env === 'production',
+    path: '/'
+  });
+  res.json({ csrfToken: token });
 });
 
 // API routes (global rate limiter + CSRF protection)
