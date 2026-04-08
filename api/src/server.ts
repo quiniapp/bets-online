@@ -30,7 +30,7 @@ app.use(
 // Request parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieParser()); // lgtm[js/missing-token-validation] -- CSRF is protected by csrfMiddleware (double-submit cookie pattern) applied via app.use('/api', csrfMiddleware, routes). cookieParser is needed for JWT session cookie reads.
 
 // CSRF protection — double-submit cookie pattern.
 // Frontend: call GET /api/csrf-token to receive the cookie, then include
