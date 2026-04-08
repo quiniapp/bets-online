@@ -1,6 +1,6 @@
 # Provider Callbacks (21Viral) Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement the two server-to-server callback endpoints that 21Viral calls during game sessions: `/api/integrations/21viral/players/balance` and `/api/integrations/21viral/players/transactions`, authenticated with HMAC-SHA256 and with full idempotency support.
 
@@ -26,7 +26,7 @@
 
 ### Task 1: Rename env vars and add decimal.js
 
-- [ ] **Step 1: Update `.env`**
+- [x] **Step 1: Update `.env`**
 
 Open `.env` and rename:
 ```
@@ -40,7 +40,7 @@ VIRAL_SECRET_KEY=961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4
 INTEGRATOR_URL=https://api.stg.games-viral.com/
 ```
 
-- [ ] **Step 2: Update `.env.example`**
+- [x] **Step 2: Update `.env.example`**
 
 Add the same keys to `.env.example`:
 ```
@@ -50,7 +50,7 @@ VIRAL_SECRET_KEY=your-viral-secret-key
 INTEGRATOR_URL=https://api.stg.games-viral.com/
 ```
 
-- [ ] **Step 3: Install decimal.js**
+- [x] **Step 3: Install decimal.js**
 
 ```bash
 cd C:\Programacion\Casino\bets-online
@@ -60,7 +60,7 @@ pnpm --filter api add -D @types/decimal.js
 
 Expected: `decimal.js` appears in `api/package.json` dependencies.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git checkout -b feature/provider-callbacks
@@ -74,7 +74,7 @@ git commit -m "chore: add decimal.js and rename viral env vars"
 
 ### Task 2: Create provider types in helper
 
-- [ ] **Step 1: Create `helper/src/types/provider.types.ts`**
+- [x] **Step 1: Create `helper/src/types/provider.types.ts`**
 
 ```typescript
 export enum TransactionType {
@@ -218,14 +218,14 @@ export interface ProviderTransaction {
 }
 ```
 
-- [ ] **Step 2: Export from `helper/src/types/index.ts`**
+- [x] **Step 2: Export from `helper/src/types/index.ts`**
 
 Add to the existing exports:
 ```typescript
 export * from './provider.types';
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add helper/src/types/
@@ -236,7 +236,7 @@ git commit -m "feat(helper): add provider types and enums for 21Viral integratio
 
 ### Task 3: Create provider validators in helper
 
-- [ ] **Step 1: Create `helper/src/validators/provider.validator.ts`**
+- [x] **Step 1: Create `helper/src/validators/provider.validator.ts`**
 
 ```typescript
 import { z } from 'zod';
@@ -282,14 +282,14 @@ export const providerTransactionRequestSchema = z.object({
 });
 ```
 
-- [ ] **Step 2: Export from `helper/src/validators/index.ts`**
+- [x] **Step 2: Export from `helper/src/validators/index.ts`**
 
 Add to the existing exports:
 ```typescript
 export * from './provider.validator';
 ```
 
-- [ ] **Step 3: Verify TypeScript compiles**
+- [x] **Step 3: Verify TypeScript compiles**
 
 ```bash
 cd C:\Programacion\Casino\bets-online
@@ -298,7 +298,7 @@ pnpm --filter helper type-check
 
 Expected: no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add helper/src/validators/
@@ -320,7 +320,7 @@ git commit -m "feat(helper): add Zod validators for 21Viral provider requests"
 
 ### Task 4: Migration — user_provider_profiles
 
-- [ ] **Step 1: Create migration file**
+- [x] **Step 1: Create migration file**
 
 Create `api/src/persistence/migrations/20260319000001-create-user-provider-profiles.js`:
 
@@ -398,7 +398,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 2: Run migration**
+- [x] **Step 2: Run migration**
 
 ```bash
 cd C:\Programacion\Casino\bets-online
@@ -407,7 +407,7 @@ pnpm --filter api migration:run
 
 Expected: `20260319000001-create-user-provider-profiles: migrated` in output.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/persistence/migrations/20260319000001-create-user-provider-profiles.js
@@ -418,7 +418,7 @@ git commit -m "feat(db): add user_provider_profiles migration"
 
 ### Task 5: Migration — provider_transactions
 
-- [ ] **Step 1: Create migration file**
+- [x] **Step 1: Create migration file**
 
 Create `api/src/persistence/migrations/20260319000002-create-provider-transactions.js`:
 
@@ -530,7 +530,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 2: Run migration**
+- [x] **Step 2: Run migration**
 
 ```bash
 pnpm --filter api migration:run
@@ -538,7 +538,7 @@ pnpm --filter api migration:run
 
 Expected: `20260319000002-create-provider-transactions: migrated`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/persistence/migrations/20260319000002-create-provider-transactions.js
@@ -549,7 +549,7 @@ git commit -m "feat(db): add provider_transactions migration"
 
 ### Task 6: Sequelize model — UserProviderProfile
 
-- [ ] **Step 1: Create `api/src/persistence/models/UserProviderProfile.model.ts`**
+- [x] **Step 1: Create `api/src/persistence/models/UserProviderProfile.model.ts`**
 
 ```typescript
 import { Model, DataTypes } from 'sequelize';
@@ -639,7 +639,7 @@ UserProviderProfileModel.init(
 export default UserProviderProfileModel;
 ```
 
-- [ ] **Step 2: Create `api/src/persistence/models/ProviderTransaction.model.ts`**
+- [x] **Step 2: Create `api/src/persistence/models/ProviderTransaction.model.ts`**
 
 ```typescript
 import { Model, DataTypes } from 'sequelize';
@@ -764,7 +764,7 @@ ProviderTransactionModel.init(
 export default ProviderTransactionModel;
 ```
 
-- [ ] **Step 3: Export models from `api/src/persistence/models/index.ts`**
+- [x] **Step 3: Export models from `api/src/persistence/models/index.ts`**
 
 Add these exports to the existing index.ts:
 ```typescript
@@ -772,7 +772,7 @@ export { UserProviderProfileModel } from './UserProviderProfile.model';
 export { ProviderTransactionModel } from './ProviderTransaction.model';
 ```
 
-- [ ] **Step 4: Type-check**
+- [x] **Step 4: Type-check**
 
 ```bash
 pnpm --filter api type-check
@@ -780,7 +780,7 @@ pnpm --filter api type-check
 
 Expected: no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/persistence/models/
@@ -801,7 +801,7 @@ git commit -m "feat(db): add UserProviderProfile and ProviderTransaction Sequeli
 
 ### Task 7: UserProviderProfile repository
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/repositories/userProviderProfile.repository.test.ts`:
 
@@ -820,7 +820,7 @@ describe('UserProviderProfileRepository', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 cd C:\Programacion\Casino\bets-online
@@ -829,7 +829,7 @@ pnpm --filter api test -- --testPathPattern="userProviderProfile.repository"
 
 Expected: FAIL — `UserProviderProfileRepository` not found.
 
-- [ ] **Step 3: Create `api/src/persistence/repositories/userProviderProfile.repository.ts`**
+- [x] **Step 3: Create `api/src/persistence/repositories/userProviderProfile.repository.ts`**
 
 ```typescript
 import { Transaction } from 'sequelize';
@@ -903,7 +903,7 @@ export class UserProviderProfileRepository {
 export const userProviderProfileRepository = new UserProviderProfileRepository();
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="userProviderProfile.repository"
@@ -911,7 +911,7 @@ pnpm --filter api test -- --testPathPattern="userProviderProfile.repository"
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/persistence/repositories/userProviderProfile.repository.ts api/tests/repositories/userProviderProfile.repository.test.ts
@@ -922,7 +922,7 @@ git commit -m "feat: add UserProviderProfileRepository"
 
 ### Task 8: ProviderTransaction repository
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/repositories/providerTransaction.repository.test.ts`:
 
@@ -953,7 +953,7 @@ describe('ProviderTransactionRepository', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="providerTransaction.repository"
@@ -961,7 +961,7 @@ pnpm --filter api test -- --testPathPattern="providerTransaction.repository"
 
 Expected: FAIL — `ProviderTransactionRepository` not found.
 
-- [ ] **Step 3: Create `api/src/persistence/repositories/providerTransaction.repository.ts`**
+- [x] **Step 3: Create `api/src/persistence/repositories/providerTransaction.repository.ts`**
 
 ```typescript
 import { Transaction, Op } from 'sequelize';
@@ -1063,7 +1063,7 @@ export class ProviderTransactionRepository {
 export const providerTransactionRepository = new ProviderTransactionRepository();
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="providerTransaction.repository"
@@ -1071,7 +1071,7 @@ pnpm --filter api test -- --testPathPattern="providerTransaction.repository"
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/persistence/repositories/providerTransaction.repository.ts api/tests/repositories/providerTransaction.repository.test.ts
@@ -1084,7 +1084,7 @@ git commit -m "feat: add ProviderTransactionRepository"
 
 The existing `BalancesRepository` performs balance reads and writes without accepting a Sequelize `Transaction` parameter. This breaks atomicity when called from within a DB transaction. We add a new transaction-aware method `updateChipBalance`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `api/tests/repositories/balances.repository.test.ts` (create if not exists):
 
@@ -1099,7 +1099,7 @@ describe('BalancesRepository.updateChipBalance', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="balances.repository"
@@ -1107,7 +1107,7 @@ pnpm --filter api test -- --testPathPattern="balances.repository"
 
 Expected: FAIL — `updateChipBalance` not a function.
 
-- [ ] **Step 3: Add `updateChipBalance` to `api/src/persistence/repositories/balances.repository.ts`**
+- [x] **Step 3: Add `updateChipBalance` to `api/src/persistence/repositories/balances.repository.ts`**
 
 Add this method to the existing `BalancesRepository` class (do NOT remove or change existing methods):
 
@@ -1153,7 +1153,7 @@ async findByUserIdWithLock(
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="balances.repository"
@@ -1161,7 +1161,7 @@ pnpm --filter api test -- --testPathPattern="balances.repository"
 
 Expected: PASS.
 
-- [ ] **Step 5: Export new repos from `api/src/persistence/repositories/index.ts`**
+- [x] **Step 5: Export new repos from `api/src/persistence/repositories/index.ts`**
 
 Add to the existing index:
 ```typescript
@@ -1169,7 +1169,7 @@ export { userProviderProfileRepository, UserProviderProfileRepository } from './
 export { providerTransactionRepository, ProviderTransactionRepository } from './providerTransaction.repository';
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/src/persistence/repositories/
@@ -1188,7 +1188,7 @@ git commit -m "feat: add transaction-aware balance update and new provider repos
 
 ### Task 10: HMAC middleware
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `api/tests/middleware/hmac.middleware.test.ts`:
 
@@ -1285,7 +1285,7 @@ describe('createHmacMiddleware', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="hmac.middleware"
@@ -1293,7 +1293,7 @@ pnpm --filter api test -- --testPathPattern="hmac.middleware"
 
 Expected: FAIL — `createHmacMiddleware` not found.
 
-- [ ] **Step 3: Create `api/src/middleware/hmac.middleware.ts`**
+- [x] **Step 3: Create `api/src/middleware/hmac.middleware.ts`**
 
 ```typescript
 import { Request, Response, NextFunction } from 'express';
@@ -1389,7 +1389,7 @@ export const createHmacMiddleware = (config: HmacMiddlewareConfig) => {
 };
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="hmac.middleware"
@@ -1397,7 +1397,7 @@ pnpm --filter api test -- --testPathPattern="hmac.middleware"
 
 Expected: All 7 tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/middleware/hmac.middleware.ts api/tests/middleware/hmac.middleware.test.ts
@@ -1419,7 +1419,7 @@ git commit -m "feat: add HMAC-SHA256 middleware with timestamp replay protection
 
 ### Task 11: Balance domain
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `api/tests/domain/integrations/balance.domain.test.ts`:
 
@@ -1506,7 +1506,7 @@ describe('BalanceDomain.getBalance', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify tests fail**
+- [x] **Step 2: Run to verify tests fail**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="balance.domain"
@@ -1514,7 +1514,7 @@ pnpm --filter api test -- --testPathPattern="balance.domain"
 
 Expected: FAIL.
 
-- [ ] **Step 3: Create `api/src/domain/integrations/21viral/balance.domain.ts`**
+- [x] **Step 3: Create `api/src/domain/integrations/21viral/balance.domain.ts`**
 
 ```typescript
 import Decimal from 'decimal.js';
@@ -1580,7 +1580,7 @@ export class BalanceDomain {
 export const balanceDomain = new BalanceDomain();
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="balance.domain"
@@ -1588,7 +1588,7 @@ pnpm --filter api test -- --testPathPattern="balance.domain"
 
 Expected: All 4 tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/domain/integrations/ api/tests/domain/integrations/balance.domain.test.ts
@@ -1599,7 +1599,7 @@ git commit -m "feat: add BalanceDomain for 21Viral provider balance callback"
 
 ### Task 12: Balance controller and routes
 
-- [ ] **Step 1: Create `api/src/controllers/integrations/21viral/balance.controller.ts`**
+- [x] **Step 1: Create `api/src/controllers/integrations/21viral/balance.controller.ts`**
 
 ```typescript
 import { Request, Response, NextFunction } from 'express';
@@ -1637,7 +1637,7 @@ export class BalanceController {
 export const balanceController = new BalanceController();
 ```
 
-- [ ] **Step 2: Create `api/src/routes/integrations/21viral/balance.routes.ts`**
+- [x] **Step 2: Create `api/src/routes/integrations/21viral/balance.routes.ts`**
 
 ```typescript
 import { Router } from 'express';
@@ -1650,7 +1650,7 @@ router.post('/balance', balanceController.getBalance.bind(balanceController));
 export default router;
 ```
 
-- [ ] **Step 3: Create `api/src/routes/integrations/21viral/index.ts`**
+- [x] **Step 3: Create `api/src/routes/integrations/21viral/index.ts`**
 
 ```typescript
 import { Router } from 'express';
@@ -1663,7 +1663,7 @@ router.use('/players', balanceRoutes);
 export default router;
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add api/src/controllers/integrations/ api/src/routes/integrations/
@@ -1685,7 +1685,7 @@ git commit -m "feat: add balance controller and routes for 21Viral integration"
 
 ### Task 13: Transactions domain
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `api/tests/domain/integrations/transactions.domain.test.ts`:
 
@@ -1825,7 +1825,7 @@ describe('TransactionsDomain', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify tests fail**
+- [x] **Step 2: Run to verify tests fail**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="transactions.domain"
@@ -1833,7 +1833,7 @@ pnpm --filter api test -- --testPathPattern="transactions.domain"
 
 Expected: FAIL.
 
-- [ ] **Step 3: Create `api/src/domain/integrations/21viral/transactions.domain.ts`**
+- [x] **Step 3: Create `api/src/domain/integrations/21viral/transactions.domain.ts`**
 
 ```typescript
 import Decimal from 'decimal.js';
@@ -2005,7 +2005,7 @@ export class TransactionsDomain {
 export const transactionsDomain = new TransactionsDomain();
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="transactions.domain"
@@ -2013,7 +2013,7 @@ pnpm --filter api test -- --testPathPattern="transactions.domain"
 
 Expected: All 9 tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/domain/integrations/21viral/transactions.domain.ts api/tests/domain/integrations/transactions.domain.test.ts
@@ -2024,7 +2024,7 @@ git commit -m "feat: add TransactionsDomain for 21Viral Debit/Credit/Reversal ca
 
 ### Task 14: Transactions controller and routes
 
-- [ ] **Step 1: Create `api/src/controllers/integrations/21viral/transactions.controller.ts`**
+- [x] **Step 1: Create `api/src/controllers/integrations/21viral/transactions.controller.ts`**
 
 ```typescript
 import { Request, Response, NextFunction } from 'express';
@@ -2061,7 +2061,7 @@ export class TransactionsController {
 export const transactionsController = new TransactionsController();
 ```
 
-- [ ] **Step 2: Create `api/src/routes/integrations/21viral/transactions.routes.ts`**
+- [x] **Step 2: Create `api/src/routes/integrations/21viral/transactions.routes.ts`**
 
 ```typescript
 import { Router } from 'express';
@@ -2074,7 +2074,7 @@ router.post('/transactions', transactionsController.processTransaction.bind(tran
 export default router;
 ```
 
-- [ ] **Step 3: Update `api/src/routes/integrations/21viral/index.ts`**
+- [x] **Step 3: Update `api/src/routes/integrations/21viral/index.ts`**
 
 ```typescript
 import { Router } from 'express';
@@ -2089,7 +2089,7 @@ router.use('/players', transactionsRoutes);
 export default router;
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add api/src/controllers/integrations/21viral/transactions.controller.ts api/src/routes/integrations/21viral/
@@ -2108,7 +2108,7 @@ git commit -m "feat: add transactions controller and routes for 21Viral integrat
 
 ### Task 15: Mount routes in server.ts
 
-- [ ] **Step 1: Update `api/src/server.ts`**
+- [x] **Step 1: Update `api/src/server.ts`**
 
 Add after the existing `app.use('/api', routes)` line:
 
@@ -2128,7 +2128,7 @@ app.use(
 );
 ```
 
-- [ ] **Step 2: Add viral config to `api/src/config/index.ts`**
+- [x] **Step 2: Add viral config to `api/src/config/index.ts`**
 
 Add to the existing config object:
 ```typescript
@@ -2139,7 +2139,7 @@ viral: {
 }
 ```
 
-- [ ] **Step 3: Type-check the whole api**
+- [x] **Step 3: Type-check the whole api**
 
 ```bash
 pnpm --filter api type-check
@@ -2147,7 +2147,7 @@ pnpm --filter api type-check
 
 Expected: no errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add api/src/server.ts api/src/config/
@@ -2158,7 +2158,7 @@ git commit -m "feat: mount 21Viral integration routes in server"
 
 ### Task 16: Integration tests
 
-- [ ] **Step 1: Create `api/tests/integration/21viral.integration.test.ts`**
+- [x] **Step 1: Create `api/tests/integration/21viral.integration.test.ts`**
 
 ```typescript
 import request from 'supertest';
@@ -2264,7 +2264,7 @@ describe('21Viral Integration — Transactions endpoint', () => {
 });
 ```
 
-- [ ] **Step 2: Run integration tests**
+- [x] **Step 2: Run integration tests**
 
 ```bash
 pnpm --filter api test -- --testPathPattern="21viral.integration"
@@ -2272,7 +2272,7 @@ pnpm --filter api test -- --testPathPattern="21viral.integration"
 
 Expected: All tests that check HMAC and validation pass. Tests that need a real DB player (PlayerNotActive) may fail if DB is not seeded — that's acceptable for CI; they require a real staging test user.
 
-- [ ] **Step 3: Run full test suite**
+- [x] **Step 3: Run full test suite**
 
 ```bash
 pnpm --filter api test
@@ -2280,7 +2280,7 @@ pnpm --filter api test
 
 Expected: all tests pass (`--passWithNoTests` is configured so any skipped tests are OK).
 
-- [ ] **Step 4: Run type-check and lint**
+- [x] **Step 4: Run type-check and lint**
 
 ```bash
 pnpm --filter api type-check
@@ -2289,14 +2289,14 @@ pnpm --filter api lint
 
 Expected: no errors.
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 ```bash
 git add api/tests/integration/21viral.integration.test.ts
 git commit -m "test: add 21Viral integration tests for HMAC and endpoint validation"
 ```
 
-- [ ] **Step 6: Push branch**
+- [x] **Step 6: Push branch**
 
 ```bash
 git push -u origin feature/provider-callbacks
@@ -2306,17 +2306,60 @@ git push -u origin feature/provider-callbacks
 
 ## Summary
 
-| Chunk | Tasks | Commits |
-|-------|-------|---------|
-| 1 — Foundation | 1-3 | env vars, decimal.js, types, validators |
-| 2 — Database | 4-6 | 2 migrations, 2 models |
-| 3 — Repositories | 7-9 | UserProviderProfile, ProviderTransaction, BalancesRepository update |
-| 4 — HMAC Middleware | 10 | middleware with timestamp + length guards |
-| 5 — Balance | 11-12 | domain, controller, routes |
-| 6 — Transactions | 13-14 | domain (Debit/Credit/Reversal + idempotency), controller, routes |
-| 7 — Integration | 15-16 | server mount, integration tests |
+| Chunk | Tasks | Commits | Estado |
+|-------|-------|---------|--------|
+| 1 — Foundation | 1-3 | env vars, decimal.js, types, validators | ✅ 2026-03-19 |
+| 2 — Database | 4-6 | 2 migrations, 2 models | ✅ 2026-03-19 |
+| 3 — Repositories | 7-9 | UserProviderProfile, ProviderTransaction, BalancesRepository update | ✅ 2026-03-20 |
+| 4 — HMAC Middleware | 10 | middleware with timestamp + length guards | ✅ 2026-03-20 |
+| 5 — Balance | 11-12 | domain, controller, routes | ✅ 2026-03-21 |
+| 6 — Transactions | 13-14 | domain (Debit/Credit/Reversal + idempotency), controller, routes | ✅ 2026-03-21 |
+| 7 — Integration | 15-16 | server mount, integration tests | ✅ 2026-03-26 |
 
-**Total: 16 tasks, ~20 commits**
+**Total: 16 tasks, ~20 commits — PR #19 merged 2026-03-26 ✅**
+
+---
+
+## Tracking: Próxima Fase — Game Launch
+
+> **Rama:** `feature/game-launch` (a crear desde `main` o `develop`)
+> **Spec:** `docs/superpowers/specs/2026-03-18-provider-callbacks-design.md` §14 y §15
+> **Estado general:** ⬜ Pendiente
+
+### Chunk A — Obtener catálogo de juegos
+
+- [ ] **A.1** Crear service `api/src/services/viral.service.ts` con método `getGames()` que llama a `POST https://api.stg.games-viral.com/v1/games` con HMAC-SHA256 saliente
+- [ ] **A.2** Crear endpoint `GET /api/integrations/21viral/games` (Operator → nuestro backend → Provider) que devuelve el catálogo paginado/cacheado
+- [ ] **A.3** Commit: `feat: add viral games catalog endpoint`
+
+### Chunk B — Crear sesión de juego
+
+- [ ] **B.1** Crear método `viral.service.ts#createGameSession(params)` que llama a `POST https://api.stg.games-viral.com/v1/games/sessions`
+  - Debe buscar/crear el `UserProviderProfile` del jugador antes de llamar
+  - Debe obtener el `chip_balance` actual para pasarlo como `balance`
+  - Usar `localeCode: "es-AR"`, `countryCode: "AR"` como defaults
+- [ ] **B.2** Crear endpoint `POST /api/integrations/21viral/games/sessions` que recibe `{ gameId, playerDeviceType, gameMode }` y devuelve `{ gameStartUrl }`
+- [ ] **B.3** Agregar lógica de creación automática de `UserProviderProfile` si el jugador no tiene uno (asignar `provider_player_id` con sequence de DB)
+- [ ] **B.4** Commit: `feat: add viral game session launch endpoint`
+
+### Chunk C — Frontend
+
+- [ ] **C.1** Crear componente `app/src/components/molecules/GameIframe/GameIframe.tsx` que:
+  - Recibe `gameStartUrl` como prop
+  - Renderiza `<iframe src={gameStartUrl} />`
+  - Escucha `postMessage` para `rgs-backToHome`, `rgs-deposit`, `exi_onHomeUserAction`, `exi_onCashierUserAction`
+  - Redirige a `lobbyUrl` o `depositUrl` según el evento
+- [ ] **C.2** Crear página `app/src/app/(routes)/games/[gameId]/page.tsx` que:
+  - Llama al backend para obtener `gameStartUrl`
+  - Renderiza `<GameIframe>`
+- [ ] **C.3** Commit: `feat: add game iframe component and launch page`
+
+### Chunk D — Tests y cierre
+
+- [ ] **D.1** Tests unitarios para `viral.service.ts` (mockeando HTTP al Provider)
+- [ ] **D.2** Test de integración E2E del flujo completo: balance → session → iframe
+- [ ] **D.3** Type-check + lint: `pnpm type-check && pnpm lint`
+- [ ] **D.4** Final commit + push + PR hacia `develop`
 
 After this branch is merged, the next branches are:
 - `feature/game-catalog` — sync game catalog from 21Viral `POST /v1/games`

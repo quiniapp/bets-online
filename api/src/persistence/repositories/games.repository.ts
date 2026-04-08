@@ -62,21 +62,69 @@ export class GamesRepository {
     });
   }
 
-  private mapToGame(data: GameModel | Record<string, unknown>): Game {
-    // Convert Sequelize model to plain object if needed
-    const plain = data instanceof GameModel ? data.get({ plain: true }) : data;
+  async findByProviderGame(
+    providerName: string,
+    providerGameId: string
+  ): Promise<Game | null> {
+    const game = await GameModel.findOne({
+      where: { providerName, providerGameId }
+    });
+    if (!game) return null;
+    return this.mapToGame(game);
+  }
 
+  async upsertFromProvider(data: {
+    providerName: string;
+    providerGameId: string;
+    name: string;
+    gameType: string;
+    defaultLogo: string;
+  }): Promise<Game> {
+    const existing = await GameModel.findOne({
+      where: { providerName: data.providerName, providerGameId: data.providerGameId }
+    });
+
+    if (existing) {
+      await existing.update({
+        name: data.name,
+        gameType: data.gameType,
+        defaultLogo: data.defaultLogo
+      });
+      return this.mapToGame(existing);
+    }
+
+    const created = await GameModel.create({
+      name: data.name,
+      description: `${data.name} — synced from ${data.providerName}`,
+      isActive: true,
+      minBet: 1,
+      maxBet: 10000,
+      houseEdge: 0,
+      providerName: data.providerName,
+      providerGameId: data.providerGameId,
+      defaultLogo: data.defaultLogo,
+      gameType: data.gameType
+    });
+    return this.mapToGame(created);
+  }
+
+  private mapToGame(model: GameModel): Game {
+    const plain = model.get({ plain: true });
     return {
-      id: plain.id as string,
-      name: plain.name as string,
-      description: plain.description as string,
-      isActive: Boolean(plain.isActive || plain.is_active),
-      minBet: parseFloat(String(plain.minBet || plain.min_bet)),
-      maxBet: parseFloat(String(plain.maxBet || plain.max_bet)),
-      houseEdge: parseFloat(String(plain.houseEdge || plain.house_edge)),
-      providerId: (plain.providerId || plain.provider_id || null) as string | null,
-      createdAt: new Date(plain.createdAt || plain.created_at),
-      updatedAt: new Date(plain.updatedAt || plain.updated_at)
+      id: plain.id,
+      name: plain.name,
+      description: plain.description,
+      isActive: plain.isActive,
+      minBet: Number(plain.minBet),
+      maxBet: Number(plain.maxBet),
+      houseEdge: Number(plain.houseEdge),
+      providerId: plain.providerId ?? null,
+      providerGameId: plain.providerGameId ?? null,
+      providerName: plain.providerName ?? null,
+      defaultLogo: plain.defaultLogo ?? null,
+      gameType: plain.gameType ?? null,
+      createdAt: new Date(plain.createdAt),
+      updatedAt: new Date(plain.updatedAt)
     };
   }
 }

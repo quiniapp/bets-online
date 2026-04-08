@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { gamesController } from '../../controllers/games.controller';
+import { gameLaunchController } from '../../controllers/integrations/21viral/gameLaunch.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { validate, validateParams } from '../../middleware/validation.middleware';
 import {
@@ -7,6 +9,14 @@ import {
   updateGameSchema,
   idParamSchema,
 } from 'helper';
+
+const launchGameSchema = z.object({
+  playerDeviceType: z.enum(['Desktop', 'Mobile']).default('Desktop'),
+  gameMode: z.enum(['Real', 'Demo']).default('Real'),
+  lobbyUrl: z.string().url(),
+  depositUrl: z.string().url(),
+  exitUrl: z.string().url().optional()
+});
 
 const router = Router();
 
@@ -40,6 +50,13 @@ router.delete(
   '/:id',
   validateParams(idParamSchema),
   gamesController.delete.bind(gamesController)
+);
+
+router.post(
+  '/:id/launch',
+  validateParams(idParamSchema),
+  validate(launchGameSchema),
+  gameLaunchController.launchGame.bind(gameLaunchController)
 );
 
 export default router;

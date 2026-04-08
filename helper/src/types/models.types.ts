@@ -250,6 +250,10 @@ export interface Game {
   maxBet: number;
   houseEdge: number;
   providerId?: string | null;
+  providerGameId?: string | null;   // e.g. "vs25wolfgold"
+  providerName?: string | null;     // e.g. "pragmatic"
+  defaultLogo?: string | null;      // thumbnail URL from Provider
+  gameType?: string | null;         // e.g. "slot"
   createdAt: Date;
   updatedAt: Date;
 }

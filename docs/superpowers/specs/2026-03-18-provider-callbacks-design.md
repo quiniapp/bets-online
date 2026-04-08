@@ -215,8 +215,17 @@ app.use(
 
 **Response:**
 ```typescript
-{ balance: "100.00", currency: "ARS" }
+{
+  balance: "100.00",    // chip_balance formateado a 2 decimales
+  currency: "ARS",
+  // Campos opcionales — omitidos si no aplica:
+  promoBalance?: string;  // no implementado (sin promo wallet)
+  freeSpins?: number;     // no implementado (sin operator free spins)
+  freeStake?: string;     // no implementado (requerido si freeSpins está presente)
+}
 ```
+
+> **Nota MVP:** `promoBalance`, `freeSpins` y `freeStake` son opcionales en la API oficial. No se devuelven en esta implementación ya que no soportamos promo wallets ni operator free spins. Se pueden agregar en una iteración futura.
 
 No aplica idempotencia (per spec 21Viral §3.4).
 
@@ -321,8 +330,15 @@ No aplica idempotencia (per spec 21Viral §3.4).
   currency: string;               // "ARS"
   operatorTransactionId: string;  // id del INSERT en provider_transactions
   alreadyProcessed?: boolean;     // true solo en idempotencia
+  // Campos opcionales — omitidos si no aplica:
+  promoBalance?: string;          // no implementado (sin promo wallet)
+  promo?: string;                 // no implementado (cuánto del bet se pagó con promo)
+  freeSpins?: number;             // no implementado (sin operator free spins)
+  freeStake?: string;             // no implementado (requerido si freeSpins está presente)
 }
 ```
+
+> **Nota MVP:** los campos `promoBalance`, `promo`, `freeSpins` y `freeStake` son opcionales en la API oficial. No se devuelven en esta implementación. Agregar cuando se soporte promo wallet u operator free spins.
 
 ---
 
@@ -428,6 +444,10 @@ export interface ProviderTransactionRequest {
 export interface ProviderBalanceResponse {
   balance: string;
   currency: string;
+  // Opcionales — no implementados en MVP (sin promo wallet / operator free spins):
+  promoBalance?: string;
+  freeSpins?: number;
+  freeStake?: string;
 }
 
 export interface ProviderTransactionResponse {
@@ -435,6 +455,11 @@ export interface ProviderTransactionResponse {
   currency: string;
   operatorTransactionId: string;
   alreadyProcessed?: boolean;
+  // Opcionales — no implementados en MVP:
+  promoBalance?: string;
+  promo?: string;
+  freeSpins?: number;
+  freeStake?: string;
 }
 
 // Eventos especiales
@@ -592,3 +617,116 @@ export const providerTransactionRequestSchema = z.object({
 10. Controllers + routes bajo `/api/integrations/21viral/`
 11. Montaje en `server.ts`
 12. Tests de integración (18 casos de la sección 12)
+
+> ✅ **Completado:** todos los puntos anteriores fueron implementados en `feature/provider-callbacks` (PR #19, merged 2026-03-26).
+
+---
+
+## 14. Game Launch — Operador → Provider *(rama futura)*
+
+> **Scope:** `feature/game-launch` o similar. Esta sección documenta los endpoints que el Operador debe llamar al Provider para obtener la lista de juegos y generar URLs de sesión.
+
+### 14.1 OperatorGamesRequest
+
+Obtiene el catálogo de juegos disponibles. **En producción: máximo 1 llamada por hora.**
+
+```
+POST https://api.stg.games-viral.com/v1/games
+Authorization: HMAC-SHA256 <VIRAL_USERNAME>:<hexSignature>
+```
+
+**Request body:**
+```typescript
+{ timestamp: number }
+```
+
+**Response body (array de juegos):**
+```typescript
+{
+  id: number;            // ID del juego en el sistema del Provider
+  name: string;
+  type: string;
+  defaultLogo: string;   // URL de thumbnail
+  providerName: string;  // e.g. "pragmatic"
+  providerGameId: string // e.g. "vs20olympgate"
+}[]
+```
+
+### 14.2 OperatorStartGameUrlRequest
+
+Genera la URL de sesión para lanzar un juego al jugador.
+
+```
+POST https://api.stg.games-viral.com/v1/games/sessions
+Authorization: HMAC-SHA256 <VIRAL_USERNAME>:<hexSignature>
+```
+
+**Request body:**
+```typescript
+{
+  timestamp: number;           // Unix epoch
+  playerId: string;            // Numeric string — provider_player_id del UserProviderProfile
+  playerUserName: string;      // Username del jugador en nuestro sistema
+  playerDeviceType: 'Desktop' | 'Mobile';
+  providerName: string;        // e.g. "pragmatic"
+  providerGameId: string;      // e.g. "vs20olympgate"
+  gameMode: 'Real' | 'Demo';
+  localeCode: string;          // BCP 47, e.g. "es-AR"
+  countryCode: string;         // ISO 3166-1 alpha-2, e.g. "AR"
+  currency: string;            // ISO 4217, e.g. "ARS" — debe ser siempre igual para mismo playerId
+  balance: string;             // Balance actual, e.g. "100.00"
+  lobbyUrl: string;            // URL del lobby del Operador
+  depositUrl: string;          // URL de la página de depósito
+  // Opcionales:
+  promoBalance?: string;       // Balance de promo wallet, e.g. "50.00"
+  exitUrl?: string;            // URL de redirección al cerrar el juego.
+                               // Para iframe: "javascript:window.parent.location.href='{URL}'"
+}
+```
+
+**Response (HTTP 201 Created):**
+```typescript
+{ gameStartUrl: string }  // URL única de sesión, cargar en iframe o webview
+```
+
+### 14.3 Consideraciones de implementación
+
+- `playerId` que se envía al Provider es el `provider_player_id` del `UserProviderProfile`, **no** el `user.id` interno. Se debe buscar o crear el perfil antes de llamar a este endpoint.
+- `balance` debe ser el `chip_balance` actual formateado con 2 decimales.
+- `localeCode` default: `"es-AR"` para Argentina.
+- La `gameStartUrl` resultante se devuelve al frontend para cargarla en un `<iframe>`.
+- El token de sesión generado por el Provider expira por inactividad — se renueva con cada acción del jugador.
+
+---
+
+## 15. Frontend — postMessage desde el iframe *(rama futura)*
+
+El iframe del juego puede enviar eventos al parent window para redirigir al jugador. El Operador debe escuchar dos formatos distintos según el game provider subyacente:
+
+**Formato A (mayoría de providers):**
+```typescript
+window.addEventListener('message', (event: MessageEvent) => {
+  const { type } = event.data;
+  if (type === 'rgs-backToHome') {
+    // Redirigir a lobbyUrl
+  }
+  if (type === 'rgs-deposit') {
+    // Redirigir a depositUrl
+  }
+});
+```
+
+**Formato B (algunos providers):**
+```typescript
+window.addEventListener('message', (event: MessageEvent) => {
+  const msg = event.data?.exi_fMessageType_str;
+  if (msg === 'exi_onHomeUserAction') {
+    // Redirigir a lobbyUrl
+  }
+  if (msg === 'exi_onCashierUserAction') {
+    // Redirigir a depositUrl
+  }
+});
+```
+
+Ambos formatos deben manejarse en el componente del frontend que contiene el `<iframe>` del juego.
