@@ -80,12 +80,6 @@ export class GameLaunchController {
    */
   async launchGame(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.user) {
-        return res.status(401).json(
-          ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required')
-        );
-      }
-
       const { id: gameId } = req.params;
       const { playerDeviceType, gameMode, lobbyUrl, depositUrl, exitUrl } = req.body;
 
