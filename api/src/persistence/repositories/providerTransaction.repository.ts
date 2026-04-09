@@ -79,6 +79,26 @@ export class ProviderTransactionRepository {
     return this.mapToProviderTransaction(tx);
   }
 
+  async findAll(options: {
+    page: number;
+    limit: number;
+    userId?: string;
+    providerName?: string;
+  }): Promise<{ rows: ProviderTransaction[]; count: number }> {
+    const where: Record<string, unknown> = {};
+    if (options.userId) where.userId = options.userId;
+    if (options.providerName) where.providerName = options.providerName;
+
+    const { count, rows } = await ProviderTransactionModel.findAndCountAll({
+      where,
+      limit: options.limit,
+      offset: (options.page - 1) * options.limit,
+      order: [['createdAt', 'DESC']]
+    });
+
+    return { rows: rows.map(r => this.mapToProviderTransaction(r)), count };
+  }
+
   private mapToProviderTransaction(model: ProviderTransactionModel): ProviderTransaction {
     const plain = model.get({ plain: true });
     return {

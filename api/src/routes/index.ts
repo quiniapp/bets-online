@@ -5,6 +5,7 @@ import chipsRoutes from './chips';
 import gamesRoutes from './games';
 import betsRoutes from './bets';
 import integrationsRoutes from './integrations/21viral';
+import adminRoutes from './admin';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use('/chips', chipsRoutes);
 router.use('/games', gamesRoutes);
 router.use('/bets', betsRoutes);
 router.use('/integrations/21viral', integrationsRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;
