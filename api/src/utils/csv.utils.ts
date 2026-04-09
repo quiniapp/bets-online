@@ -1,20 +1,4 @@
-import { ChipMovement, ChipMovementType } from 'helper';
-
-export const CHIP_MOVEMENT_TYPE_LABELS: Record<ChipMovementType, string> = {
-  SELL_TO_PLAYER: 'Carga',
-  WITHDRAWAL: 'Retiro',
-  PRIZE: 'Premio',
-  LOSS: 'Pérdida',
-  DEPOSIT: 'Depósito',
-  BUY_FROM_ADMIN: 'Compra',
-  RECOVERY: 'Recuperación',
-  ADJUSTMENT: 'Ajuste',
-  PANEL_ASSIGNMENT: 'Asignación de Panel',
-  PANEL_SALE: 'Venta de Panel',
-  GAME_BET: 'Apuesta en Juego',
-  GAME_WIN: 'Ganancia de Juego',
-  GAME_REFUND: 'Reembolso de Juego'
-};
+import { ChipMovement, CHIP_MOVEMENT_TYPE_LABELS } from 'helper';
 
 export function generateMovementsCsv(movements: ChipMovement[]): string {
   const headers = ['Fecha', 'Tipo', 'Monto', 'Balance Anterior', 'Balance Nuevo', 'Descripción'];
