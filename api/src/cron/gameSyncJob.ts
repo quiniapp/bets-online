@@ -11,6 +11,6 @@ export function startGameSyncJob(): void {
     } catch (err) {
       console.error('[GameSync] Sync failed:', err);
     }
-  });
+  }, { timezone: 'America/Argentina/Buenos_Aires' });
   console.log('[GameSync] Cron job registered (every 12 h)');
 }
