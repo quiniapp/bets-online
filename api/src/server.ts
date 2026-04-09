@@ -11,6 +11,7 @@ import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { globalLimiter } from './middleware/rateLimiter.middleware';
+import { startGameSyncJob } from './cron/gameSyncJob';
 
 const app = express();
 
@@ -109,6 +110,9 @@ const startServer = async () => {
   try {
     // Test database connection
     await testConnection();
+
+    // Start scheduled jobs
+    startGameSyncJob();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

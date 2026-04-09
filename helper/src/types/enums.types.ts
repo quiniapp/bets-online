@@ -39,7 +39,12 @@ export enum ChipMovementType {
 
   // Panel
   PANEL_ASSIGNMENT = 'PANEL_ASSIGNMENT',
-  PANEL_SALE = 'PANEL_SALE'
+  PANEL_SALE = 'PANEL_SALE',
+
+  // Provider game activity
+  GAME_BET = 'GAME_BET',
+  GAME_WIN = 'GAME_WIN',
+  GAME_REFUND = 'GAME_REFUND'
 }
 
 /**

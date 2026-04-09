@@ -17,7 +17,10 @@ export const CHIP_MOVEMENT_TYPE_LABELS: Record<ChipMovementType, string> = {
   RECOVERY: 'Recuperación',
   ADJUSTMENT: 'Ajuste',
   PANEL_ASSIGNMENT: 'Asignación de Panel',
-  PANEL_SALE: 'Venta de Panel'
+  PANEL_SALE: 'Venta de Panel',
+  GAME_BET: 'Apuesta en Juego',
+  GAME_WIN: 'Ganancia de Juego',
+  GAME_REFUND: 'Reembolso de Juego'
 };
 
 /**

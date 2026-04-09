@@ -112,6 +112,16 @@ export function useGames(activeOnly: boolean = false) {
     }
   };
 
+  const syncGames = async () => {
+    const response = await apiService.post<{ synced: number }>(
+      '/integrations/21viral/games/sync'
+    );
+    if (response.success) {
+      await loadGames();
+    }
+    return response;
+  };
+
   return {
     games,
     loading,
@@ -122,5 +132,6 @@ export function useGames(activeOnly: boolean = false) {
     deleteGame,
     getGameById,
     reload: loadGames,
+    syncGames,
   };
 }
