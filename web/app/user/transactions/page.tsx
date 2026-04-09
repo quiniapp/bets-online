@@ -46,7 +46,8 @@ export default function UserTransactions() {
   const prizes = transactions.filter(
     (tx) =>
       tx.type === ChipMovementType.PRIZE ||
-      tx.type === ChipMovementType.GAME_WIN
+      tx.type === ChipMovementType.GAME_WIN ||
+      tx.type === ChipMovementType.GAME_REFUND
   )
 
   const totalDeposits = deposits.reduce((sum, tx) => sum + tx.amount, 0)
