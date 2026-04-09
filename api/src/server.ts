@@ -15,6 +15,9 @@ import { startGameSyncJob } from './cron/gameSyncJob';
 
 const app = express();
 
+// Trust Railway/Vercel reverse proxy
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 
@@ -78,10 +81,11 @@ app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions))
 // Must be called before any state-changing request that uses cookie auth.
 app.get('/api/csrf-token', (_req: Request, res: Response) => {
   const token = crypto.randomBytes(32).toString('hex');
+  const isProd = config.server.env === 'production';
   res.cookie(CSRF_COOKIE, token, {
     httpOnly: false,
-    sameSite: 'strict',
-    secure: config.server.env === 'production',
+    sameSite: isProd ? 'none' : 'strict',
+    secure: isProd,
     path: '/'
   });
   res.json({ success: true, token });
