@@ -30,9 +30,9 @@ class ApiService {
   }
 
   private async fetchCsrfToken(): Promise<string> {
-    await fetch(`${this.baseUrl}/api/csrf-token`, { credentials: 'include' });
-    const match = document.cookie.match(/(?:^|;\s*)csrf-token=([^;]+)/);
-    this.csrfToken = match ? decodeURIComponent(match[1]) : '';
+    const res = await fetch(`${this.baseUrl}/api/csrf-token`, { credentials: 'include' });
+    const data = await res.json() as { success: boolean; token?: string };
+    this.csrfToken = data.token ?? '';
     return this.csrfToken;
   }
 
