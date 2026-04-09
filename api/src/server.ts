@@ -15,6 +15,9 @@ import { startGameSyncJob } from './cron/gameSyncJob';
 
 const app = express();
 
+// Trust Railway/Vercel reverse proxy
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 
