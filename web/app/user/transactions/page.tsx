@@ -18,7 +18,7 @@ export default function UserTransactions() {
 
   useEffect(() => {
     if (role !== UserRole.PLAYER) {
-      router.push("/user/login")
+      router.push("/login")
     }
   }, [role, router])
 
