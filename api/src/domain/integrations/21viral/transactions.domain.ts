@@ -107,6 +107,7 @@ export class TransactionsDomain {
     const currentBalance = new Decimal(balance.chipBalance);
     const amount = new Decimal(req.amount);
     let newBalance: Decimal;
+    let effectiveAmount = new Decimal(req.amount);
 
     if (req.transactionType === TransactionType.Debit) {
       if (currentBalance.lessThan(amount)) {
@@ -128,6 +129,7 @@ export class TransactionsDomain {
       if (!original) throw new ViralError(ViralErrorCode.GameRoundNotFound, 'Original transaction not found');
 
       const originalAmount = new Decimal(original.amount);
+      effectiveAmount = originalAmount;
 
       if (original.transactionType === TransactionType.Debit) {
         newBalance = currentBalance.plus(originalAmount).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
@@ -174,7 +176,7 @@ export class TransactionsDomain {
       {
         userId: profile.userId,
         type: chipMovementType,
-        amount: parseFloat(req.amount),
+        amount: effectiveAmount.toNumber(),
         previousBalance: currentBalance.toNumber(),
         newBalance: parseFloat(newBalanceStr),
         description: req.providerGameRoundId
