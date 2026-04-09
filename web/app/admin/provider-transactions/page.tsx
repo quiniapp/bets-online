@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,19 +9,30 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
+import { UserRole } from 'helper';
 import { useProviderTransactions } from '@/hooks/useProviderTransactions';
 
 export default function AdminProviderTransactions() {
-  const { user } = useAuth();
+  const { user, role, isLoading } = useAuth();
+  const router = useRouter();
   const { transactions, loading, meta, load } = useProviderTransactions();
   const [userIdFilter, setUserIdFilter] = useState('');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
+    if (!isLoading) {
+      if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
+        router.push('/user/login');
+      }
+    }
+  }, [role, router, isLoading]);
+
+  useEffect(() => {
     if (user) load({ page, userId: userIdFilter || undefined });
-  }, [user, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, page, load]);
 
   if (!user) return null;
+  if (role !== UserRole.OWNER && role !== UserRole.ADMIN) return null;
 
   const handleSearch = () => {
     setPage(1);

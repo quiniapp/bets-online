@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
 
 export interface ProviderTransaction {
@@ -27,28 +27,38 @@ interface LoadOptions {
 export function useProviderTransactions() {
   const [transactions, setTransactions] = useState<ProviderTransaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
 
-  const load = async (opts?: LoadOptions) => {
+  const load = useCallback(async (opts?: LoadOptions) => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (opts?.page) params.set('page', String(opts.page));
-    if (opts?.limit) params.set('limit', String(opts.limit));
-    if (opts?.userId) params.set('userId', opts.userId);
-    if (opts?.providerName) params.set('providerName', opts.providerName);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (opts?.page) params.set('page', String(opts.page));
+      if (opts?.limit) params.set('limit', String(opts.limit));
+      if (opts?.userId) params.set('userId', opts.userId);
+      if (opts?.providerName) params.set('providerName', opts.providerName);
 
-    const qs = params.toString();
-    const response = await apiService.get<ProviderTransaction[]>(
-      `/admin/provider-transactions${qs ? '?' + qs : ''}`
-    );
+      const qs = params.toString();
+      const response = await apiService.get<ProviderTransaction[]>(
+        `/admin/provider-transactions${qs ? '?' + qs : ''}`
+      );
 
-    if (response.success && response.data) {
-      setTransactions(response.data);
-      if (response.meta) setMeta(response.meta);
+      if (response.success && response.data) {
+        setTransactions(response.data);
+        if (response.meta) setMeta(response.meta);
+      } else {
+        setError(response.error?.message || 'Error al cargar transacciones');
+      }
+      return response;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error de red';
+      setError(message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    return response;
-  };
+  }, []);
 
-  return { transactions, loading, meta, load };
+  return { transactions, loading, error, meta, load };
 }

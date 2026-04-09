@@ -5,8 +5,8 @@ import { providerTransactionRepository } from '../../persistence/repositories/pr
 export class ProviderTransactionsController {
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const page = parseInt(String(req.query.page ?? '1'), 10);
-      const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10), 100);
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+      const limit = Math.min(Math.max(1, parseInt(String(req.query.limit ?? '20'), 10) || 20), 100);
       const userId = req.query.userId as string | undefined;
       const providerName = req.query.providerName as string | undefined;
 
