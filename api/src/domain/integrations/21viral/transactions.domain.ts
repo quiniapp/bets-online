@@ -4,7 +4,8 @@ import {
   ProviderTransactionRequest,
   ProviderTransactionResponse,
   ViralErrorCode,
-  TransactionType
+  TransactionType,
+  ChipMovementType
 } from 'helper';
 import { sequelize } from '../../../config/sequelize';
 import { ViralError } from './balance.domain';
@@ -12,6 +13,7 @@ import { userProviderProfileRepository } from '../../../persistence/repositories
 import { balancesRepository } from '../../../persistence/repositories/balances.repository';
 import { usersRepository } from '../../../persistence/repositories/users.repository';
 import { providerTransactionRepository } from '../../../persistence/repositories/providerTransaction.repository';
+import { chipMovementsRepository } from '../../../persistence/repositories/chip-movements.repository';
 
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 
@@ -157,6 +159,27 @@ export class TransactionsDomain {
         currency: req.currency ?? profile.currency,
         balanceAfter: newBalanceStr,
         betOutcomeEventData: req.betOutcomeEventData ?? null
+      },
+      t
+    );
+
+    const chipMovementType =
+      req.transactionType === TransactionType.Debit
+        ? ChipMovementType.GAME_BET
+        : req.transactionType === TransactionType.Credit
+          ? ChipMovementType.GAME_WIN
+          : ChipMovementType.GAME_REFUND;
+
+    await chipMovementsRepository.create(
+      {
+        userId: profile.userId,
+        type: chipMovementType,
+        amount: parseFloat(req.amount),
+        previousBalance: currentBalance.toNumber(),
+        newBalance: parseFloat(newBalanceStr),
+        description: req.providerGameRoundId
+          ? `Round: ${req.providerGameRoundId}`
+          : undefined
       },
       t
     );
