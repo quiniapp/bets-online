@@ -1,21 +1,27 @@
 import { ChipMovementModel } from '../models';
 import { ChipMovement, CreateChipMovementDto, ChipMovementType } from 'helper';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 
 export class ChipMovementsRepository {
-  async create(movementData: CreateChipMovementDto & {
-    previousBalance: number;
-    newBalance: number;
-  }): Promise<ChipMovement> {
-    const movement = await ChipMovementModel.create({
-      userId: movementData.userId,
-      relatedUserId: movementData.relatedUserId || null,
-      type: movementData.type,
-      amount: movementData.amount,
-      description: movementData.description || null,
-      previousBalance: movementData.previousBalance,
-      newBalance: movementData.newBalance
-    });
+  async create(
+    movementData: CreateChipMovementDto & {
+      previousBalance: number;
+      newBalance: number;
+    },
+    transaction?: Transaction
+  ): Promise<ChipMovement> {
+    const movement = await ChipMovementModel.create(
+      {
+        userId: movementData.userId,
+        relatedUserId: movementData.relatedUserId || null,
+        type: movementData.type,
+        amount: movementData.amount,
+        description: movementData.description || null,
+        previousBalance: movementData.previousBalance,
+        newBalance: movementData.newBalance
+      },
+      { transaction }
+    );
 
     return this.mapToMovement(movement);
   }
