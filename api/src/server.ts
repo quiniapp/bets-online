@@ -84,7 +84,7 @@ app.get('/api/csrf-token', (_req: Request, res: Response) => {
     secure: config.server.env === 'production',
     path: '/'
   });
-  res.json({ success: true });
+  res.json({ success: true, token });
 });
 
 // API routes (global rate limiter + CSRF protection)
