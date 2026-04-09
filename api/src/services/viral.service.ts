@@ -58,9 +58,8 @@ class ViralService {
       throw new Error(`21Viral getGames failed: ${res.status} — ${text}`);
     }
 
-    const data = await res.json();
-    console.log('[21Viral getGames] response:', JSON.stringify(data).slice(0, 500));
-    return data as ViralGame[];
+    const data = await res.json() as { games: ViralGame[] };
+    return data.games;
   }
 
   async createGameSession(params: CreateGameSessionParams): Promise<string> {
