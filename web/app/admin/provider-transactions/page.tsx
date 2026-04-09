@@ -22,7 +22,7 @@ export default function AdminProviderTransactions() {
   useEffect(() => {
     if (!isLoading) {
       if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
-        router.push('/user/login');
+        router.push('/login');
       }
     }
   }, [role, router, isLoading]);

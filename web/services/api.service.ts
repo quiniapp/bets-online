@@ -3,6 +3,7 @@ import type { ApiResponse, User, AuthTokens } from 'helper';
 class ApiService {
   private baseUrl: string;
   private accessToken: string | null = null;
+  private csrfToken: string | null = null;
 
   constructor() {
     this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -28,6 +29,13 @@ class ApiService {
     return this.accessToken;
   }
 
+  private async fetchCsrfToken(): Promise<string> {
+    await fetch(`${this.baseUrl}/api/csrf-token`, { credentials: 'include' });
+    const match = document.cookie.match(/(?:^|;\s*)csrf-token=([^;]+)/);
+    this.csrfToken = match ? decodeURIComponent(match[1]) : '';
+    return this.csrfToken;
+  }
+
   private isAuthError(code?: string): boolean {
     const authErrorCodes = [
       'UNAUTHORIZED',
@@ -48,13 +56,14 @@ class ApiService {
       localStorage.removeItem('auth_role');
 
       // Redirect inmediato a login usando window.location para garantizar limpieza completa
-      window.location.href = '/admin/login';
+      window.location.href = '/login';
     }
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry = false
   ): Promise<ApiResponse<T>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -64,29 +73,41 @@ class ApiService {
     const token = this.getAccessToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    } else if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method)) {
+      // Sin token de auth, CSRF middleware activo — incluir x-csrf-token
+      const csrf = this.csrfToken ?? await this.fetchCsrfToken();
+      headers['x-csrf-token'] = csrf;
     }
 
     try {
       const response = await fetch(`${this.baseUrl}/api${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include',
       });
 
       // Detectar respuestas HTTP de autenticación fallida
-      if (response.status === 401 || response.status === 403) {
+      // Solo redirigir si había una sesión activa (token presente). Si no hay token,
+      // es un intento de login fallido y debe manejarse normalmente por el caller.
+      if ((response.status === 401 || response.status === 403) && this.getAccessToken()) {
         this.handleAuthError();
         throw new Error('Session expired');
       }
 
       const data: ApiResponse<T> = await response.json();
 
+      // CSRF token inválido — limpiar caché y reintentar una sola vez
+      if (!data.success && data.error?.code === 'CSRF_INVALID' && !isRetry) {
+        this.csrfToken = null;
+        return this.request<T>(endpoint, options, true);
+      }
+
       // Detectar errores de auth en el body
       if (!data.success && this.isAuthError(data.error?.code)) {
         // Intentar refresh token primero
         const refreshed = await this.refreshToken();
         if (refreshed) {
-          // Retry original request with new token
-          return this.request<T>(endpoint, options);
+          return this.request<T>(endpoint, options, true);
         } else {
           // Refresh failed, logout
           this.handleAuthError();
