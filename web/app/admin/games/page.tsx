@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, ToggleLeft, ToggleRight, Loader2 } from "lucide-react"
+import { Plus, Edit, ToggleLeft, ToggleRight, Loader2, RefreshCw } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useGames } from "@/hooks/useGames"
 import { useToast } from "@/hooks/use-toast"
@@ -26,7 +26,7 @@ import type { CreateGameDto, UpdateGameDto, Game } from "helper"
 export default function AdminGames() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const { games, loading, createGame, updateGame, toggleGameStatus, reload } = useGames(false)
+  const { games, loading, createGame, updateGame, toggleGameStatus, syncGames } = useGames(false)
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -39,8 +39,25 @@ export default function AdminGames() {
     houseEdge: 2.5,
   })
   const [submitting, setSubmitting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
 
   if (!user) return null
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const response = await syncGames()
+      if (response.success) {
+        toast({ title: "Sincronización completa", description: `${response.data?.synced ?? 0} juegos sincronizados` })
+      } else {
+        toast({ title: "Error", description: response.error?.message || "No se pudo sincronizar", variant: "destructive" })
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleCreate = async () => {
     setSubmitting(true)
@@ -161,7 +178,12 @@ export default function AdminGames() {
             <p className="text-muted-foreground">Administrar juegos del casino</p>
           </div>
 
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleSync} disabled={syncing}>
+              {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Sincronizar
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -243,6 +265,7 @@ export default function AdminGames() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <main className="max-w-7xl mx-auto">
@@ -255,11 +278,19 @@ export default function AdminGames() {
               {games.map((game) => (
                 <Card key={game.id}>
                   <CardHeader>
+                    {game.defaultLogo && (
+                      <img src={game.defaultLogo} alt={game.name} className="w-full h-28 object-cover rounded-md mb-2" />
+                    )}
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl">{game.name}</CardTitle>
-                      <Badge variant={game.isActive ? "default" : "secondary"}>
-                        {game.isActive ? "Activo" : "Inactivo"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {game.providerName && (
+                          <Badge variant="outline" className="text-xs">{game.providerName}</Badge>
+                        )}
+                        <Badge variant={game.isActive ? "default" : "secondary"}>
+                          {game.isActive ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -278,6 +309,12 @@ export default function AdminGames() {
                         <span className="text-gray-500">House Edge:</span>
                         <span className="font-medium">{game.houseEdge}%</span>
                       </div>
+                      {game.providerGameId && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Provider ID:</span>
+                          <span className="font-mono text-xs truncate max-w-[140px]">{game.providerGameId}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-2">
