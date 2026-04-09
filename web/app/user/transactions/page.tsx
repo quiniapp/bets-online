@@ -38,8 +38,16 @@ export default function UserTransactions() {
       tx.type === ChipMovementType.BUY_FROM_ADMIN
   )
   const withdrawals = transactions.filter((tx) => tx.type === ChipMovementType.WITHDRAWAL)
-  const losses = transactions.filter((tx) => tx.type === ChipMovementType.LOSS)
-  const prizes = transactions.filter((tx) => tx.type === ChipMovementType.PRIZE)
+  const losses = transactions.filter(
+    (tx) =>
+      tx.type === ChipMovementType.LOSS ||
+      tx.type === ChipMovementType.GAME_BET
+  )
+  const prizes = transactions.filter(
+    (tx) =>
+      tx.type === ChipMovementType.PRIZE ||
+      tx.type === ChipMovementType.GAME_WIN
+  )
 
   const totalDeposits = deposits.reduce((sum, tx) => sum + tx.amount, 0)
   const totalWithdrawals = withdrawals.reduce((sum, tx) => sum + tx.amount, 0)
@@ -56,6 +64,12 @@ export default function UserTransactions() {
       case ChipMovementType.WITHDRAWAL:
       case ChipMovementType.LOSS:
         return <ArrowUp className="h-4 w-4 text-red-600" />
+      case ChipMovementType.GAME_BET:
+        return <ArrowUp className="h-4 w-4 text-red-600" />
+      case ChipMovementType.GAME_WIN:
+        return <ArrowDown className="h-4 w-4 text-green-600" />
+      case ChipMovementType.GAME_REFUND:
+        return <DollarSign className="h-4 w-4 text-yellow-600" />
       case ChipMovementType.ADJUSTMENT:
       case ChipMovementType.RECOVERY:
         return <Settings className="h-4 w-4 text-purple-600" />
@@ -80,6 +94,12 @@ export default function UserTransactions() {
         return t("transactions.bet")
       case ChipMovementType.PRIZE:
         return t("transactions.win")
+      case ChipMovementType.GAME_BET:
+        return 'Apuesta (proveedor)'
+      case ChipMovementType.GAME_WIN:
+        return 'Premio (proveedor)'
+      case ChipMovementType.GAME_REFUND:
+        return 'Reembolso (proveedor)'
       case ChipMovementType.SELL_TO_PLAYER:
       case ChipMovementType.BUY_FROM_ADMIN:
         return "Compra de Fichas"
