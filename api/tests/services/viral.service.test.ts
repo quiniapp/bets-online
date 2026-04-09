@@ -22,7 +22,7 @@ describe('viralService', () => {
       ];
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => fakeGames
+        json: async () => ({ games: fakeGames })
       });
 
       const result = await viralService.getGames();
