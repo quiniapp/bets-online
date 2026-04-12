@@ -25,7 +25,8 @@ jest.mock('../../../src/services/viral.service', () => ({
 jest.mock('../../../src/persistence/repositories/games.repository', () => ({
   gamesRepository: {
     findById: jest.fn(),
-    upsertFromProvider: jest.fn()
+    upsertFromProvider: jest.fn(),
+    findPaginated: jest.fn().mockResolvedValue({ games: [], total: 0 })
   }
 }));
 jest.mock('../../../src/persistence/repositories/userProviderProfile.repository', () => ({
