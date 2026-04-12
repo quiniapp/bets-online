@@ -81,6 +81,16 @@ export class GamesDomain {
   }
 
   /**
+   * Get paginated games (all statuses)
+   */
+  async getPaginatedGames(
+    page: number,
+    limit: number
+  ): Promise<{ games: Game[]; total: number }> {
+    return await gamesRepository.findPaginated(page, limit);
+  }
+
+  /**
    * Get game by ID
    */
   async getGameById(gameId: string): Promise<Game> {
