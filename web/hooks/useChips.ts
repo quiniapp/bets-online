@@ -14,10 +14,10 @@ export function useChips(userId?: string) {
         ? `/chips/balance/${userId}`
         : '/chips/my-balance';
 
-      const response = await apiService.get<Balance>(endpoint);
+      const response = await apiService.get<{ balance: Balance }>(endpoint);
 
       if (response.success && response.data) {
-        setBalance(response.data);
+        setBalance(response.data.balance);
       }
 
       return response;
