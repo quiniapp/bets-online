@@ -44,8 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // No validar si estamos en página de login
-    if (window.location.pathname === ROUTER.LOGIN) {
+    // No validar si estamos en página pública (landing o login)
+    const publicPaths = [ROUTER.SITE, ROUTER.LOGIN]
+    if (publicPaths.includes(window.location.pathname)) {
       setIsLoading(false)
       return
     }
@@ -55,8 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = apiService.getAccessToken()
 
       if (!token) {
-        // No hay token, redirigir a login
-        router.push(ROUTER.LOGIN)
+        router.push(ROUTER.SITE)
         return
       }
 
@@ -68,12 +68,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Token inválido o expirado
         apiService.setAccessToken(null)
-        router.push(ROUTER.LOGIN)
+        router.push(ROUTER.SITE)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
       apiService.setAccessToken(null)
-      router.push(ROUTER.LOGIN)
+      router.push(ROUTER.SITE)
     } finally {
       setIsLoading(false)
     }
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await apiService.logout()
     setUser(null)
     setRole(null)
-    router.push(ROUTER.LOGIN)
+    router.push(ROUTER.SITE)
   }
 
   const refreshUser = async () => {
@@ -163,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Session closed in another tab')
         setUser(null)
         setRole(null)
-        router.push(ROUTER.LOGIN)
+        router.push(ROUTER.SITE)
       }
     }
 

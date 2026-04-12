@@ -23,6 +23,19 @@ export class GamesRepository {
     return games.map(g => this.mapToGame(g));
   }
 
+  async findPaginated(
+    page: number,
+    limit: number
+  ): Promise<{ games: Game[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const { rows, count } = await GameModel.findAndCountAll({
+      order: [['name', 'ASC']],
+      limit,
+      offset
+    });
+    return { games: rows.map(g => this.mapToGame(g)), total: count };
+  }
+
   async findById(gameId: string): Promise<Game | null> {
     const game = await GameModel.findByPk(gameId);
     if (!game) return null;

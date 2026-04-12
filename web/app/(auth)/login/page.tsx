@@ -1,7 +1,10 @@
+import { Suspense } from 'react'
 import LoginPageContent from '@/feature/login'
 
 export default function LoginPage(){
     return (
-        <LoginPageContent />
+        <Suspense>
+            <LoginPageContent />
+        </Suspense>
     )
 }
