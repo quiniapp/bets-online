@@ -3,11 +3,15 @@ import { Flex, FlexCol } from "../flex"
 
 interface GameCardProps {
   game: Game
+  onClick?: () => void
 }
 
-const GameCard = ({ game }: GameCardProps) => {
+const GameCard = ({ game, onClick }: GameCardProps) => {
   return (
-    <Flex className="flex-1 min-w-[300px] h-[100px] bg-accent rounded-md overflow-hidden">
+    <Flex
+      className="flex-1 min-w-[300px] h-[100px] bg-accent rounded-md overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:brightness-110"
+      onClick={onClick}
+    >
       {game.defaultLogo ? (
         <img
           src={game.defaultLogo}

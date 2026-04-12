@@ -23,6 +23,7 @@ const ROUTER = {
   CASHIER_TRANSACTIONS: "/cashier/transactions",
 
   // Player routes
+  USER_GAME_PLAY: "/user/games",
   USER_DASHBOARD: "/user/dashboard",
   USER_BETS: "/user/bets",
   USER_PROFILE: "/user/profile",

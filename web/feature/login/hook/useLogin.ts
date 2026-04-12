@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { UserRole } from "helper";
 
@@ -14,6 +14,8 @@ const useLogin = () => {
   const [error, setError] = useState("");
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
 
   const {
     register,
@@ -40,20 +42,23 @@ const useLogin = () => {
       });
 
       if (user) {
-        // Redirect based on role immediately
-        switch (user.role) {
-          case UserRole.OWNER:
-          case UserRole.ADMIN:
-            router.push("/admin/dashboard");
-            break;
-          case UserRole.CASHIER:
-            router.push("/cashier/dashboard");
-            break;
-          case UserRole.PLAYER:
-            router.push("/user/dashboard");
-            break;
-          default:
-            router.push("/");
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else {
+          switch (user.role) {
+            case UserRole.OWNER:
+            case UserRole.ADMIN:
+              router.push("/admin/dashboard");
+              break;
+            case UserRole.CASHIER:
+              router.push("/cashier/dashboard");
+              break;
+            case UserRole.PLAYER:
+              router.push("/user/dashboard");
+              break;
+            default:
+              router.push("/");
+          }
         }
       } else {
         setError("Credenciales inválidas. Por favor, inténtalo de nuevo.");
