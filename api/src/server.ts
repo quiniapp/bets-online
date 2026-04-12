@@ -98,7 +98,7 @@ app.use('/api', globalLimiter, csrfMiddleware, routes);
 app.get('/', (_req, res) => {
   res.json({
     message: 'Casino Management Platform API',
-    version: '1.0.0',
+    version: '1.0.1',
     documentation: `${config.server.apiUrl}/doc`
   });
 });
