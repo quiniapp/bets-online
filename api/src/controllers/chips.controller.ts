@@ -266,12 +266,12 @@ export class ChipsController {
         );
       }
 
-      const { userId } = req.params;
+      const { id } = req.params;
       const { page, limit, startDate, endDate, type } = req.query;
 
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
-        userId,
+        id,
         {
           page: page ? parseInt(page as string) : undefined,
           limit: limit ? parseInt(limit as string) : undefined,
@@ -320,9 +320,9 @@ export class ChipsController {
         );
       }
 
-      const { userId } = req.params;
+      const { id } = req.params;
 
-      const balance = await chipsDomain.getBalance(req.user.userId, userId);
+      const balance = await chipsDomain.getBalance(req.user.userId, id);
 
       return res.json(ApiResponseBuilder.success({ balance }));
     } catch (error) {
@@ -402,13 +402,13 @@ export class ChipsController {
         );
       }
 
-      const { userId } = req.params;
+      const { id } = req.params;
       const { startDate, endDate, type } = req.query;
 
       // Get all movements without pagination for export
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
-        userId,
+        id,
         {
           startDate: startDate ? new Date(startDate as string) : undefined,
           endDate: endDate ? new Date(endDate as string) : undefined,
@@ -420,7 +420,7 @@ export class ChipsController {
       const csv = generateMovementsCsv(result.movements);
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=movimientos-${userId}-${new Date().toISOString().split('T')[0]}.csv`);
+      res.setHeader('Content-Disposition', `attachment; filename=movimientos-${id}-${new Date().toISOString().split('T')[0]}.csv`);
       res.send('\ufeff' + csv); // UTF-8 BOM for Excel compatibility
     } catch (error) {
       return next(error);
