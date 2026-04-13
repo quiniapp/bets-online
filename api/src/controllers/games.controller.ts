@@ -22,15 +22,9 @@ export class GamesController {
   async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const activeOnly = req.query.activeOnly === 'true';
-
-      if (activeOnly) {
-        const games = await gamesDomain.getAllGames(true);
-        return res.json(ApiResponseBuilder.success({ games, count: games.length }));
-      }
-
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
-      const { games, total } = await gamesDomain.getPaginatedGames(page, limit);
+      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly);
 
       return res.json(ApiResponseBuilder.paginated(games, page, limit, total));
     } catch (error) {

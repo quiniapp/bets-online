@@ -25,10 +25,13 @@ export class GamesRepository {
 
   async findPaginated(
     page: number,
-    limit: number
+    limit: number,
+    activeOnly: boolean = false
   ): Promise<{ games: Game[]; total: number }> {
     const offset = (page - 1) * limit;
+    const where = activeOnly ? { isActive: true } : {};
     const { rows, count } = await GameModel.findAndCountAll({
+      where,
       order: [['name', 'ASC']],
       limit,
       offset

@@ -1,16 +1,34 @@
 "use client"
 
+import { useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import ROUTER from "@/routes"
 import { Flex } from "../flex"
 import GameCard from "./game-card"
+import { Loader2 } from "lucide-react"
 
 const GamesList = () => {
-    const { games, loading } = useGames(true)
+    const { games, loading, loadingMore, loadMore } = useGames(true)
     const { user } = useAuth()
     const router = useRouter()
+    const sentinelRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const sentinel = sentinelRef.current
+        if (!sentinel) return
+
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting) loadMore()
+            },
+            { threshold: 0.1 }
+        )
+
+        observer.observe(sentinel)
+        return () => observer.disconnect()
+    }, [loadMore])
 
     const handleGameClick = (gameId: string) => {
         const playUrl = `${ROUTER.USER_GAME_PLAY}/${gameId}/play`
@@ -44,7 +62,11 @@ const GamesList = () => {
             {games.map((game) => (
                 <GameCard key={game.id} game={game} onClick={() => handleGameClick(game.id)} />
             ))}
+            <div ref={sentinelRef} className="w-full flex justify-center py-4">
+                {loadingMore && <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}
+            </div>
         </Flex>
     )
 }
+
 export default GamesList
