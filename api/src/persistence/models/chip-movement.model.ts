@@ -11,6 +11,7 @@ export class ChipMovementModel extends Model {
   declare description: string | null;
   declare previousBalance: number;
   declare newBalance: number;
+  declare idempotencyKey: string | null;
   declare createdAt: Date;
 }
 
@@ -65,6 +66,12 @@ ChipMovementModel.init(
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
       field: 'new_balance'
+    },
+    idempotencyKey: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      unique: true,
+      field: 'idempotency_key'
     },
     createdAt: {
       type: DataTypes.DATE,

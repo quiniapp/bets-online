@@ -40,13 +40,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.sellChips(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -97,13 +98,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.payPrize(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -154,13 +156,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.registerLoss(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -211,13 +214,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.withdraw(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(

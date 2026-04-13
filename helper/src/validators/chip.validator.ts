@@ -18,7 +18,8 @@ export const createChipMovementSchema = z.object({
 export const sellChipsSchema = z.object({
   playerId: z.string().uuid(),
   amount: z.number().positive(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  idempotencyKey: z.string().min(1).max(255).optional()
 });
 
 /**
@@ -27,7 +28,8 @@ export const sellChipsSchema = z.object({
 export const payPrizeSchema = z.object({
   playerId: z.string().uuid(),
   amount: z.number().positive(),
-  description: z.string().optional()
+  description: z.string().optional(),
+  idempotencyKey: z.string().min(1).max(255).optional()
 });
 
 /**
