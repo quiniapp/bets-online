@@ -91,6 +91,14 @@ export class BalancesRepository {
     );
   }
 
+  async atomicIncrement(userId: string, amount: number, transaction: Transaction): Promise<void> {
+    await BalanceModel.increment('chipBalance', {
+      by: amount,
+      where: { userId },
+      transaction
+    });
+  }
+
   async findByUserIdWithLock(
     userId: string,
     transaction: Transaction

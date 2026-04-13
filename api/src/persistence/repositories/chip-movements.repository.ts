@@ -18,11 +18,20 @@ export class ChipMovementsRepository {
         amount: movementData.amount,
         description: movementData.description || null,
         previousBalance: movementData.previousBalance,
-        newBalance: movementData.newBalance
+        newBalance: movementData.newBalance,
+        idempotencyKey: movementData.idempotencyKey || null
       },
       { transaction }
     );
 
+    return this.mapToMovement(movement);
+  }
+
+  async findByIdempotencyKey(key: string): Promise<ChipMovement | null> {
+    const movement = await ChipMovementModel.findOne({
+      where: { idempotencyKey: key }
+    });
+    if (!movement) return null;
     return this.mapToMovement(movement);
   }
 
@@ -162,6 +171,7 @@ export class ChipMovementsRepository {
       description: (plain.description || undefined) as string | undefined,
       previousBalance: parseFloat(String(plain.previousBalance || plain.previous_balance)),
       newBalance: parseFloat(String(plain.newBalance || plain.new_balance)),
+      idempotencyKey: (plain.idempotencyKey || plain.idempotency_key || null) as string | null,
       createdAt: new Date(plain.createdAt || plain.created_at)
     };
   }

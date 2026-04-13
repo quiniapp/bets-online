@@ -73,6 +73,7 @@ export interface ChipMovement {
   description?: string;
   previousBalance: number;
   newBalance: number;
+  idempotencyKey?: string | null;
   createdAt: Date;
 }
 
@@ -85,6 +86,7 @@ export interface CreateChipMovementDto {
   type: ChipMovementType;
   amount: number;
   description?: string;
+  idempotencyKey?: string;
 }
 
 /**
