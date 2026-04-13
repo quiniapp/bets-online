@@ -32,7 +32,7 @@ class GameLaunchDomain {
         defaultLogo: g.defaultLogo
       });
     }
-    gamesCache.invalidateAndRefresh(() => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT));
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
     return { synced: games.length };
   }
 

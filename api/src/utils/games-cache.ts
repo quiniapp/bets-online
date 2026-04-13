@@ -8,21 +8,27 @@ interface CachedPage {
   total: number;
 }
 
-let cache: CachedPage | null = null;
+type CacheKey = 'all' | 'active';
+
+const store: Record<CacheKey, CachedPage | null> = { all: null, active: null };
 
 export const gamesCache = {
-  get(): CachedPage | null {
-    return cache;
+  get(activeOnly: boolean): CachedPage | null {
+    return store[activeOnly ? 'active' : 'all'];
   },
 
-  set(data: CachedPage): void {
-    cache = data;
+  set(data: CachedPage, activeOnly: boolean): void {
+    store[activeOnly ? 'active' : 'all'] = data;
   },
 
-  invalidateAndRefresh(refresh: () => Promise<CachedPage>): void {
-    cache = null;
-    refresh()
-      .then(data => { cache = data; })
-      .catch(err => console.error('[GamesCache] Async refresh failed:', err));
+  invalidateAndRefresh(refresh: (activeOnly: boolean) => Promise<CachedPage>): void {
+    store.all = null;
+    store.active = null;
+    refresh(false)
+      .then(d => { store.all = d; })
+      .catch(err => console.error('[GamesCache] refresh all failed:', err));
+    refresh(true)
+      .then(d => { store.active = d; })
+      .catch(err => console.error('[GamesCache] refresh active failed:', err));
   }
 };

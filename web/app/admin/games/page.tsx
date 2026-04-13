@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, ToggleLeft, ToggleRight, Loader2, RefreshCw } from "lucide-react"
+import { Plus, Edit, ToggleLeft, ToggleRight, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useGames } from "@/hooks/useGames"
 import { useToast } from "@/hooks/use-toast"
@@ -26,7 +26,7 @@ import type { CreateGameDto, UpdateGameDto, Game } from "helper"
 export default function AdminGames() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const { games, loading, createGame, updateGame, toggleGameStatus, syncGames } = useGames(false)
+  const { games, loading, page, totalPages, total, goToPage, createGame, updateGame, toggleGameStatus, syncGames } = useGames(false)
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -362,6 +362,34 @@ export default function AdminGames() {
                 </Button>
               </CardContent>
             </Card>
+          )}
+
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                {total} juego{total !== 1 ? 's' : ''} — página {page} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(page + 1)}
+                  disabled={page >= totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </main>
 

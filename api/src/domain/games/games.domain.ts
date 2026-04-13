@@ -72,33 +72,27 @@ export class GamesDomain {
 
     // Create game
     const game = await gamesRepository.create(gameData);
-    gamesCache.invalidateAndRefresh(() => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT));
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
     return game;
   }
 
   /**
-   * Get all games (optionally filter by active status)
-   */
-  async getAllGames(activeOnly: boolean = false): Promise<Game[]> {
-    return await gamesRepository.findAll(activeOnly);
-  }
-
-  /**
-   * Get paginated games (all statuses). Page 1 with default limit is served from cache.
+   * Get paginated games. Page 1 / default limit is served from cache for both activeOnly variants.
    */
   async getPaginatedGames(
     page: number,
-    limit: number
+    limit: number,
+    activeOnly: boolean = false
   ): Promise<{ games: Game[]; total: number }> {
     if (page === CACHE_PAGE && limit === CACHE_LIMIT) {
-      const cached = gamesCache.get();
+      const cached = gamesCache.get(activeOnly);
       if (cached) return cached;
 
-      const result = await gamesRepository.findPaginated(page, limit);
-      gamesCache.set(result);
+      const result = await gamesRepository.findPaginated(page, limit, activeOnly);
+      gamesCache.set(result, activeOnly);
       return result;
     }
-    return gamesRepository.findPaginated(page, limit);
+    return gamesRepository.findPaginated(page, limit, activeOnly);
   }
 
   /**
@@ -200,7 +194,7 @@ export class GamesDomain {
 
     // Update game
     const updated = await gamesRepository.update(gameId, updateData);
-    gamesCache.invalidateAndRefresh(() => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT));
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
     return updated;
   }
 
@@ -230,7 +224,7 @@ export class GamesDomain {
 
     // Toggle status
     const toggled = await gamesRepository.update(gameId, { isActive: !game.isActive });
-    gamesCache.invalidateAndRefresh(() => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT));
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
     return toggled;
   }
 
@@ -260,7 +254,7 @@ export class GamesDomain {
 
     // Delete game
     await gamesRepository.delete(gameId);
-    gamesCache.invalidateAndRefresh(() => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT));
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
   }
 }
 
