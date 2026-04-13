@@ -42,19 +42,19 @@ router.post(
 router.get('/my-balance', chipsController.getMyBalance.bind(chipsController));
 
 router.get(
-  '/balance/:userId',
+  '/balance/:id',
   validateParams(idParamSchema),
   chipsController.getBalance.bind(chipsController)
 );
 
 router.get(
-  '/movements/:userId',
+  '/movements/:id',
   validateParams(idParamSchema),
   chipsController.getMovements.bind(chipsController)
 );
 
 router.get(
-  '/movements/:userId/export',
+  '/movements/:id/export',
   validateParams(idParamSchema),
   chipsController.exportMovements.bind(chipsController)
 );
