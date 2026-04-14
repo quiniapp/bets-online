@@ -79,10 +79,18 @@ export class GameLaunchController {
    *         description: Game session URL
    */
   async launchGame(req: Request, res: Response, next: NextFunction) {
+    const { id: gameId } = req.params;
+    const { playerDeviceType, gameMode, lobbyUrl, depositUrl, exitUrl } = req.body;
+    console.log('[21Viral][launchGame] REQUEST', JSON.stringify({
+      userId: req.user?.userId,
+      gameId,
+      playerDeviceType: playerDeviceType ?? 'Desktop',
+      gameMode: gameMode ?? 'Real',
+      lobbyUrl,
+      depositUrl,
+      exitUrl
+    }));
     try {
-      const { id: gameId } = req.params;
-      const { playerDeviceType, gameMode, lobbyUrl, depositUrl, exitUrl } = req.body;
-
       const gameStartUrl = await gameLaunchDomain.launchGame({
         userId: req.user.userId,
         gameId,
@@ -93,8 +101,10 @@ export class GameLaunchController {
         exitUrl
       });
 
+      console.log('[21Viral][launchGame] RESPONSE 200', JSON.stringify({ gameStartUrl }));
       return res.json(ApiResponseBuilder.success({ gameStartUrl }));
     } catch (error) {
+      console.log('[21Viral][launchGame] ERROR', error instanceof Error ? error.message : String(error));
       return next(error);
     }
   }
