@@ -12,11 +12,12 @@ export class ProviderTransactionRepository {
   async findByIdempotencyKey(
     providerName: string,
     providerTransactionId: string,
+    providerGameRoundId: string | null,
     transactionType: TransactionType,
     transaction?: Transaction
   ): Promise<ProviderTransaction | null> {
     const tx = await ProviderTransactionModel.findOne({
-      where: { providerName, providerTransactionId, transactionType },
+      where: { providerName, providerTransactionId, providerGameRoundId, transactionType },
       transaction
     });
     if (!tx) return null;
@@ -26,12 +27,14 @@ export class ProviderTransactionRepository {
   async findOriginalForReversal(
     providerName: string,
     providerTransactionId: string,
+    providerGameRoundId: string | null,
     transaction?: Transaction
   ): Promise<ProviderTransaction | null> {
     const tx = await ProviderTransactionModel.findOne({
       where: {
         providerName,
         providerTransactionId,
+        providerGameRoundId,
         transactionType: { [Op.in]: [TransactionType.Debit, TransactionType.Credit] }
       },
       transaction
