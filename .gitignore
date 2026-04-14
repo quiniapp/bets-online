@@ -55,3 +55,6 @@ Thumbs.db
 .claude/.env
 .claude/settings.local.json
 .mcp.json
+
+# Docs
+docs
