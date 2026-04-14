@@ -29,7 +29,7 @@ export const providerBalanceRequestSchema = z.object({
 export const providerTransactionRequestSchema = z.object({
   transactionType: z.nativeEnum(TransactionType),
   betType: z.nativeEnum(BetType),
-  gameRoundStatus: z.nativeEnum(GameRoundStatus),
+  gameRoundStatus: z.nativeEnum(GameRoundStatus).optional(),
   providerGameId: z.string().optional(),
   providerName: z.string().optional(),
   timestamp: z.number().int(),

@@ -77,7 +77,7 @@ export interface ProviderBalanceRequest {
 export interface ProviderTransactionRequest {
   transactionType: TransactionType;
   betType: BetType;
-  gameRoundStatus: GameRoundStatus;
+  gameRoundStatus?: GameRoundStatus;
   providerGameId?: string;
   providerName?: string;
   timestamp: number;
