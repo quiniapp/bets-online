@@ -52,7 +52,10 @@ export const createHmacMiddleware = (config: HmacMiddlewareConfig) => {
     }
 
     const nowSeconds = Math.floor(Date.now() / 1000);
-    if (Math.abs(nowSeconds - timestamp) > tolerance) {
+    // Some providers (e.g. Pascal) send timestamp in milliseconds instead of seconds.
+    // Timestamps > 1e12 are in milliseconds (year ~2001+ in ms vs ~33000+ in seconds).
+    const timestampSeconds = timestamp > 1e12 ? Math.floor(timestamp / 1000) : timestamp;
+    if (Math.abs(nowSeconds - timestampSeconds) > tolerance) {
       authFailure(res, 'Request timestamp out of tolerance window');
       return;
     }
