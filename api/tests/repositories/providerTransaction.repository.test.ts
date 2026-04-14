@@ -9,6 +9,7 @@ describe('ProviderTransactionRepository', () => {
       const result = await repo.findByIdempotencyKey(
         '21viral',
         'non-existent-tx-id',
+        'round-1',
         TransactionType.Debit
       );
       expect(result).toBeNull();
@@ -17,7 +18,7 @@ describe('ProviderTransactionRepository', () => {
 
   describe('findOriginalForReversal', () => {
     it('should return null when no Debit/Credit found for given id', async () => {
-      const result = await repo.findOriginalForReversal('21viral', 'non-existent-tx-id');
+      const result = await repo.findOriginalForReversal('21viral', 'non-existent-tx-id', 'round-1');
       expect(result).toBeNull();
     });
   });
