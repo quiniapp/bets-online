@@ -9,6 +9,7 @@ import { config } from './config';
 import { testConnection } from './config/database';
 import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import routes from './routes';
+import viralCallbackRoutes from './routes/integrations/21viral/callbacks';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { globalLimiter } from './middleware/rateLimiter.middleware';
 import { startGameSyncJob } from './cron/gameSyncJob';
@@ -90,6 +91,10 @@ app.get('/api/csrf-token', (_req: Request, res: Response) => {
   });
   res.json({ success: true, token });
 });
+
+// 21Viral provider callbacks — server-to-server, mounted at root to match
+// the operator base URL configured in the 21Viral dashboard
+app.use(viralCallbackRoutes);
 
 // API routes (global rate limiter + CSRF protection)
 app.use('/api', globalLimiter, csrfMiddleware, routes);
