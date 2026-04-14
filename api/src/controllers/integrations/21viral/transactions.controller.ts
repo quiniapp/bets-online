@@ -14,7 +14,7 @@ export class TransactionsController {
           viralErrorCode: ViralErrorCode.RequestValidationFailure,
           message: 'Request body validation failed'
         };
-        console.log('[21Viral][CALLBACK][transactions] RESPONSE 422', JSON.stringify(errorBody));
+        console.log('[21Viral][CALLBACK][transactions] RESPONSE 422', JSON.stringify({ ...errorBody, issues: parsed.error.issues }));
         return res.status(422).json(errorBody);
       }
 
