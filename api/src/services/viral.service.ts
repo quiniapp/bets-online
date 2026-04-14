@@ -45,8 +45,17 @@ class ViralService {
     };
   }
 
+  private log(direction: 'REQUEST' | 'RESPONSE', endpoint: string, data: unknown) {
+    console.log(
+      `[21Viral][${direction}][${endpoint}]`,
+      JSON.stringify(data, null, 2)
+    );
+  }
+
   async getGames(): Promise<ViralGame[]> {
     const body = { timestamp: Math.floor(Date.now() / 1000) };
+    this.log('REQUEST', 'v1/games', body);
+
     const res = await fetch(`${this.baseUrl}v1/games`, {
       method: 'POST',
       headers: this.buildHeaders(body),
@@ -55,10 +64,12 @@ class ViralService {
 
     if (!res.ok) {
       const text = await res.text();
+      this.log('RESPONSE', 'v1/games', { status: res.status, body: text });
       throw new Error(`21Viral getGames failed: ${res.status} — ${text}`);
     }
 
     const data = await res.json() as { games: ViralGame[] };
+    this.log('RESPONSE', 'v1/games', { status: res.status, gameCount: data.games?.length });
     return data.games;
   }
 
@@ -82,6 +93,8 @@ class ViralService {
     if (params.promoBalance !== undefined) body.promoBalance = params.promoBalance;
     if (params.exitUrl !== undefined) body.exitUrl = params.exitUrl;
 
+    this.log('REQUEST', 'v1/games/sessions', body);
+
     const res = await fetch(`${this.baseUrl}v1/games/sessions`, {
       method: 'POST',
       headers: this.buildHeaders(body),
@@ -90,10 +103,12 @@ class ViralService {
 
     if (!res.ok) {
       const text = await res.text();
+      this.log('RESPONSE', 'v1/games/sessions', { status: res.status, body: text });
       throw new Error(`21Viral createGameSession failed: ${res.status} — ${text}`);
     }
 
     const data = (await res.json()) as { gameStartUrl: string };
+    this.log('RESPONSE', 'v1/games/sessions', { status: res.status, gameStartUrl: data.gameStartUrl });
     return data.gameStartUrl;
   }
 }
