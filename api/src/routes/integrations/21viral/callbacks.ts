@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { createHmacMiddleware } from '../../../middleware/hmac.middleware';
+import { viralProviderLimiter } from '../../../middleware/rateLimiter.middleware';
 import { config } from '../../../config';
 import balanceRoutes from './balance.routes';
 import transactionsRoutes from './transactions.routes';
@@ -14,7 +15,7 @@ const hmacMiddleware = createHmacMiddleware({
 
 // 21Viral calls these endpoints server-to-server using the operator base URL
 // configured in the 21Viral dashboard. They must live at the root level.
-router.use('/players', hmacMiddleware, balanceRoutes);
-router.use('/players', hmacMiddleware, transactionsRoutes);
+router.use('/players', viralProviderLimiter, hmacMiddleware, balanceRoutes);
+router.use('/players', viralProviderLimiter, hmacMiddleware, transactionsRoutes);
 
 export default router;
