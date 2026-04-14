@@ -41,6 +41,7 @@ export class TransactionsDomain {
     const existing = await providerTransactionRepository.findByIdempotencyKey(
       '21viral',
       req.providerTransactionId,
+      req.providerGameRoundId ?? null,
       req.transactionType
     );
 
@@ -75,6 +76,7 @@ export class TransactionsDomain {
         const existingAfterRace = await providerTransactionRepository.findByIdempotencyKey(
           '21viral',
           req.providerTransactionId,
+          req.providerGameRoundId ?? null,
           req.transactionType
         );
         if (existingAfterRace) {
@@ -123,6 +125,7 @@ export class TransactionsDomain {
       const original = await providerTransactionRepository.findOriginalForReversal(
         '21viral',
         req.providerTransactionId,
+        req.providerGameRoundId ?? null,
         t
       );
 
