@@ -126,10 +126,14 @@ export class AuthDomain {
       throw new AppError(401, ErrorCode.TOKEN_EXPIRED, 'Session expired');
     }
 
-    // Get user
-    const user = await usersRepository.findById(decoded.userId);
+    // Get user — cache first para evitar DB en cada renovación de token
+    let user = userCache.get(decoded.userId);
     if (!user) {
-      throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+      user = await usersRepository.findById(decoded.userId);
+      if (!user) {
+        throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+      }
+      userCache.set(user);
     }
 
     // Check if user is blocked
