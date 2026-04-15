@@ -13,6 +13,7 @@ import viralCallbackRoutes from './routes/integrations/21viral/callbacks';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { globalLimiter } from './middleware/rateLimiter.middleware';
 import { startGameSyncJob } from './cron/gameSyncJob';
+import { startCacheSyncJob } from './cron/cacheSyncJob';
 
 const app = express();
 
@@ -122,6 +123,7 @@ const startServer = async () => {
 
     // Start scheduled jobs
     startGameSyncJob();
+    startCacheSyncJob();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

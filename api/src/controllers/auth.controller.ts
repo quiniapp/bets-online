@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
 import { authDomain } from '../domain/auth/auth.domain';
 import { config } from '../config';
+import { usersRepository } from '../persistence/repositories/users.repository';
+import { userCache } from '../persistence/cache/user.cache';
 
 export class AuthController {
   /**
@@ -236,11 +238,20 @@ export class AuthController {
         );
       }
 
-      return res.json(
-        ApiResponseBuilder.success({
-          user: req.user
-        })
-      );
+      let user = userCache.get(req.user.userId);
+      if (!user) {
+        user = await usersRepository.findById(req.user.userId);
+        if (!user) {
+          return res.status(404).json(
+            ApiResponseBuilder.error('NOT_FOUND', 'User not found')
+          );
+        }
+        userCache.set(user);
+      }
+
+      const { passwordHash: _passwordHash, ...userWithoutPassword } = user as typeof user & { passwordHash?: string };
+
+      return res.json(ApiResponseBuilder.success(userWithoutPassword));
     } catch (error) {
       return next(error);
     }
