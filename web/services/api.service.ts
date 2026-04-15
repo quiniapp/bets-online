@@ -4,6 +4,7 @@ class ApiService {
   private baseUrl: string;
   private accessToken: string | null = null;
   private csrfToken: string | null = null;
+  private isRefreshing = false;
 
   constructor() {
     this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -86,14 +87,6 @@ class ApiService {
         credentials: 'include',
       });
 
-      // Detectar respuestas HTTP de autenticación fallida
-      // Solo redirigir si había una sesión activa (token presente). Si no hay token,
-      // es un intento de login fallido y debe manejarse normalmente por el caller.
-      if ((response.status === 401 || response.status === 403) && this.getAccessToken()) {
-        this.handleAuthError();
-        throw new Error('Session expired');
-      }
-
       const data: ApiResponse<T> = await response.json();
 
       // CSRF token inválido — limpiar caché y reintentar una sola vez
@@ -102,17 +95,30 @@ class ApiService {
         return this.request<T>(endpoint, options, true);
       }
 
-      // Detectar errores de auth en el body
-      if (!data.success && this.isAuthError(data.error?.code)) {
-        // Intentar refresh token primero
-        const refreshed = await this.refreshToken();
-        if (refreshed) {
-          return this.request<T>(endpoint, options, true);
-        } else {
-          // Refresh failed, logout
-          this.handleAuthError();
-          throw new Error('Session expired');
+      // Detectar errores de autenticación (HTTP 401/403 o error en el body)
+      // Si hay una sesión activa y no es un reintento, intentar refresh primero
+      const isAuthFailure =
+        (response.status === 401 || response.status === 403) ||
+        (!data.success && this.isAuthError(data.error?.code));
+
+      if (isAuthFailure && this.getAccessToken() && !isRetry && !this.isRefreshing) {
+        this.isRefreshing = true;
+        try {
+          const refreshed = await this.refreshToken();
+          if (refreshed) {
+            return this.request<T>(endpoint, options, true);
+          }
+        } finally {
+          this.isRefreshing = false;
         }
+        this.handleAuthError();
+        throw new Error('Session expired');
+      }
+
+      // Sin token activo o ya en reintento: logout inmediato si es error de auth
+      if (isAuthFailure && this.getAccessToken()) {
+        this.handleAuthError();
+        throw new Error('Session expired');
       }
 
       return data;

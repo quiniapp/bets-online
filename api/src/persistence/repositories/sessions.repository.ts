@@ -1,6 +1,7 @@
 import { SessionModel } from '../models';
 import { Session } from 'helper';
 import { Op } from 'sequelize';
+import { sessionCache } from '../cache/session.cache';
 
 export class SessionsRepository {
   async create(
@@ -16,25 +17,37 @@ export class SessionsRepository {
       expiresAt
     });
 
-    return this.mapToSession(session);
+    const mapped = this.mapToSession(session);
+    sessionCache.set(mapped);
+    return mapped;
   }
 
   async findByToken(token: string): Promise<Session | null> {
+    const cached = sessionCache.getByToken(token);
+    if (cached) return cached;
+
     const session = await SessionModel.findOne({
       where: { token }
     });
 
     if (!session) return null;
-    return this.mapToSession(session);
+    const mapped = this.mapToSession(session);
+    sessionCache.set(mapped);
+    return mapped;
   }
 
   async findByRefreshToken(refreshToken: string): Promise<Session | null> {
+    const cached = sessionCache.getByRefreshToken(refreshToken);
+    if (cached) return cached;
+
     const session = await SessionModel.findOne({
       where: { refreshToken }
     });
 
     if (!session) return null;
-    return this.mapToSession(session);
+    const mapped = this.mapToSession(session);
+    sessionCache.set(mapped);
+    return mapped;
   }
 
   async findByUserId(userId: string): Promise<Session[]> {
@@ -51,12 +64,14 @@ export class SessionsRepository {
   }
 
   async deleteByToken(token: string): Promise<void> {
+    sessionCache.invalidateByToken(token);
     await SessionModel.destroy({
       where: { token }
     });
   }
 
   async deleteByUserId(userId: string): Promise<void> {
+    sessionCache.invalidateByUserId(userId);
     await SessionModel.destroy({
       where: { userId }
     });

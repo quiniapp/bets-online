@@ -12,6 +12,7 @@ import {
 import { config } from '../../config';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { sessionsRepository } from '../../persistence/repositories/sessions.repository';
+import { userCache } from '../../persistence/cache/user.cache';
 import { AppError } from '../../middleware/error.middleware';
 
 export class AuthDomain {
@@ -177,7 +178,8 @@ export class AuthDomain {
     // Update password
     await usersRepository.updatePassword(userId, passwordHash);
 
-    // Invalidate all sessions
+    // Invalidate user cache and all sessions
+    userCache.invalidate(userId);
     await sessionsRepository.deleteByUserId(userId);
   }
 
@@ -194,7 +196,8 @@ export class AuthDomain {
     // Update password
     await usersRepository.updatePassword(userId, passwordHash);
 
-    // Invalidate all sessions
+    // Invalidate user cache and all sessions
+    userCache.invalidate(userId);
     await sessionsRepository.deleteByUserId(userId);
   }
 
