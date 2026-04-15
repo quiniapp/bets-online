@@ -42,14 +42,13 @@ export class AuthDomain {
     // Generate tokens
     const tokens = await this.createSession(user);
 
-    // Remove password hash from response
-     
     const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
+    const loggedInUser = { ...userWithoutPassword, lastConnection: new Date() } as User;
 
-    return {
-      user: { ...userWithoutPassword, lastConnection: new Date() } as User,
-      tokens
-    };
+    // Poblar caché para que el primer refresh no vaya a DB
+    userCache.set(loggedInUser);
+
+    return { user: loggedInUser, tokens };
   }
 
   async register(
