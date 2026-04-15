@@ -228,9 +228,10 @@ export class AuthDomain {
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
 
-    // Calculate expiration date (7 days for refresh token)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    // expiresAt = vida del refreshToken (20 min).
+    // Sesiones de corta duración mantienen la tabla pequeña y el servidor
+    // es el árbitro real de la expiración, sin depender del cliente.
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
 
     // Save session
     await sessionsRepository.create(user.id, accessToken, refreshToken, expiresAt);

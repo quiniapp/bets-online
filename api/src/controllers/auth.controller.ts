@@ -52,7 +52,7 @@ export class AuthController {
 
       res.cookie('refresh-token', result.tokens.refreshToken, {
         ...cookieBase,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 20 * 60 * 1000,
         path: '/api/auth/refresh'
       });
 
@@ -111,7 +111,7 @@ export class AuthController {
 
       res.cookie('refresh-token', tokens.refreshToken, {
         ...cookieBase,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: 20 * 60 * 1000,
         path: '/api/auth/refresh'
       });
 
