@@ -38,41 +38,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [mounted])
 
   const loadUser = async () => {
-    // Only run on client
     if (typeof window === 'undefined') {
       setIsLoading(false)
       return
     }
 
-    // No validar si estamos en página pública (landing o login)
+    // No validar en páginas públicas
     const publicPaths = [ROUTER.SITE, ROUTER.LOGIN]
     if (publicPaths.includes(window.location.pathname)) {
       setIsLoading(false)
       return
     }
 
+    // Sin indicador de sesión → redirigir sin llamar a la API
+    if (!apiService.hasSession()) {
+      router.push(ROUTER.SITE)
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
-      const token = apiService.getAccessToken()
-
-      if (!token) {
-        router.push(ROUTER.SITE)
-        return
-      }
-
       const response = await apiService.getCurrentUser()
 
       if (response.success && response.data) {
         setUser(response.data)
         setRole(response.data.role)
       } else {
-        // Token inválido o expirado
-        apiService.setAccessToken(null)
+        apiService.setSessionActive(false)
         router.push(ROUTER.SITE)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
-      apiService.setAccessToken(null)
+      apiService.setSessionActive(false)
       router.push(ROUTER.SITE)
     } finally {
       setIsLoading(false)
@@ -85,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await apiService.login(credentials.username, credentials.password)
 
-      if (response.success && response.data) {
+      if (response.success && response.data?.user) {
         const loggedInUser = response.data.user
         setUser(loggedInUser)
         setRole(loggedInUser.role)
@@ -153,14 +151,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, logout])
 
-  // Multi-tab synchronization: Close session in all tabs when logged out in one
+  // Multi-tab synchronization: sincronizar logout entre tabs
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const handleStorageChange = (e: StorageEvent) => {
-      // Si el token se eliminó en otra tab
-      if (e.key === 'accessToken' && !e.newValue) {
-        console.log('Session closed in another tab')
+      if (e.key === 'session_active' && !e.newValue) {
         setUser(null)
         setRole(null)
         router.push(ROUTER.SITE)

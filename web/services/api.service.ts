@@ -1,33 +1,36 @@
-import type { ApiResponse, User, AuthTokens } from 'helper';
+import type { ApiResponse, User } from 'helper';
+
+const SESSION_FLAG = 'session_active';
 
 class ApiService {
   private baseUrl: string;
-  private accessToken: string | null = null;
   private csrfToken: string | null = null;
   private isRefreshing = false;
+  // Flag local (no sensible) para saber si hay sesión sin leer cookies httpOnly
+  private sessionActive = false;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    // Las llamadas van a /api/* y Next.js las proxifica al backend.
+    // Funciona igual en desarrollo (rewrite a localhost:3001) y producción (Railway).
+    this.baseUrl = '';
+    if (typeof window !== 'undefined') {
+      this.sessionActive = localStorage.getItem(SESSION_FLAG) === '1';
+    }
   }
 
-  setAccessToken(token: string | null) {
-    this.accessToken = token;
-    if (token) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('accessToken', token);
-      }
-    } else {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
+  setSessionActive(active: boolean) {
+    this.sessionActive = active;
+    if (typeof window !== 'undefined') {
+      if (active) {
+        localStorage.setItem(SESSION_FLAG, '1');
+      } else {
+        localStorage.removeItem(SESSION_FLAG);
       }
     }
   }
 
-  getAccessToken(): string | null {
-    if (!this.accessToken && typeof window !== 'undefined') {
-      this.accessToken = localStorage.getItem('accessToken');
-    }
-    return this.accessToken;
+  hasSession(): boolean {
+    return this.sessionActive;
   }
 
   private async fetchCsrfToken(): Promise<string> {
@@ -48,15 +51,8 @@ class ApiService {
   }
 
   private handleAuthError(): void {
-    // Limpiar todos los tokens
-    this.setAccessToken(null);
-
+    this.setSessionActive(false);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('auth_user');
-      localStorage.removeItem('auth_role');
-
-      // Redirect inmediato a login usando window.location para garantizar limpieza completa
       window.location.href = '/login';
     }
   }
@@ -71,11 +67,9 @@ class ApiService {
       ...(options.headers as Record<string, string>),
     };
 
-    const token = this.getAccessToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    } else if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method)) {
-      // Sin token de auth, CSRF middleware activo — incluir x-csrf-token
+    // Sin token de Authorization: la cookie session se envía automáticamente.
+    // Solo agregar CSRF para mutaciones sin sesión activa.
+    if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method) && !this.hasSession()) {
       const csrf = this.csrfToken ?? await this.fetchCsrfToken();
       headers['x-csrf-token'] = csrf;
     }
@@ -96,12 +90,11 @@ class ApiService {
       }
 
       // Detectar errores de autenticación (HTTP 401/403 o error en el body)
-      // Si hay una sesión activa y no es un reintento, intentar refresh primero
       const isAuthFailure =
         (response.status === 401 || response.status === 403) ||
         (!data.success && this.isAuthError(data.error?.code));
 
-      if (isAuthFailure && this.getAccessToken() && !isRetry && !this.isRefreshing) {
+      if (isAuthFailure && this.hasSession() && !isRetry && !this.isRefreshing) {
         this.isRefreshing = true;
         try {
           const refreshed = await this.refreshToken();
@@ -115,8 +108,7 @@ class ApiService {
         throw new Error('Session expired');
       }
 
-      // Sin token activo o ya en reintento: logout inmediato si es error de auth
-      if (isAuthFailure && this.getAccessToken()) {
+      if (isAuthFailure && this.hasSession()) {
         this.handleAuthError();
         throw new Error('Session expired');
       }
@@ -132,14 +124,14 @@ class ApiService {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async post<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
     });
   }
 
-  async patch<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async patch<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: body ? JSON.stringify(body) : undefined,
@@ -152,35 +144,25 @@ class ApiService {
 
   // Auth methods
   async login(username: string, password: string) {
-    const response = await this.post<{
-      user: User;
-      tokens: AuthTokens;
-    }>('/auth/login', { username, password });
+    const response = await this.post<{ user: User }>('/auth/login', { username, password });
 
     if (response.success && response.data) {
-      this.setAccessToken(response.data.tokens.accessToken);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
-      }
+      this.setSessionActive(true);
     }
 
     return response;
   }
 
   async refreshToken(): Promise<boolean> {
-    if (typeof window === 'undefined') return false;
-
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) return false;
-
     try {
-      const response = await this.post<AuthTokens>('/auth/refresh', {
-        refreshToken,
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
-      if (response.success && response.data) {
-        this.setAccessToken(response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
+      if (response.ok) {
+        this.setSessionActive(true);
         return true;
       }
     } catch (error) {
@@ -196,12 +178,7 @@ class ApiService {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      this.setAccessToken(null);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('auth_role');
-      }
+      this.setSessionActive(false);
     }
   }
 
