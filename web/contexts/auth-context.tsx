@@ -1,11 +1,14 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { apiService } from "@/services/api.service"
 import type { User, UserRole } from "helper"
 import ROUTER from "@/routes"
+
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutos
+const LAST_ACTIVE_KEY = 'lastActiveAt'
 
 interface AuthContextType {
   user: User | null
@@ -25,17 +28,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
-  // Ensure we're mounted before hydrating
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Load user on mount
   useEffect(() => {
     if (mounted) {
       loadUser()
     }
   }, [mounted])
+
+  const clearSession = useCallback(() => {
+    apiService.setSessionActive(false)
+    localStorage.removeItem(LAST_ACTIVE_KEY)
+  }, [])
 
   const loadUser = async () => {
     if (typeof window === 'undefined') {
@@ -43,15 +49,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // No validar en páginas públicas
     const publicPaths = [ROUTER.SITE, ROUTER.LOGIN]
     if (publicPaths.includes(window.location.pathname)) {
       setIsLoading(false)
       return
     }
 
-    // Sin indicador de sesión → redirigir sin llamar a la API
     if (!apiService.hasSession()) {
+      router.push(ROUTER.SITE)
+      setIsLoading(false)
+      return
+    }
+
+    // Verificar inactividad entre sesiones de browser (sliding window)
+    const lastActive = localStorage.getItem(LAST_ACTIVE_KEY)
+    if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
+      clearSession()
       router.push(ROUTER.SITE)
       setIsLoading(false)
       return
@@ -64,13 +77,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.success && response.data) {
         setUser(response.data)
         setRole(response.data.role)
+        // Marcar momento de carga como actividad
+        localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
       } else {
-        apiService.setSessionActive(false)
+        clearSession()
         router.push(ROUTER.SITE)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
-      apiService.setSessionActive(false)
+      clearSession()
       router.push(ROUTER.SITE)
     } finally {
       setIsLoading(false)
@@ -87,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const loggedInUser = response.data.user
         setUser(loggedInUser)
         setRole(loggedInUser.role)
-
+        localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
         return loggedInUser
       }
 
@@ -100,49 +115,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await apiService.logout()
+    clearSession()
     setUser(null)
     setRole(null)
     router.push(ROUTER.SITE)
-  }
+  }, [router, clearSession])
 
   const refreshUser = async () => {
     await loadUser()
   }
 
-  // Inactivity Timer: Auto-logout after 30 minutes without activity
+  // Sliding window de inactividad: 10 minutos sin actividad → logout
+  // También actualiza lastActiveAt en localStorage para detectar inactividad
+  // al reabrir el browser
   useEffect(() => {
-    // Solo activar si hay usuario logueado
     if (!user) return
 
-    // No activar en página de login
     if (typeof window !== 'undefined' && window.location.pathname === ROUTER.LOGIN) {
       return
     }
 
-    const INACTIVITY_TIMEOUT = 30 * 60 * 1000 // 30 minutos en ms
     let inactivityTimer: NodeJS.Timeout
 
     const resetTimer = () => {
       clearTimeout(inactivityTimer)
+      localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
       inactivityTimer = setTimeout(() => {
-        console.log('Session expired due to inactivity')
         logout()
       }, INACTIVITY_TIMEOUT)
     }
 
-    // Eventos que indican actividad del usuario
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click']
 
     activityEvents.forEach(event => {
       window.addEventListener(event, resetTimer, { passive: true })
     })
 
-    // Iniciar el timer
     resetTimer()
 
-    // Cleanup
     return () => {
       clearTimeout(inactivityTimer)
       activityEvents.forEach(event => {
@@ -151,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, logout])
 
-  // Multi-tab synchronization: sincronizar logout entre tabs
+  // Multi-tab: sincronizar logout cuando session_active se elimina en otra tab
   useEffect(() => {
     if (typeof window === 'undefined') return
 
@@ -164,10 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     window.addEventListener('storage', handleStorageChange)
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-    }
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [router])
 
   return (
