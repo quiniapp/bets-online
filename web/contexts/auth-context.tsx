@@ -7,8 +7,26 @@ import { apiService } from "@/services/api.service"
 import type { User, UserRole } from "helper"
 import ROUTER from "@/routes"
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutos
-const LAST_ACTIVE_KEY = 'lastActiveAt'
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutos en ms
+const INACTIVITY_SECONDS = 10 * 60         // 10 minutos en segundos (para maxAge de cookie)
+const LAST_ACTIVE_COOKIE = 'last-active'
+
+// Cookie no-httpOnly manejada desde JS.
+// maxAge=INACTIVITY_SECONDS → el browser la expira automáticamente si no se renueva.
+// La existencia de la cookie indica que la sesión está dentro de la ventana de inactividad.
+const setLastActiveCookie = () => {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${LAST_ACTIVE_COOKIE}=1; max-age=${INACTIVITY_SECONDS}; path=/; SameSite=Strict${secure}`
+}
+
+const hasLastActiveCookie = (): boolean => {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split(';').some(c => c.trim().startsWith(`${LAST_ACTIVE_COOKIE}=`))
+}
+
+const clearLastActiveCookie = () => {
+  document.cookie = `${LAST_ACTIVE_COOKIE}=; max-age=0; path=/`
+}
 
 interface AuthContextType {
   user: User | null
@@ -40,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearSession = useCallback(() => {
     apiService.setSessionActive(false)
-    localStorage.removeItem(LAST_ACTIVE_KEY)
+    clearLastActiveCookie()
   }, [])
 
   const loadUser = async () => {
@@ -55,15 +73,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Verificar inactividad cross-browser solo si hay indicador de sesión
-    if (apiService.hasSession()) {
-      const lastActive = localStorage.getItem(LAST_ACTIVE_KEY)
-      if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
-        clearSession()
-        router.push(ROUTER.SITE)
-        setIsLoading(false)
-        return
-      }
+    // Si hay indicador de sesión pero la cookie de actividad expiró → inactividad detectada
+    if (apiService.hasSession() && !hasLastActiveCookie()) {
+      clearSession()
+      router.push(ROUTER.SITE)
+      setIsLoading(false)
+      return
     }
 
     setIsLoading(true)
@@ -71,13 +86,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiService.getCurrentUser()
 
       if (response.success && response.data) {
-        // Sincronizar flag si las cookies eran válidas pero localStorage fue limpiado (fix 6)
+        // Sincronizar flag si las cookies eran válidas pero localStorage fue limpiado
         if (!apiService.hasSession()) {
           apiService.setSessionActive(true)
         }
         setUser(response.data)
         setRole(response.data.role)
-        localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
+        setLastActiveCookie()
       } else {
         clearSession()
         router.push(ROUTER.SITE)
@@ -101,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const loggedInUser = response.data.user
         setUser(loggedInUser)
         setRole(loggedInUser.role)
-        localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
+        setLastActiveCookie()
         return loggedInUser
       }
 
@@ -126,9 +141,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await loadUser()
   }
 
-  // Sliding window de inactividad: 10 minutos sin actividad → logout
-  // También actualiza lastActiveAt en localStorage para detectar inactividad
-  // al reabrir el browser
+  // Sliding window: cada evento de actividad renueva el maxAge de la cookie.
+  // Si pasan 10 min sin eventos → cookie expira sola → próximo loadUser bloquea.
+  // El timer sigue siendo necesario para el logout inmediato con página abierta.
   useEffect(() => {
     if (!user) return
 
@@ -140,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const resetTimer = () => {
       clearTimeout(inactivityTimer)
-      localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
+      setLastActiveCookie() // Renueva maxAge → reinicia ventana de 10 min
       inactivityTimer = setTimeout(() => {
         logout()
       }, INACTIVITY_TIMEOUT)
