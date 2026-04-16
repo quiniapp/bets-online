@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
-import { Users, Gamepad2, DollarSign, TrendingUp, Loader2 } from "lucide-react"
+import { Users, Gamepad2, DollarSign, Loader2 } from "lucide-react"
+import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
 import {
   BarChart,
   Bar,
@@ -21,16 +22,16 @@ import Link from "next/link"
 import ROUTER from "@/routes"
 import { useUsers } from "@/hooks/useUsers"
 import { useGames } from "@/hooks/useGames"
+import { useChips } from "@/hooks/useChips"
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth()
   const router = useRouter()
   // Use high limit for dashboard stats
-  const { users, loading: loadingUsers, pagination } = useUsers({ limit: 1000 })
+  const { users, loading: loadingUsers } = useUsers({ limit: 1000 })
   const { games, loading: loadingGames } = useGames()
-
-  const [totalBalance, setTotalBalance] = useState(0)
-  const [loadingBalance, setLoadingBalance] = useState(false)
+  const { balance: myBalance, loadBalance } = useChips()
+  const [loadBalanceOpen, setLoadBalanceOpen] = useState(false)
 
   useEffect(() => {
     if (!isLoading) {
@@ -43,30 +44,12 @@ export default function AdminDashboard() {
     }
   }, [role, router, isLoading])
 
-  // Calculate total balance from all users
+
   useEffect(() => {
-    const calculateTotalBalance = async () => {
-      if (users.length === 0) return
-
-      setLoadingBalance(true)
-      try {
-        // In a real scenario, we'd have an endpoint that returns aggregate data
-        // For now, we'll sum up balances we can access
-        // This is a placeholder - in production you'd want a dedicated endpoint
-        let total = 0
-
-        // We can get balance for users in our tree
-        // For demo purposes, we'll show a message
-        setTotalBalance(0) // Reset since we don't have a bulk balance endpoint
-      } catch (error) {
-        console.error("Error calculating balance:", error)
-      } finally {
-        setLoadingBalance(false)
-      }
+    if (user && (role === UserRole.ADMIN || role === UserRole.CASHIER)) {
+      loadBalance()
     }
-
-    calculateTotalBalance()
-  }, [users])
+  }, [user, role, loadBalance])
 
   if (isLoading) {
     return (
@@ -166,12 +149,29 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {role === UserRole.OWNER ? "Rol" : "Mi Balance"}
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
-            <p className="text-xs text-muted-foreground">Requiere endpoint agregado</p>
+            {role === UserRole.OWNER ? (
+              <>
+                <div className="text-2xl font-bold">Owner</div>
+                <p className="text-xs text-muted-foreground">Sin balance propio</p>
+              </>
+            ) : myBalance ? (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  ${myBalance.chipBalance.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Actualizado: {new Date(myBalance.lastUpdatedAt).toLocaleString()}
+                </p>
+              </>
+            ) : (
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -363,7 +363,31 @@ export default function AdminDashboard() {
             </Link>
           </CardContent>
         </Card>
+
+        {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Cargar Saldo
+              </CardTitle>
+              <CardDescription>Asignar fichas a un usuario</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={() => setLoadBalanceOpen(true)}>
+                Cargar Saldo
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      <ChipOperationDialog
+        operationType="sell"
+        open={loadBalanceOpen}
+        onOpenChange={setLoadBalanceOpen}
+        onSuccess={loadBalance}
+      />
     </DashboardLayout>
   )
 }
