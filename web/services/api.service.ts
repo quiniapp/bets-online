@@ -69,9 +69,10 @@ class ApiService {
       ...(options.headers as Record<string, string>),
     };
 
-    // Sin token de Authorization: la cookie session se envía automáticamente.
-    // Solo agregar CSRF para mutaciones sin sesión activa.
-    if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method) && !this.hasSession()) {
+    // Agregar CSRF token en todas las mutaciones (POST/PATCH/DELETE/PUT).
+    // El backend usa double-submit cookie pattern: requiere el header en cualquier
+    // request que modifique estado, independientemente de si hay sesión activa.
+    if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method)) {
       const csrf = this.csrfToken ?? await this.fetchCsrfToken();
       headers['x-csrf-token'] = csrf;
     }
