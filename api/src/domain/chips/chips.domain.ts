@@ -47,9 +47,16 @@ export class ChipsDomain {
 
     const t = await sequelize.transaction();
     try {
-      const balance = await balancesRepository.findByUserIdWithLock(playerId, t);
-      if (!balance) {
+      const playerBalance = await balancesRepository.findByUserIdWithLock(playerId, t);
+      if (!playerBalance) {
         throw new AppError(404, ErrorCode.NOT_FOUND, 'Player balance not found');
+      }
+
+      if (seller.role !== UserRole.OWNER) {
+        const sellerBalance = await balancesRepository.findByUserIdWithLock(sellerId, t);
+        if (!sellerBalance || sellerBalance.chipBalance < amount) {
+          throw new AppError(400, ErrorCode.INSUFFICIENT_BALANCE, 'Insufficient balance to sell chips');
+        }
       }
 
       const movement = await chipMovementsRepository.create(
@@ -59,14 +66,18 @@ export class ChipsDomain {
           type: ChipMovementType.SELL_TO_PLAYER,
           amount,
           description,
-          previousBalance: balance.chipBalance,
-          newBalance: balance.chipBalance + amount,
+          previousBalance: playerBalance.chipBalance,
+          newBalance: playerBalance.chipBalance + amount,
           idempotencyKey
         },
         t
       );
 
       await balancesRepository.atomicIncrement(playerId, amount, t);
+
+      if (seller.role !== UserRole.OWNER) {
+        await balancesRepository.atomicIncrement(sellerId, -amount, t);
+      }
 
       await t.commit();
       return movement;
@@ -112,9 +123,13 @@ export class ChipsDomain {
 
     const t = await sequelize.transaction();
     try {
-      const balance = await balancesRepository.findByUserIdWithLock(playerId, t);
-      if (!balance) {
+      const playerBalance = await balancesRepository.findByUserIdWithLock(playerId, t);
+      if (!playerBalance) {
         throw new AppError(404, ErrorCode.NOT_FOUND, 'Player balance not found');
+      }
+
+      if (playerBalance.chipBalance < amount) {
+        throw new AppError(400, ErrorCode.INSUFFICIENT_BALANCE, 'Player has insufficient balance');
       }
 
       const movement = await chipMovementsRepository.create(
@@ -122,16 +137,20 @@ export class ChipsDomain {
           userId: playerId,
           relatedUserId: cashierId,
           type: ChipMovementType.PRIZE,
-          amount,
+          amount: -amount,
           description,
-          previousBalance: balance.chipBalance,
-          newBalance: balance.chipBalance + amount,
+          previousBalance: playerBalance.chipBalance,
+          newBalance: playerBalance.chipBalance - amount,
           idempotencyKey
         },
         t
       );
 
-      await balancesRepository.atomicIncrement(playerId, amount, t);
+      await balancesRepository.atomicIncrement(playerId, -amount, t);
+
+      if (cashier.role !== UserRole.OWNER) {
+        await balancesRepository.atomicIncrement(cashierId, amount, t);
+      }
 
       await t.commit();
       return movement;
@@ -202,6 +221,10 @@ export class ChipsDomain {
 
       await balancesRepository.atomicIncrement(playerId, -amount, t);
 
+      if (cashier.role !== UserRole.OWNER) {
+        await balancesRepository.atomicIncrement(cashierId, amount, t);
+      }
+
       await t.commit();
       return movement;
     } catch (error) {
@@ -266,6 +289,17 @@ export class ChipsDomain {
       );
 
       await balancesRepository.atomicIncrement(playerId, -amount, t);
+
+      const creditUserId = requesterId !== playerId
+        ? requesterId
+        : player.parentUserId;
+
+      if (creditUserId) {
+        const creditUser = await usersRepository.findById(creditUserId);
+        if (creditUser && creditUser.role !== UserRole.OWNER) {
+          await balancesRepository.atomicIncrement(creditUserId, amount, t);
+        }
+      }
 
       await t.commit();
       return movement;

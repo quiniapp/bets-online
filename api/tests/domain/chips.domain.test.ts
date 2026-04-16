@@ -104,7 +104,7 @@ describe('ChipsDomain', () => {
 
       await expect(domain.sellChips('cashier-1', 'player-1', 200)).rejects.toMatchObject({
         statusCode: 400,
-        errorCode: ErrorCode.INSUFFICIENT_BALANCE
+        code: ErrorCode.INSUFFICIENT_BALANCE
       });
     });
 
@@ -167,7 +167,7 @@ describe('ChipsDomain', () => {
 
       await expect(domain.payPrize('cashier-1', 'player-1', 300)).rejects.toMatchObject({
         statusCode: 400,
-        errorCode: ErrorCode.INSUFFICIENT_BALANCE
+        code: ErrorCode.INSUFFICIENT_BALANCE
       });
     });
   });
@@ -200,7 +200,8 @@ describe('ChipsDomain', () => {
 
       (usersRepository.findById as jest.Mock)
         .mockResolvedValueOnce(cashier)
-        .mockResolvedValueOnce(player);
+        .mockResolvedValueOnce(player)
+        .mockResolvedValueOnce(cashier);
       (balancesRepository.findByUserIdWithLock as jest.Mock).mockResolvedValue(makeBalance(400));
       (chipMovementsRepository.create as jest.Mock).mockResolvedValue({
         id: 'mov-1', type: ChipMovementType.WITHDRAWAL, amount: -100, newBalance: 300
