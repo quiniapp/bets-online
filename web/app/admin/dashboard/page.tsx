@@ -165,9 +165,13 @@ export default function AdminDashboard() {
                 <div className="text-2xl font-bold text-green-600">
                   ${myBalance.chipBalance.toFixed(2)}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mb-3">
                   Actualizado: {new Date(myBalance.lastUpdatedAt).toLocaleString()}
                 </p>
+                <Button size="sm" className="w-full" onClick={() => setLoadBalanceOpen(true)}>
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  Cargar Saldo
+                </Button>
               </>
             ) : (
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
