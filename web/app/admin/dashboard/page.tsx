@@ -2,12 +2,13 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
 import { Users, Gamepad2, DollarSign, Loader2 } from "lucide-react"
+import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
 import {
   BarChart,
   Bar,
@@ -30,6 +31,7 @@ export default function AdminDashboard() {
   const { users, loading: loadingUsers } = useUsers({ limit: 1000 })
   const { games, loading: loadingGames } = useGames()
   const { balance: myBalance, loadBalance } = useChips()
+  const [loadBalanceOpen, setLoadBalanceOpen] = useState(false)
 
   useEffect(() => {
     if (!isLoading) {
@@ -361,7 +363,31 @@ export default function AdminDashboard() {
             </Link>
           </CardContent>
         </Card>
+
+        {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Cargar Saldo
+              </CardTitle>
+              <CardDescription>Asignar fichas a un usuario</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={() => setLoadBalanceOpen(true)}>
+                Cargar Saldo
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      <ChipOperationDialog
+        operationType="sell"
+        open={loadBalanceOpen}
+        onOpenChange={setLoadBalanceOpen}
+        onSuccess={loadBalance}
+      />
     </DashboardLayout>
   )
 }
