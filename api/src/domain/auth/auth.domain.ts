@@ -105,24 +105,12 @@ export class AuthDomain {
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    // Verify refresh token
+    // Verify refresh token JWT
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(refreshToken, config.jwt.refreshSecret) as JwtPayload;
     } catch (_error) {
       throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Invalid refresh token');
-    }
-
-    // Find session
-    const session = await sessionsRepository.findByRefreshToken(refreshToken);
-    if (!session) {
-      throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found');
-    }
-
-    // Check if session expired
-    if (session.expiresAt < new Date()) {
-      await sessionsRepository.deleteByToken(session.token);
-      throw new AppError(401, ErrorCode.TOKEN_EXPIRED, 'Session expired');
     }
 
     // Get user — cache first para evitar DB en cada renovación de token
@@ -141,13 +129,34 @@ export class AuthDomain {
       throw new AppError(403, ErrorCode.USER_BLOCKED, 'User is blocked');
     }
 
-    // Delete old session
-    await sessionsRepository.deleteByToken(session.token);
+    // Generar nuevos tokens
+    const sessionId = uuidv4();
+    const payload: JwtPayload = { userId: user.id, role: user.role, sessionId };
+    const newAccessToken = jwt.sign(
+      payload,
+      config.jwt.secret as jwt.Secret,
+      { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
+    );
+    const newRefreshToken = jwt.sign(
+      payload,
+      config.jwt.refreshSecret as jwt.Secret,
+      { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
+    );
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
 
-    // Create new session
-    const tokens = await this.createSession(user);
+    // Rotar sesión: 1 DB op (UPDATE con validación de expiresAt incluida)
+    const session = await sessionsRepository.rotateTokens(
+      refreshToken,
+      newAccessToken,
+      newRefreshToken,
+      expiresAt
+    );
 
-    return tokens;
+    if (!session) {
+      throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found or expired');
+    }
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
   async logout(token: string): Promise<void> {
