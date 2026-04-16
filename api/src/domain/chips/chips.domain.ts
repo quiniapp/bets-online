@@ -37,12 +37,19 @@ export class ChipsDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    if (player.parentUserId !== sellerId) {
-      throw new AppError(
-        403,
-        ErrorCode.FORBIDDEN,
-        'Can only sell chips to players you registered'
-      );
+    // Validar que el player esté en el árbol del seller
+    // Hijo directo (parentUserId) o descendiente (owner/admin pueden ver todo su árbol)
+    const isDirectChild = player.parentUserId === sellerId;
+    if (!isDirectChild) {
+      const descendants = await usersRepository.findDescendants(sellerId);
+      const isDescendant = descendants.some(d => d.id === playerId);
+      if (!isDescendant) {
+        throw new AppError(
+          403,
+          ErrorCode.FORBIDDEN,
+          'Can only sell chips to users in your hierarchy'
+        );
+      }
     }
 
     const t = await sequelize.transaction();
@@ -113,12 +120,12 @@ export class ChipsDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    if (player.parentUserId !== cashierId) {
-      throw new AppError(
-        403,
-        ErrorCode.FORBIDDEN,
-        'Can only pay prizes to players you registered'
-      );
+    const isDirectChildPrize = player.parentUserId === cashierId;
+    if (!isDirectChildPrize) {
+      const descendants = await usersRepository.findDescendants(cashierId);
+      if (!descendants.some(d => d.id === playerId)) {
+        throw new AppError(403, ErrorCode.FORBIDDEN, 'Can only pay prizes to users in your hierarchy');
+      }
     }
 
     const t = await sequelize.transaction();
@@ -186,12 +193,12 @@ export class ChipsDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    if (player.parentUserId !== cashierId) {
-      throw new AppError(
-        403,
-        ErrorCode.FORBIDDEN,
-        'Can only register losses for players you registered'
-      );
+    const isDirectChildLoss = player.parentUserId === cashierId;
+    if (!isDirectChildLoss) {
+      const descendants = await usersRepository.findDescendants(cashierId);
+      if (!descendants.some(d => d.id === playerId)) {
+        throw new AppError(403, ErrorCode.FORBIDDEN, 'Can only register losses for users in your hierarchy');
+      }
     }
 
     const t = await sequelize.transaction();
@@ -259,8 +266,14 @@ export class ChipsDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    if (player.parentUserId !== requesterId && requesterId !== playerId) {
-      throw new AppError(403, ErrorCode.FORBIDDEN, 'Cannot process withdrawal for this user');
+    if (requesterId !== playerId) {
+      const isDirectChildWithdraw = player.parentUserId === requesterId;
+      if (!isDirectChildWithdraw) {
+        const descendants = await usersRepository.findDescendants(requesterId);
+        if (!descendants.some(d => d.id === playerId)) {
+          throw new AppError(403, ErrorCode.FORBIDDEN, 'Cannot process withdrawal for this user');
+        }
+      }
     }
 
     const t = await sequelize.transaction();
