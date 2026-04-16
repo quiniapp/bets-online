@@ -8,7 +8,7 @@ export function useChips(userId?: string) {
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const loadBalance = async () => {
+  const loadBalance = useCallback(async () => {
     try {
       const endpoint = userId
         ? `/chips/balance/${userId}`
@@ -25,9 +25,9 @@ export function useChips(userId?: string) {
       console.error('Failed to load balance:', error);
       throw error;
     }
-  };
+  }, [userId]);
 
-  const loadMovements = async (page = 1, limit = 10) => {
+  const loadMovements = useCallback(async (page = 1, limit = 10) => {
     if (!userId) return;
 
     setLoading(true);
@@ -46,7 +46,7 @@ export function useChips(userId?: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   const sellChips = async (playerId: string, amount: number, description?: string) => {
     try {

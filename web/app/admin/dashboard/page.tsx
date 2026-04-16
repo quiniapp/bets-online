@@ -49,7 +49,8 @@ export default function AdminDashboard() {
     if (user && (role === UserRole.ADMIN || role === UserRole.CASHIER)) {
       loadBalance()
     }
-  }, [user, role, loadBalance])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, role])
 
   if (isLoading) {
     return (
