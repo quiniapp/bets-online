@@ -5,7 +5,9 @@ const SESSION_FLAG = 'session_active';
 class ApiService {
   private baseUrl: string;
   private csrfToken: string | null = null;
-  private isRefreshing = false;
+  // Promise compartida entre requests concurrentes del mismo tab para evitar
+  // múltiples refreshes simultáneos y logout prematuro (fix concurrent 401s)
+  private refreshPromise: Promise<boolean> | null = null;
   // Flag local (no sensible) para saber si hay sesión sin leer cookies httpOnly
   private sessionActive = false;
 
@@ -94,20 +96,39 @@ class ApiService {
         (response.status === 401 || response.status === 403) ||
         (!data.success && this.isAuthError(data.error?.code));
 
-      if (isAuthFailure && this.hasSession() && !isRetry && !this.isRefreshing) {
-        this.isRefreshing = true;
-        try {
-          const refreshed = await this.refreshToken();
-          if (refreshed) {
-            return this.request<T>(endpoint, options, true);
-          }
-        } finally {
-          this.isRefreshing = false;
+      if (isAuthFailure && !isRetry) {
+        // Compartir la promise entre requests concurrentes del mismo tab (fix 2):
+        // si ya hay un refresh en curso, esperar al mismo en vez de disparar otro.
+        if (!this.refreshPromise) {
+          this.refreshPromise = this.refreshToken().finally(() => {
+            this.refreshPromise = null;
+          });
         }
-        this.handleAuthError();
-        throw new Error('Session expired');
+        const refreshed = await this.refreshPromise;
+
+        if (refreshed) {
+          this.setSessionActive(true);
+          return this.request<T>(endpoint, options, true);
+        }
+
+        if (this.hasSession()) {
+          // Refresh falló pero puede que otro tab haya renovado las cookies (fix 4).
+          // Un reintento con isRetry=true usa las cookies actuales del browser.
+          try {
+            return await this.request<T>(endpoint, options, true);
+          } catch {
+            // También falló: sesión genuinamente expirada
+          }
+          this.handleAuthError();
+          throw new Error('Session expired');
+        }
+
+        // Sin indicador de sesión: devolver la respuesta de error para que
+        // el caller decida (ej: loadUser redirige sin llamar handleAuthError)
+        return data;
       }
 
+      // isRetry=true y sigue fallando → sesión expirada
       if (isAuthFailure && this.hasSession()) {
         this.handleAuthError();
         throw new Error('Session expired');

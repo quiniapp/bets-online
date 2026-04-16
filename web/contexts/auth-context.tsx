@@ -55,19 +55,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    if (!apiService.hasSession()) {
-      router.push(ROUTER.SITE)
-      setIsLoading(false)
-      return
-    }
-
-    // Verificar inactividad entre sesiones de browser (sliding window)
-    const lastActive = localStorage.getItem(LAST_ACTIVE_KEY)
-    if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
-      clearSession()
-      router.push(ROUTER.SITE)
-      setIsLoading(false)
-      return
+    // Verificar inactividad cross-browser solo si hay indicador de sesión
+    if (apiService.hasSession()) {
+      const lastActive = localStorage.getItem(LAST_ACTIVE_KEY)
+      if (lastActive && Date.now() - parseInt(lastActive) > INACTIVITY_TIMEOUT) {
+        clearSession()
+        router.push(ROUTER.SITE)
+        setIsLoading(false)
+        return
+      }
     }
 
     setIsLoading(true)
@@ -75,9 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiService.getCurrentUser()
 
       if (response.success && response.data) {
+        // Sincronizar flag si las cookies eran válidas pero localStorage fue limpiado (fix 6)
+        if (!apiService.hasSession()) {
+          apiService.setSessionActive(true)
+        }
         setUser(response.data)
         setRole(response.data.role)
-        // Marcar momento de carga como actividad
         localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString())
       } else {
         clearSession()

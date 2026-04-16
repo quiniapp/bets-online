@@ -10,6 +10,8 @@ import {
 } from 'helper';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { balancesRepository } from '../../persistence/repositories/balances.repository';
+import { sessionsRepository } from '../../persistence/repositories/sessions.repository';
+import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
 import { AppError } from '../../middleware/error.middleware';
 
@@ -194,8 +196,17 @@ export class UsersDomain {
     // Update user
     const updatedUser = await usersRepository.update(userId, updateData);
 
+    // Si cambió el status: invalidar caché siempre (datos desactualizados)
+    // y terminar todas las sesiones activas si fue bloqueado
+    if ('status' in updateData) {
+      userCache.invalidate(userId);
+      if (updateData.status === UserStatus.BLOCKED) {
+        await sessionsRepository.deleteByUserId(userId);
+      }
+    }
+
     // Remove password hash
-     
+
     const { passwordHash: _passwordHash2, ...userWithoutPassword } = updatedUser;
 
     return userWithoutPassword as User;
