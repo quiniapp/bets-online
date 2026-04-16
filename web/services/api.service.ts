@@ -91,9 +91,10 @@ class ApiService {
         return this.request<T>(endpoint, options, true);
       }
 
-      // Detectar errores de autenticación (HTTP 401/403 o error en el body)
+      // Detectar errores de autenticación (HTTP 401 o código de error de auth en el body)
+      // 403 NO es auth error: significa "autenticado pero sin permiso", no intentar refresh
       const isAuthFailure =
-        (response.status === 401 || response.status === 403) ||
+        response.status === 401 ||
         (!data.success && this.isAuthError(data.error?.code));
 
       if (isAuthFailure && !isRetry) {
