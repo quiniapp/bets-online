@@ -38,20 +38,25 @@ export class AuthController {
 
       const result = await authDomain.login(username, password);
 
-      // Set session cookie
-      res.cookie('session', result.tokens.accessToken, {
+      const isProd = config.server.env === 'production';
+      const cookieBase = {
         httpOnly: true,
-        secure: config.server.env === 'production',
-        sameSite: 'strict',
-        maxAge: 15 * 60 * 1000 // 15 minutes
+        secure: isProd,
+        sameSite: 'strict' as const
+      };
+
+      res.cookie('session', result.tokens.accessToken, {
+        ...cookieBase,
+        maxAge: 15 * 60 * 1000
       });
 
-      return res.json(
-        ApiResponseBuilder.success({
-          user: result.user,
-          tokens: result.tokens
-        })
-      );
+      res.cookie('refresh-token', result.tokens.refreshToken, {
+        ...cookieBase,
+        maxAge: 20 * 60 * 1000,
+        path: '/api/auth/refresh'
+      });
+
+      return res.json(ApiResponseBuilder.success({ user: result.user }));
     } catch (error) {
       return next(error);
     }
@@ -82,19 +87,35 @@ export class AuthController {
    */
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = req.cookies['refresh-token'] ?? req.body?.refreshToken;
+
+      if (!refreshToken) {
+        return res.status(401).json(
+          ApiResponseBuilder.error('UNAUTHORIZED', 'No refresh token provided')
+        );
+      }
 
       const tokens = await authDomain.refreshToken(refreshToken);
 
-      // Update session cookie
-      res.cookie('session', tokens.accessToken, {
+      const isProd = config.server.env === 'production';
+      const cookieBase = {
         httpOnly: true,
-        secure: config.server.env === 'production',
-        sameSite: 'strict',
+        secure: isProd,
+        sameSite: 'strict' as const
+      };
+
+      res.cookie('session', tokens.accessToken, {
+        ...cookieBase,
         maxAge: 15 * 60 * 1000
       });
 
-      return res.json(ApiResponseBuilder.success({ tokens }));
+      res.cookie('refresh-token', tokens.refreshToken, {
+        ...cookieBase,
+        maxAge: 20 * 60 * 1000,
+        path: '/api/auth/refresh'
+      });
+
+      return res.json(ApiResponseBuilder.success({}));
     } catch (error) {
       return next(error);
     }
@@ -120,8 +141,8 @@ export class AuthController {
         await authDomain.logout(token);
       }
 
-      // Clear session cookie
       res.clearCookie('session');
+      res.clearCookie('refresh-token', { path: '/api/auth/refresh' });
 
       return res.json(
         ApiResponseBuilder.success({ message: 'Logout successful' })
@@ -153,8 +174,8 @@ export class AuthController {
 
       await authDomain.logoutAll(req.user.userId);
 
-      // Clear session cookie
       res.clearCookie('session');
+      res.clearCookie('refresh-token', { path: '/api/auth/refresh' });
 
       return res.json(
         ApiResponseBuilder.success({ message: 'Logged out from all devices' })
@@ -205,8 +226,8 @@ export class AuthController {
 
       await authDomain.changePassword(req.user.userId, currentPassword, newPassword);
 
-      // Clear session cookie
       res.clearCookie('session');
+      res.clearCookie('refresh-token', { path: '/api/auth/refresh' });
 
       return res.json(
         ApiResponseBuilder.success({

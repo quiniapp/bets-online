@@ -1,6 +1,8 @@
 import { User } from 'helper';
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Debe ser mayor que la vida del accessToken (15 min) para que los refreshes
+// encuentren el usuario en caché sin ir a DB mientras el usuario está activo.
+const TTL_MS = 20 * 60 * 1000; // 20 minutes
 
 interface CacheEntry {
   user: User;

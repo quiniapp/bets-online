@@ -23,6 +23,7 @@ export interface User {
   passwordHash?: string;
   status: UserStatus;
   lastConnection: Date | null;
+  lastActivity: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

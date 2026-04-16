@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { ApiResponseBuilder, ErrorCode, UserRole, JwtPayload } from 'helper';
 import { config } from '../config';
 import { AppError } from './error.middleware';
+import { userCache } from '../persistence/cache/user.cache';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -31,6 +32,14 @@ export const authMiddleware = async (
 
     const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload;
     req.user = decoded;
+
+    // Sliding window server-side: cada request autenticado renueva el TTL
+    // del usuario en caché (operación de Map, sin DB).
+    const cachedUser = userCache.get(decoded.userId);
+    if (cachedUser) {
+      userCache.set(cachedUser);
+    }
+
     return next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {

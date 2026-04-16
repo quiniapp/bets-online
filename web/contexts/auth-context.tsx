@@ -1,11 +1,32 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { apiService } from "@/services/api.service"
 import type { User, UserRole } from "helper"
 import ROUTER from "@/routes"
+
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutos en ms
+const INACTIVITY_SECONDS = 10 * 60         // 10 minutos en segundos (para maxAge de cookie)
+const LAST_ACTIVE_COOKIE = 'last-active'
+
+// Cookie no-httpOnly manejada desde JS.
+// maxAge=INACTIVITY_SECONDS → el browser la expira automáticamente si no se renueva.
+// La existencia de la cookie indica que la sesión está dentro de la ventana de inactividad.
+const setLastActiveCookie = () => {
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${LAST_ACTIVE_COOKIE}=1; max-age=${INACTIVITY_SECONDS}; path=/; SameSite=Strict${secure}`
+}
+
+const hasLastActiveCookie = (): boolean => {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split(';').some(c => c.trim().startsWith(`${LAST_ACTIVE_COOKIE}=`))
+}
+
+const clearLastActiveCookie = () => {
+  document.cookie = `${LAST_ACTIVE_COOKIE}=; max-age=0; path=/`
+}
 
 interface AuthContextType {
   user: User | null
@@ -25,54 +46,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
-  // Ensure we're mounted before hydrating
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Load user on mount
   useEffect(() => {
     if (mounted) {
       loadUser()
     }
   }, [mounted])
 
+  const clearSession = useCallback(() => {
+    apiService.setSessionActive(false)
+    clearLastActiveCookie()
+  }, [])
+
   const loadUser = async () => {
-    // Only run on client
     if (typeof window === 'undefined') {
       setIsLoading(false)
       return
     }
 
-    // No validar si estamos en página pública (landing o login)
     const publicPaths = [ROUTER.SITE, ROUTER.LOGIN]
     if (publicPaths.includes(window.location.pathname)) {
       setIsLoading(false)
       return
     }
 
+    // Si hay indicador de sesión pero la cookie de actividad expiró → inactividad detectada
+    if (apiService.hasSession() && !hasLastActiveCookie()) {
+      clearSession()
+      router.push(ROUTER.SITE)
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
-      const token = apiService.getAccessToken()
-
-      if (!token) {
-        router.push(ROUTER.SITE)
-        return
-      }
-
       const response = await apiService.getCurrentUser()
 
       if (response.success && response.data) {
+        // Sincronizar flag si las cookies eran válidas pero localStorage fue limpiado
+        if (!apiService.hasSession()) {
+          apiService.setSessionActive(true)
+        }
         setUser(response.data)
         setRole(response.data.role)
+        setLastActiveCookie()
       } else {
-        // Token inválido o expirado
-        apiService.setAccessToken(null)
+        clearSession()
         router.push(ROUTER.SITE)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
-      apiService.setAccessToken(null)
+      clearSession()
       router.push(ROUTER.SITE)
     } finally {
       setIsLoading(false)
@@ -85,11 +112,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await apiService.login(credentials.username, credentials.password)
 
-      if (response.success && response.data) {
+      if (response.success && response.data?.user) {
         const loggedInUser = response.data.user
         setUser(loggedInUser)
         setRole(loggedInUser.role)
-
+        setLastActiveCookie()
         return loggedInUser
       }
 
@@ -102,49 +129,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await apiService.logout()
+    clearSession()
     setUser(null)
     setRole(null)
     router.push(ROUTER.SITE)
-  }
+  }, [router, clearSession])
 
   const refreshUser = async () => {
     await loadUser()
   }
 
-  // Inactivity Timer: Auto-logout after 30 minutes without activity
+  // Sliding window: cada evento de actividad renueva el maxAge de la cookie.
+  // Si pasan 10 min sin eventos → cookie expira sola → próximo loadUser bloquea.
+  // El timer sigue siendo necesario para el logout inmediato con página abierta.
   useEffect(() => {
-    // Solo activar si hay usuario logueado
     if (!user) return
 
-    // No activar en página de login
     if (typeof window !== 'undefined' && window.location.pathname === ROUTER.LOGIN) {
       return
     }
 
-    const INACTIVITY_TIMEOUT = 30 * 60 * 1000 // 30 minutos en ms
     let inactivityTimer: NodeJS.Timeout
 
     const resetTimer = () => {
       clearTimeout(inactivityTimer)
+      setLastActiveCookie() // Renueva maxAge → reinicia ventana de 10 min
       inactivityTimer = setTimeout(() => {
-        console.log('Session expired due to inactivity')
         logout()
       }, INACTIVITY_TIMEOUT)
     }
 
-    // Eventos que indican actividad del usuario
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click']
 
     activityEvents.forEach(event => {
       window.addEventListener(event, resetTimer, { passive: true })
     })
 
-    // Iniciar el timer
     resetTimer()
 
-    // Cleanup
     return () => {
       clearTimeout(inactivityTimer)
       activityEvents.forEach(event => {
@@ -153,14 +177,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, logout])
 
-  // Multi-tab synchronization: Close session in all tabs when logged out in one
+  // Multi-tab: sincronizar logout cuando session_active se elimina en otra tab
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const handleStorageChange = (e: StorageEvent) => {
-      // Si el token se eliminó en otra tab
-      if (e.key === 'accessToken' && !e.newValue) {
-        console.log('Session closed in another tab')
+      if (e.key === 'session_active' && !e.newValue) {
         setUser(null)
         setRole(null)
         router.push(ROUTER.SITE)
@@ -168,10 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     window.addEventListener('storage', handleStorageChange)
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-    }
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [router])
 
   return (

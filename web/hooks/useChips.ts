@@ -163,11 +163,12 @@ export function useChips(userId?: string) {
     if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
     if (options?.type) queryParams.append('type', options.type);
 
-    const token = localStorage.getItem('accessToken');
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/chips/movements/${targetUserId}/export?${queryParams.toString()}`;
+    // Token via cookie httpOnly (enviada automáticamente por el browser).
+    // URL relativa para pasar por el proxy de Next.js.
+    const url = `/api/chips/movements/${targetUserId}/export?${queryParams.toString()}`;
 
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     });
 
     if (!response.ok) {

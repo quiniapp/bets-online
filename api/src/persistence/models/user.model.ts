@@ -13,6 +13,7 @@ export class UserModel extends Model {
   declare passwordHash: string;
   declare status: UserStatus;
   declare lastConnection: Date | null;
+  declare lastActivity: Date | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -81,6 +82,11 @@ UserModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       field: 'last_connection'
+    },
+    lastActivity: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'last_activity'
     },
     createdAt: {
       type: DataTypes.DATE,

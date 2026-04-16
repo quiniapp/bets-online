@@ -126,6 +126,13 @@ export class UsersRepository {
     await user.update({ lastConnection: new Date() });
   }
 
+  async updateLastActivity(id: string): Promise<void> {
+    await UserModel.update(
+      { lastActivity: new Date() },
+      { where: { id } }
+    );
+  }
+
   async updatePassword(id: string, passwordHash: string): Promise<void> {
     const user = await UserModel.findByPk(id);
     if (!user) {
@@ -193,6 +200,7 @@ export class UsersRepository {
     const plain = data instanceof UserModel ? data.get({ plain: true }) : data;
 
     const lastConn = plain.lastConnection || plain.last_connection;
+    const lastActivity = plain.lastActivity || plain.last_activity;
 
     return {
       id: plain.id as string,
@@ -205,6 +213,7 @@ export class UsersRepository {
       passwordHash: (plain.passwordHash || plain.password_hash) as string,
       status: plain.status as UserStatus,
       lastConnection: lastConn ? new Date(lastConn as string | Date) : null,
+      lastActivity: lastActivity ? new Date(lastActivity as string | Date) : null,
       createdAt: new Date(plain.createdAt || plain.created_at),
       updatedAt: new Date(plain.updatedAt || plain.updated_at)
     };

@@ -1,7 +1,6 @@
 import { SessionModel } from '../models';
 import { Session } from 'helper';
 import { Op } from 'sequelize';
-import { sessionCache } from '../cache/session.cache';
 
 export class SessionsRepository {
   async create(
@@ -17,37 +16,25 @@ export class SessionsRepository {
       expiresAt
     });
 
-    const mapped = this.mapToSession(session);
-    sessionCache.set(mapped);
-    return mapped;
+    return this.mapToSession(session);
   }
 
   async findByToken(token: string): Promise<Session | null> {
-    const cached = sessionCache.getByToken(token);
-    if (cached) return cached;
-
     const session = await SessionModel.findOne({
       where: { token }
     });
 
     if (!session) return null;
-    const mapped = this.mapToSession(session);
-    sessionCache.set(mapped);
-    return mapped;
+    return this.mapToSession(session);
   }
 
   async findByRefreshToken(refreshToken: string): Promise<Session | null> {
-    const cached = sessionCache.getByRefreshToken(refreshToken);
-    if (cached) return cached;
-
     const session = await SessionModel.findOne({
       where: { refreshToken }
     });
 
     if (!session) return null;
-    const mapped = this.mapToSession(session);
-    sessionCache.set(mapped);
-    return mapped;
+    return this.mapToSession(session);
   }
 
   async findByUserId(userId: string): Promise<Session[]> {
@@ -63,29 +50,54 @@ export class SessionsRepository {
     return sessions.map(this.mapToSession);
   }
 
+  // Rota tokens en una sola query UPDATE (valida expiresAt y actualiza en el mismo op).
+  // Reemplaza DELETE + INSERT del ciclo de refresh → 1 DB op en vez de 2.
+  // Retorna null si la sesión no existe o ya expiró.
+  async rotateTokens(
+    oldRefreshToken: string,
+    newToken: string,
+    newRefreshToken: string,
+    expiresAt: Date
+  ): Promise<Session | null> {
+    const [count, rows] = await SessionModel.update(
+      { token: newToken, refreshToken: newRefreshToken, expiresAt },
+      {
+        where: {
+          refreshToken: oldRefreshToken,
+          expiresAt: { [Op.gt]: new Date() }
+        },
+        returning: true
+      }
+    );
+
+    if (count === 0 || !rows[0]) return null;
+    return this.mapToSession(rows[0]);
+  }
+
   async deleteByToken(token: string): Promise<void> {
-    sessionCache.invalidateByToken(token);
     await SessionModel.destroy({
       where: { token }
     });
   }
 
   async deleteByUserId(userId: string): Promise<void> {
-    sessionCache.invalidateByUserId(userId);
     await SessionModel.destroy({
       where: { userId }
     });
   }
 
-  async deleteExpired(): Promise<void> {
-    await SessionModel.destroy({
-      where: {
-        expiresAt: {
-          [Op.lt]: new Date()
-        }
-      }
-    });
-  }
+  // Housekeeping: borra rows con expiresAt < NOW().
+  // No es crítico porque las sesiones expiradas ya son rechazadas en el query de refresh.
+  // Descomentar y llamar desde cacheSyncJob si el volumen de usuarios genera acumulación.
+  // async deleteExpired(): Promise<void> {
+  //   await SessionModel.destroy({
+  //     where: {
+  //       expiresAt: {
+  //         [Op.lt]: new Date()
+  //       }
+  //     }
+  //   });
+  // }
 
   private mapToSession(data: SessionModel | Record<string, unknown>): Session {
     // Convert Sequelize model to plain object if needed
