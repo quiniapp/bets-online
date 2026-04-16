@@ -36,8 +36,9 @@ export class AuthDomain {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
-    // Update last connection
+    // Update last connection and last activity
     await usersRepository.updateLastConnection(user.id);
+    await usersRepository.updateLastActivity(user.id);
 
     // Generate tokens
     const tokens = await this.createSession(user);
@@ -155,6 +156,11 @@ export class AuthDomain {
     if (!session) {
       throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found or expired');
     }
+
+    // Actualizar lastActivity en DB y en caché (cada ~15 min por usuario activo)
+    const now = new Date();
+    await usersRepository.updateLastActivity(user.id);
+    userCache.set({ ...user, lastActivity: now });
 
     return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
