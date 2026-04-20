@@ -3,11 +3,21 @@
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
-import { UserIcon, Gamepad2, TrendingUp, Loader2 } from "lucide-react"
+import {
+  UserIcon,
+  Gamepad2,
+  TrendingUp,
+  Loader2,
+  Wallet,
+  Trophy,
+  Target,
+  BarChart2,
+  ArrowUpRight,
+} from "lucide-react"
 import Link from "next/link"
 import ROUTER from "@/routes"
 import { useChips } from "@/hooks/useChips"
@@ -18,16 +28,13 @@ export default function UserDashboard() {
   const { user, role, isLoading } = useAuth()
   const router = useRouter()
   const { balance, loadBalance } = useChips()
-  const { bets, statistics, loadBets, loadStatistics } = useBets()
+  const { statistics, loadBets, loadStatistics } = useBets()
   const { games } = useGames(true)
 
   useEffect(() => {
     if (!isLoading) {
       if (role !== UserRole.PLAYER) {
-        console.log("❌ User dashboard - Access denied, redirecting:", { role });
         router.push(ROUTER.SITE)
-      } else {
-        console.log("✅ User dashboard - Access granted:", { role });
       }
     }
   }, [role, router, isLoading])
@@ -43,7 +50,7 @@ export default function UserDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -52,171 +59,164 @@ export default function UserDashboard() {
     return null
   }
 
-  const pendingBets = bets.filter((b) => b.status === "PENDING").length
-
   return (
-    <DashboardLayout title="Mi Dashboard">
-      {/* Balance Card */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-2xl">Balance Actual</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {balance ? (
-            <>
-              <div className="text-4xl font-bold text-green-600 mb-4">
+    <DashboardLayout title="Inicio">
+      {/* Balance Hero */}
+      <div className="mb-5 rounded-2xl bg-primary/10 border border-primary/20 p-5 md:p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-1">Balance disponible</p>
+            {balance ? (
+              <p className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
                 ${balance.chipBalance.toFixed(2)}
+              </p>
+            ) : (
+              <div className="flex items-center gap-2 mt-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Cargando...</span>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
+            )}
+            {balance && (
+              <p className="text-xs text-muted-foreground mt-2">
                 Actualizado: {new Date(balance.lastUpdatedAt).toLocaleString()}
               </p>
-              {statistics && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Total ganado:</span>
-                    <div className="font-semibold text-green-600">
-                      +${statistics.totalPayout.toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Total apostado:</span>
-                    <div className="font-semibold text-gray-600">
-                      ${statistics.totalWagered.toFixed(2)}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Ganancia neta:</span>
-                    <div
-                      className={`font-semibold ${statistics.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {statistics.netProfit >= 0 ? "+" : ""}${statistics.netProfit.toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm text-gray-500">Cargando balance...</span>
+            )}
+          </div>
+          <div className="p-3 rounded-xl bg-primary/15">
+            <Wallet className="h-6 w-6 text-primary" />
+          </div>
+        </div>
+
+        {statistics && (
+          <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-primary/20">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Ganado</p>
+              <p className="text-sm font-bold text-primary">+${statistics.totalPayout.toFixed(2)}</p>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <UserIcon className="h-5 w-5" />
-              Mi Perfil
-            </CardTitle>
-            <CardDescription>Ver y editar información personal</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/user/profile">
-              <Button className="w-full">Ver Perfil</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Gamepad2 className="h-5 w-5" />
-              Casino
-            </CardTitle>
-            <CardDescription>Acceder a juegos disponibles</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/user/games">
-              <Button className="w-full">Jugar Ahora</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-5 w-5" />
-              Mis Apuestas
-            </CardTitle>
-            <CardDescription>Historial de apuestas y resultados</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/user/bets">
-              <Button className="w-full">Ver Apuestas</Button>
-            </Link>
-          </CardContent>
-        </Card>
+            <div className="text-center border-x border-primary/20">
+              <p className="text-xs text-muted-foreground">Apostado</p>
+              <p className="text-sm font-bold">${statistics.totalWagered.toFixed(2)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Neto</p>
+              <p className={`text-sm font-bold ${statistics.netProfit >= 0 ? "text-emerald-500" : "text-destructive"}`}>
+                {statistics.netProfit >= 0 ? "+" : ""}${statistics.netProfit.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Statistics Card */}
+      {/* Quick Actions */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <Link href="/user/profile" className="flex-1">
+          <div className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors text-center">
+            <div className="p-2 rounded-lg bg-muted">
+              <UserIcon className="h-5 w-5 text-foreground" />
+            </div>
+            <span className="text-xs font-medium leading-tight">Mi Perfil</span>
+          </div>
+        </Link>
+        <Link href="/user/games" className="flex-1">
+          <div className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-primary border border-primary hover:opacity-90 transition-opacity text-center">
+            <div className="p-2 rounded-lg bg-primary-foreground/20">
+              <Gamepad2 className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="text-xs font-semibold text-primary-foreground leading-tight">Jugar</span>
+          </div>
+        </Link>
+        <Link href="/user/bets" className="flex-1">
+          <div className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors text-center">
+            <div className="p-2 rounded-lg bg-muted">
+              <TrendingUp className="h-5 w-5 text-foreground" />
+            </div>
+            <span className="text-xs font-medium leading-tight">Apuestas</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Stats */}
       {statistics && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Estadísticas de Apuestas</CardTitle>
-            <CardDescription>Resumen de tu actividad</CardDescription>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          <Card className="border-border">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{statistics.totalBets}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total apuestas</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <Trophy className="h-4 w-4 text-emerald-500" />
+              </div>
+              <p className="text-2xl font-bold text-emerald-500">{statistics.wonBets}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Ganadas</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <ArrowUpRight className="h-4 w-4 text-destructive" />
+              </div>
+              <p className="text-2xl font-bold text-destructive">{statistics.lostBets}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Perdidas</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between mb-2">
+                <BarChart2 className="h-4 w-4 text-primary" />
+              </div>
+              <p className="text-2xl font-bold text-primary">{statistics.winRate.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Win rate</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Available Games */}
+      {games.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base md:text-lg">Juegos disponibles</CardTitle>
+              <Link href="/user/games">
+                <Button variant="ghost" size="sm" className="text-primary text-xs">
+                  Ver todos
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Total Apuestas</span>
-                <div className="text-2xl font-bold">{statistics.totalBets}</div>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Ganadas</span>
-                <div className="text-2xl font-bold text-green-600">{statistics.wonBets}</div>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Perdidas</span>
-                <div className="text-2xl font-bold text-red-600">{statistics.lostBets}</div>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Win Rate</span>
-                <div className="text-2xl font-bold">{statistics.winRate.toFixed(1)}%</div>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {games.slice(0, 6).map((game) => (
+                <Link key={game.id} href="/user/games">
+                  <div className="group rounded-xl border border-border overflow-hidden hover:border-primary/40 transition-colors cursor-pointer">
+                    {game.defaultLogo ? (
+                      <img
+                        src={game.defaultLogo}
+                        alt={game.name}
+                        className="w-full h-20 md:h-24 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-20 md:h-24 bg-muted flex items-center justify-center">
+                        <Gamepad2 className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="p-2.5">
+                      <p className="text-xs font-semibold truncate">{game.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Min: ${game.minBet}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Available Games */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Juegos Disponibles</CardTitle>
-          <CardDescription>Juegos activos en el casino</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {games.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {games.map((game) => (
-                <div key={game.id} className="border rounded-lg p-4">
-                  <h3 className="font-semibold mb-2">{game.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{game.description}</p>
-                  <div className="flex justify-between text-xs text-muted-foreground mb-3">
-                    <span>Min: ${game.minBet}</span>
-                    <span>Max: ${game.maxBet}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mb-3">
-                    House Edge: {game.houseEdge}%
-                  </div>
-                  <Link href="/user/games">
-                    <Button size="sm" className="w-full">
-                      Jugar
-                    </Button>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-8">
-              No hay juegos disponibles actualmente.
-            </p>
-          )}
-        </CardContent>
-      </Card>
     </DashboardLayout>
   )
 }
