@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Play, DollarSign, Loader2, ExternalLink } from "lucide-react"
+import { Play, DollarSign, Loader2, ExternalLink, Gamepad2, X } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useRouter } from "next/navigation"
 import { useGames } from "@/hooks/useGames"
@@ -15,12 +15,13 @@ import { useBets } from "@/hooks/useBets"
 import { useChips } from "@/hooks/useChips"
 import { useToast } from "@/hooks/use-toast"
 import type { Game } from "helper"
+import { cn } from "@/lib/utils"
 
 export default function UserGames() {
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
-  const { games, loading: loadingGames } = useGames(true) // Only active games
+  const { games, loading: loadingGames } = useGames(true)
   const { bets, placeBet, loadBets } = useBets()
   const { balance, loadBalance } = useChips()
 
@@ -61,18 +62,12 @@ export default function UserGames() {
 
     setPlacing(true)
     try {
-      const response = await placeBet({
-        gameId: selectedGame.id,
-        amount: amount,
-      })
+      const response = await placeBet({ gameId: selectedGame.id, amount })
 
       if (response.success && response.data) {
         const { bet } = response.data
-
-        // Update balance
         loadBalance()
 
-        // Show result
         const isWin = bet.status === "WON"
         toast({
           title: isWin ? "¡Ganaste!" : "Perdiste",
@@ -81,8 +76,6 @@ export default function UserGames() {
             : `Perdiste $${bet.amount.toFixed(2)}`,
           variant: isWin ? "default" : "destructive",
         })
-
-        // Clear bet amount
         setBetAmount("")
       } else {
         toast({
@@ -91,10 +84,10 @@ export default function UserGames() {
           variant: "destructive",
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo realizar la apuesta",
+        description: error instanceof Error ? error.message : "No se pudo realizar la apuesta",
         variant: "destructive",
       })
     } finally {
@@ -102,213 +95,220 @@ export default function UserGames() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "WON":
-        return "default"
-      case "LOST":
-        return "destructive"
-      default:
-        return "secondary"
-    }
+  const getStatusBadge = (status: string): "default" | "destructive" | "secondary" => {
+    if (status === "WON") return "default"
+    if (status === "LOST") return "destructive"
+    return "secondary"
   }
 
-  const getStatusLabel = (bet: any) => {
-    if (bet.status === "WON" && bet.multiplier) {
-      return `Ganó ${bet.multiplier.toFixed(2)}x`
-    }
-    if (bet.status === "LOST") {
-      return "Perdió"
-    }
+  const getStatusLabel = (bet: { status: string; multiplier?: number | null }) => {
+    if (bet.status === "WON" && bet.multiplier) return `${bet.multiplier.toFixed(2)}x`
+    if (bet.status === "LOST") return "Perdió"
     return "Pendiente"
   }
 
   return (
     <DashboardLayout title="Casino">
-      <div className="min-h-screen">
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Games List */}
-            <div className="lg:col-span-2">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-4">Juegos Disponibles</h2>
+      {/* Mobile/Desktop layout: on mobile column (panel first), on lg side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-                {loadingGames ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {games.map((game) => {
-                      const isProviderGame = !!game.providerGameId
-                      return (
-                        <Card
-                          key={game.id}
-                          className={`transition-all ${
-                            isProviderGame
-                              ? "cursor-default"
-                              : `cursor-pointer ${selectedGame?.id === game.id ? "ring-2 ring-blue-500" : ""}`
-                          }`}
-                          onClick={() => { if (!isProviderGame) setSelectedGame(game) }}
-                        >
-                          <CardHeader>
-                            <CardTitle className="flex items-center justify-between">
-                              {game.name}
-                              {isProviderGame ? (
-                                <ExternalLink className="h-5 w-5 text-primary" />
-                              ) : (
-                                <Play className="h-5 w-5" />
-                              )}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {game.defaultLogo && (
-                              <img
-                                src={game.defaultLogo}
-                                alt={game.name}
-                                className="w-full h-28 object-cover rounded-md mb-3"
-                              />
-                            )}
-                            <p className="text-gray-600 mb-3">{game.description}</p>
-                            {isProviderGame ? (
-                              <Button
-                                className="w-full"
-                                onClick={() => router.push(`/user/games/${game.id}/play`)}
-                              >
-                                <Play className="mr-2 h-4 w-4" />
-                                Jugar
-                              </Button>
-                            ) : (
-                              <>
-                                <div className="flex justify-between text-sm text-gray-500">
-                                  <span>Min: ${game.minBet}</span>
-                                  <span>Max: ${game.maxBet}</span>
-                                </div>
-                                <div className="mt-2 text-xs text-gray-400">
-                                  House Edge: {game.houseEdge}%
-                                </div>
-                              </>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-                  </div>
-                )}
+        {/* Panel: balance + bet form + recent bets — first in DOM = top on mobile */}
+        <div className="lg:col-start-3 lg:row-start-1 space-y-4">
 
-                {!loadingGames && games.length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <p className="text-gray-500">No hay juegos disponibles actualmente.</p>
-                      <p className="text-sm text-gray-400 mt-2">Contacta al administrador.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-
-            {/* Betting Panel */}
+          {/* Balance */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-primary/10 border border-primary/20">
             <div>
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Balance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {balance ? (
+              <p className="text-xs text-muted-foreground">Balance</p>
+              {balance ? (
+                <p className="text-xl font-bold text-primary">${balance.chipBalance.toFixed(2)}</p>
+              ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Cargando...</span>
+                </div>
+              )}
+            </div>
+            <DollarSign className="h-5 w-5 text-primary" />
+          </div>
+
+          {/* Bet form */}
+          {selectedGame && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">Apostar en {selectedGame.name}</CardTitle>
+                  <button
+                    onClick={() => { setSelectedGame(null); setBetAmount("") }}
+                    className="p-1 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label htmlFor="betAmount" className="text-xs">Cantidad</Label>
+                  <Input
+                    id="betAmount"
+                    type="number"
+                    step="0.01"
+                    min={selectedGame.minBet}
+                    max={selectedGame.maxBet}
+                    placeholder={`${selectedGame.minBet} – ${selectedGame.maxBet}`}
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(e.target.value)}
+                    disabled={placing}
+                    className="mt-1"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Límites: ${selectedGame.minBet} – ${selectedGame.maxBet}
+                  </p>
+                </div>
+
+                {/* Quick amounts */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[selectedGame.minBet, selectedGame.minBet * 2, selectedGame.minBet * 5, selectedGame.maxBet].map((amt) => (
+                    <Button
+                      key={amt}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs px-0"
+                      onClick={() => setBetAmount(String(amt))}
+                      disabled={placing}
+                    >
+                      ${amt}
+                    </Button>
+                  ))}
+                </div>
+
+                <Button
+                  onClick={handlePlaceBet}
+                  disabled={!betAmount || placing || !balance}
+                  className="w-full font-semibold"
+                >
+                  {placing ? (
                     <>
-                      <div className="text-2xl font-bold text-green-600">
-                        ${balance.chipBalance.toFixed(2)}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Actualizado: {new Date(balance.lastUpdatedAt).toLocaleString()}
-                      </p>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Apostando...
                     </>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm text-gray-500">Cargando balance...</span>
-                    </div>
+                    `Apostar $${betAmount || "0.00"}`
                   )}
-                </CardContent>
-              </Card>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-              {selectedGame && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Apostar en {selectedGame.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="betAmount">Cantidad a apostar</Label>
-                      <Input
-                        id="betAmount"
-                        type="number"
-                        step="0.01"
-                        min={selectedGame.minBet}
-                        max={selectedGame.maxBet}
-                        placeholder={`${selectedGame.minBet} - ${selectedGame.maxBet}`}
-                        value={betAmount}
-                        onChange={(e) => setBetAmount(e.target.value)}
-                        disabled={placing}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Límites: ${selectedGame.minBet} - ${selectedGame.maxBet}
-                      </p>
+          {/* Recent bets */}
+          {bets.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Apuestas recientes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {bets.slice(0, 5).map((bet) => {
+                  const game = games.find((g) => g.id === bet.gameId)
+                  return (
+                    <div key={bet.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <div className="min-w-0 mr-2">
+                        <p className="text-xs font-medium truncate">{game?.name ?? "Juego"}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          ${bet.amount.toFixed(2)} · {new Date(bet.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      <Badge variant={getStatusBadge(bet.status)} className="text-[10px] shrink-0">
+                        {getStatusLabel(bet)}
+                      </Badge>
                     </div>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-                    <Button
-                      onClick={handlePlaceBet}
-                      disabled={!betAmount || placing || !balance}
-                      className="w-full"
-                    >
-                      {placing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Apostando...
-                        </>
-                      ) : (
-                        `Apostar $${betAmount || "0.00"}`
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+        {/* Games grid — second in DOM = below panel on mobile, left column on desktop */}
+        <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Juegos disponibles
+          </h2>
 
-              {/* Recent Bets */}
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>Apuestas Recientes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {bets.slice(0, 5).map((bet) => {
-                      const game = games.find((g) => g.id === bet.gameId)
-                      return (
-                        <div key={bet.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{game?.name || "Unknown Game"}</p>
-                            <p className="text-sm text-gray-500">
-                              ${bet.amount.toFixed(2)} • {new Date(bet.createdAt).toLocaleTimeString()}
-                            </p>
-                          </div>
-                          <Badge variant={getStatusBadge(bet.status)}>
-                            {getStatusLabel(bet)}
-                          </Badge>
-                        </div>
-                      )
-                    })}
-                    {bets.length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No hay apuestas recientes</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+          {loadingGames ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          </div>
-        </main>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+              {games.map((game) => {
+                const isProviderGame = !!game.providerGameId
+                const isSelected = selectedGame?.id === game.id
+
+                return (
+                  <div
+                    key={game.id}
+                    className={cn(
+                      "group rounded-xl border overflow-hidden transition-all",
+                      isProviderGame
+                        ? "border-border"
+                        : "cursor-pointer",
+                      isSelected
+                        ? "border-primary ring-1 ring-primary"
+                        : "border-border hover:border-primary/50"
+                    )}
+                    onClick={() => { if (!isProviderGame) setSelectedGame(isSelected ? null : game) }}
+                  >
+                    {game.defaultLogo ? (
+                      <img
+                        src={game.defaultLogo}
+                        alt={game.name}
+                        className="w-full h-28 md:h-32 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-28 md:h-32 bg-muted flex items-center justify-center">
+                        <Gamepad2 className="h-10 w-10 text-muted-foreground/40" />
+                      </div>
+                    )}
+
+                    <div className="p-3">
+                      <div className="flex items-start justify-between gap-1 mb-2">
+                        <p className="text-xs font-semibold leading-tight truncate">{game.name}</p>
+                        {isProviderGame ? (
+                          <ExternalLink className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        ) : (
+                          <Play className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", isSelected ? "text-primary" : "text-muted-foreground")} />
+                        )}
+                      </div>
+
+                      {isProviderGame ? (
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          onClick={(e) => { e.stopPropagation(); router.push(`/user/games/${game.id}/play`) }}
+                        >
+                          <Play className="mr-1.5 h-3 w-3" />
+                          Jugar
+                        </Button>
+                      ) : (
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>Min: ${game.minBet}</span>
+                          <span>Max: ${game.maxBet}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {!loadingGames && games.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Gamepad2 className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">No hay juegos disponibles</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Contacta al administrador</p>
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   )
