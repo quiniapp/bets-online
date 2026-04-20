@@ -7,6 +7,8 @@ import { Sidebar } from "@/components/sidebar"
 import { MobileSidebar } from "@/components/mobile-sidebar"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Button } from "@/components/ui/button"
+import { LogOut } from "lucide-react"
 import { UserRole } from "helper"
 
 interface DashboardLayoutProps {
@@ -15,7 +17,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
-  const { user, role } = useAuth()
+  const { user, role, logout } = useAuth()
 
   const getRoleDisplay = () => {
     switch (role) {
@@ -54,6 +56,15 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
               {getRoleDisplay()}: {user?.username}
             </div>
             <div className="sm:hidden text-xs text-muted-foreground font-medium">{user?.username}</div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-9 w-9 text-muted-foreground hover:text-foreground"
+              onClick={logout}
+              aria-label="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 
