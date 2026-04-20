@@ -6,10 +6,13 @@ import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GameIframe } from '@/components/games/GameIframe';
 import { useGameLaunch } from '@/hooks/useGameLaunch';
+import { useAuth } from '@/contexts/auth-context';
+import { UserRole } from 'helper';
 
 export default function PlayGamePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { role } = useAuth();
   const { launchGame, loading, error } = useGameLaunch();
   const [gameStartUrl, setGameStartUrl] = useState<string | null>(null);
 
@@ -17,7 +20,11 @@ export default function PlayGamePage() {
   const depositUrl = `/user/dashboard`;
 
   useEffect(() => {
-    if (!id) return;
+    if (role !== null && role !== UserRole.PLAYER) {
+      router.replace(lobbyUrl);
+      return;
+    }
+    if (!id || role !== UserRole.PLAYER) return;
     launchGame({
       gameId: id,
       playerDeviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',

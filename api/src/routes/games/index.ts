@@ -2,8 +2,9 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { gamesController } from '../../controllers/games.controller';
 import { gameLaunchController } from '../../controllers/integrations/21viral/gameLaunch.controller';
-import { authMiddleware } from '../../middleware/auth.middleware';
+import { authMiddleware, requireRole } from '../../middleware/auth.middleware';
 import { validate, validateParams } from '../../middleware/validation.middleware';
+import { UserRole } from 'helper';
 import {
   createGameSchema,
   updateGameSchema,
@@ -55,6 +56,7 @@ router.delete(
 router.post(
   '/:id/launch',
   validateParams(idParamSchema),
+  requireRole(UserRole.PLAYER),
   validate(launchGameSchema),
   gameLaunchController.launchGame.bind(gameLaunchController)
 );
