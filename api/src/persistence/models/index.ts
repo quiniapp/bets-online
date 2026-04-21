@@ -12,6 +12,8 @@ import GameModel from './game.model';
 import BetModel from './bet.model';
 import UserProviderProfileModel from './UserProviderProfile.model';
 import ProviderTransactionModel from './ProviderTransaction.model';
+import ProviderModel from './provider.model';
+import GameTypeModel from './game-type.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -238,7 +240,9 @@ export {
   GameModel,
   BetModel,
   UserProviderProfileModel,
-  ProviderTransactionModel
+  ProviderTransactionModel,
+  ProviderModel,
+  GameTypeModel
 };
 
 export default {
@@ -255,5 +259,7 @@ export default {
   GameModel,
   BetModel,
   UserProviderProfileModel,
-  ProviderTransactionModel
+  ProviderTransactionModel,
+  ProviderModel,
+  GameTypeModel
 };

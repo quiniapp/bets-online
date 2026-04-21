@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
 import type { Game, CreateGameDto, UpdateGameDto } from 'helper';
 
-export function useGames(activeOnly: boolean = false) {
+export function useGames(activeOnly: boolean = false, providerName: string | null = null) {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -22,6 +22,7 @@ export function useGames(activeOnly: boolean = false) {
       try {
         const qs = new URLSearchParams({ page: String(targetPage), limit: '50' });
         if (activeOnly) qs.set('activeOnly', 'true');
+        if (providerName) qs.set('providerName', providerName);
 
         const response = await apiService.get<Game[]>(`/games?${qs.toString()}`);
 
@@ -40,7 +41,7 @@ export function useGames(activeOnly: boolean = false) {
         else setLoadingMore(false);
       }
     },
-    [activeOnly]
+    [activeOnly, providerName]
   );
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export function useGames(activeOnly: boolean = false) {
     setPage(1);
     setTotalPages(1);
     fetchPage(1, true);
-  }, [activeOnly, fetchPage]);
+  }, [activeOnly, providerName, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
