@@ -67,16 +67,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const publicPaths = [ROUTER.SITE, ROUTER.LOGIN]
-    if (publicPaths.includes(window.location.pathname)) {
+    if (window.location.pathname === ROUTER.LOGIN) {
       setIsLoading(false)
       return
     }
 
+    const isPublicPage = window.location.pathname === ROUTER.SITE
+
     // Si hay indicador de sesión pero la cookie de actividad expiró → inactividad detectada
     if (apiService.hasSession() && !hasLastActiveCookie()) {
       clearSession()
-      router.push(ROUTER.SITE)
+      if (!isPublicPage) router.push(ROUTER.SITE)
+      setIsLoading(false)
+      return
+    }
+
+    if (!apiService.hasSession()) {
       setIsLoading(false)
       return
     }
@@ -86,21 +92,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiService.getCurrentUser()
 
       if (response.success && response.data) {
-        // Sincronizar flag si las cookies eran válidas pero localStorage fue limpiado
-        if (!apiService.hasSession()) {
-          apiService.setSessionActive(true)
-        }
         setUser(response.data)
         setRole(response.data.role)
         setLastActiveCookie()
       } else {
         clearSession()
-        router.push(ROUTER.SITE)
+        if (!isPublicPage) router.push(ROUTER.SITE)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
       clearSession()
-      router.push(ROUTER.SITE)
+      if (!isPublicPage) router.push(ROUTER.SITE)
     } finally {
       setIsLoading(false)
     }
