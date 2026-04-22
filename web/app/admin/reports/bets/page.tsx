@@ -10,6 +10,7 @@ import { Download, TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-r
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { Bet } from "helper"
 import { BetStatus } from "helper"
+import { formatChips } from "@/lib/utils"
 
 // Demo data - In production, this would come from API endpoints
 const mockBets: Bet[] = []
@@ -143,7 +144,7 @@ export default function BetsReportPage() {
               <CardTitle className="text-sm font-medium">Monto Total Apostado</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalBetAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${formatChips(totalBetAmount)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -151,7 +152,7 @@ export default function BetsReportPage() {
               <CardTitle className="text-sm font-medium">Total Pagado en Ganancias</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${totalWinAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-600">${formatChips(totalWinAmount)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -231,14 +232,14 @@ export default function BetsReportPage() {
                         <td className="p-2 font-mono text-sm">{bet.id}</td>
                         <td className="p-2">{user?.username || "Usuario desconocido"}</td>
                         <td className="p-2">{game?.name || "Juego desconocido"}</td>
-                        <td className="p-2">${bet.amount.toFixed(2)}</td>
+                        <td className="p-2">${formatChips(bet.amount)}</td>
                         <td className="p-2">{bet.multiplier ? `${bet.multiplier}x` : "-"}</td>
                         <td className="p-2">
                           <Badge className={getBadgeColor(bet.status)}>{bet.status}</Badge>
                         </td>
                         <td className="p-2">
                           {bet.status === BetStatus.WON ? (
-                            <span className="text-green-600">${winAmount.toFixed(2)}</span>
+                            <span className="text-green-600">${formatChips(winAmount)}</span>
                           ) : bet.status === BetStatus.LOST ? (
                             <span className="text-red-600">$0.00</span>
                           ) : (

@@ -111,6 +111,10 @@ export default function CreateUserPage() {
       if (formData.lastName.trim()) {
         payload.lastName = formData.lastName
       }
+      const initialBalance = parseFloat(formData.initialBalance.replace(',', '.'))
+      if (!isNaN(initialBalance) && initialBalance > 0) {
+        payload.initialBalance = initialBalance
+      }
 
       const response = await apiService.post('/users', payload)
 

@@ -11,6 +11,7 @@ import { Search, Download, Loader2 } from "lucide-react"
 import { useTransactions } from "@/hooks/useTransactions"
 import { useAuth } from "@/contexts/auth-context"
 import { ChipMovementType } from "helper"
+import { formatChips } from "@/lib/utils"
 
 export default function TransactionsPage() {
   const { user } = useAuth()
@@ -114,7 +115,7 @@ export default function TransactionsPage() {
                   <CardTitle className="text-sm font-medium">Total Depósitos</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">${totalDeposits.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-green-600">${formatChips(totalDeposits)}</div>
                   <p className="text-xs text-muted-foreground">{deposits.length} transacciones</p>
                 </CardContent>
               </Card>
@@ -123,7 +124,7 @@ export default function TransactionsPage() {
                   <CardTitle className="text-sm font-medium">Total Retiros</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-600">${totalWithdrawals.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-red-600">${formatChips(totalWithdrawals)}</div>
                   <p className="text-xs text-muted-foreground">{withdrawals.length} transacciones</p>
                 </CardContent>
               </Card>
@@ -132,7 +133,7 @@ export default function TransactionsPage() {
                   <CardTitle className="text-sm font-medium">Total Apuestas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">${totalLosses.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-blue-600">${formatChips(totalLosses)}</div>
                   <p className="text-xs text-muted-foreground">{losses.length} transacciones</p>
                 </CardContent>
               </Card>
@@ -141,7 +142,7 @@ export default function TransactionsPage() {
                   <CardTitle className="text-sm font-medium">Total Premios</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-yellow-600">${totalPrizes.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-yellow-600">${formatChips(totalPrizes)}</div>
                   <p className="text-xs text-muted-foreground">{prizes.length} transacciones</p>
                 </CardContent>
               </Card>
@@ -218,10 +219,10 @@ export default function TransactionsPage() {
                             </td>
                             <td className="p-2">
                               <span className={transaction.amount >= 0 ? "text-green-600" : "text-red-600"}>
-                                {transaction.amount >= 0 ? "+" : ""}${transaction.amount.toFixed(2)}
+                                {transaction.amount >= 0 ? "+" : ""}${formatChips(transaction.amount)}
                               </span>
                             </td>
-                            <td className="p-2 font-medium">${transaction.newBalance.toFixed(2)}</td>
+                            <td className="p-2 font-medium">${formatChips(transaction.newBalance)}</td>
                             <td className="p-2">{transaction.description || "-"}</td>
                             <td className="p-2 text-sm">
                               {new Date(transaction.createdAt).toLocaleDateString()}{" "}

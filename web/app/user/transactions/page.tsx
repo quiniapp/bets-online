@@ -9,6 +9,7 @@ import { UserRole, ChipMovementType } from "helper"
 import { ArrowUp, ArrowDown, DollarSign, Settings, Loader2 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useTransactions } from "@/hooks/useTransactions"
+import { formatChips } from "@/lib/utils"
 
 export default function UserTransactions() {
   const { user, role } = useAuth()
@@ -128,7 +129,7 @@ export default function UserTransactions() {
                 <ArrowDown className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">${totalDeposits.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-green-600">${formatChips(totalDeposits)}</div>
                 <p className="text-xs text-muted-foreground">
                   {deposits.length} {t("transactions.transactions")}
                 </p>
@@ -141,7 +142,7 @@ export default function UserTransactions() {
                 <ArrowUp className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">${totalWithdrawals.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-red-600">${formatChips(totalWithdrawals)}</div>
                 <p className="text-xs text-muted-foreground">
                   {withdrawals.length} {t("transactions.transactions")}
                 </p>
@@ -156,7 +157,7 @@ export default function UserTransactions() {
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">{losses.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  ${totalLosses.toFixed(2)} {t("transactions.wagered")}
+                  ${formatChips(totalLosses)} {t("transactions.wagered")}
                 </p>
               </CardContent>
             </Card>
@@ -169,7 +170,7 @@ export default function UserTransactions() {
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">{prizes.length}</div>
                 <p className="text-xs text-muted-foreground">
-                  ${totalPrizes.toFixed(2)} {t("transactions.won")}
+                  ${formatChips(totalPrizes)} {t("transactions.won")}
                 </p>
               </CardContent>
             </Card>
@@ -200,10 +201,10 @@ export default function UserTransactions() {
 
                         <div className="text-right">
                           <div className={`text-lg font-semibold ${getTransactionColor(transaction.amount)}`}>
-                            {transaction.amount > 0 ? "+" : ""}${transaction.amount.toFixed(2)}
+                            {transaction.amount > 0 ? "+" : ""}${formatChips(transaction.amount)}
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            Balance: ${transaction.newBalance.toFixed(2)}
+                            Balance: ${formatChips(transaction.newBalance)}
                           </p>
                         </div>
                       </div>

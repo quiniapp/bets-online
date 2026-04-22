@@ -17,6 +17,7 @@ import {
 import Link from "next/link"
 import ROUTER from "@/routes"
 import { useChips } from "@/hooks/useChips"
+import { formatChips } from "@/lib/utils"
 import { useFavorites } from "@/contexts/favorites-context"
 
 export default function UserDashboard() {
@@ -60,7 +61,7 @@ export default function UserDashboard() {
             <p className="text-sm font-medium text-muted-foreground mb-1">Balance disponible</p>
             {balance ? (
               <p className="text-4xl md:text-5xl font-bold text-primary tracking-tight">
-                ${balance.chipBalance.toFixed(2)}
+                ${formatChips(balance.chipBalance)}
               </p>
             ) : (
               <div className="flex items-center gap-2 mt-2">

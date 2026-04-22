@@ -4,7 +4,7 @@ import { useState } from "react"
 import { ChevronRight, ChevronDown, User, Users, Ban, CheckCircle, Edit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, formatChips } from "@/lib/utils"
 import type { UserTreeNode } from "helper"
 import { UserStatus } from "helper"
 
@@ -98,7 +98,7 @@ function UserTreeItem({ node, level = 0, onEditUser, onToggleStatus }: UserTreeP
 
         {/* Balance */}
         <span className="text-sm text-muted-foreground ml-auto mr-4">
-          ${node.balance?.chipBalance?.toFixed(2) || '0.00'}
+          ${node.balance?.chipBalance != null ? formatChips(node.balance.chipBalance) : '0,00'}
         </span>
 
         {/* Last connection */}

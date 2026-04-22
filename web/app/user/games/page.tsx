@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useFavorites } from "@/contexts/favorites-context"
 import { apiService } from "@/services/api.service"
 import type { Game } from "helper"
-import { cn } from "@/lib/utils"
+import { cn, formatChips } from "@/lib/utils"
 
 export default function UserGames() {
   const { user } = useAuth()
@@ -104,8 +104,8 @@ export default function UserGames() {
         toast({
           title: isWin ? "¡Ganaste!" : "Perdiste",
           description: isWin
-            ? `${bet.multiplier?.toFixed(2)}x · Ganancia: $${bet.payout?.toFixed(2)}`
-            : `Perdiste $${bet.amount.toFixed(2)}`,
+            ? `${bet.multiplier?.toFixed(2)}x · Ganancia: $${bet.payout != null ? formatChips(bet.payout) : '0,00'}`
+            : `Perdiste $${formatChips(bet.amount)}`,
           variant: isWin ? "default" : "destructive",
         })
         setBetAmount("")
@@ -265,7 +265,7 @@ export default function UserGames() {
                         <div key={bet.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                           <div className="min-w-0 mr-2">
                             <p className="text-xs font-medium truncate">{game?.name ?? "Juego"}</p>
-                            <p className="text-[10px] text-muted-foreground">${bet.amount.toFixed(2)} · {new Date(bet.createdAt).toLocaleTimeString()}</p>
+                            <p className="text-[10px] text-muted-foreground">${formatChips(bet.amount)} · {new Date(bet.createdAt).toLocaleTimeString()}</p>
                           </div>
                           <Badge variant={getStatusBadge(bet.status)} className="text-[10px] shrink-0">{getStatusLabel(bet)}</Badge>
                         </div>
