@@ -13,6 +13,7 @@ import { balancesRepository } from '../../persistence/repositories/balances.repo
 import { sessionsRepository } from '../../persistence/repositories/sessions.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
+import { chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
 
 export class UsersDomain {
@@ -35,6 +36,14 @@ export class UsersDomain {
       );
     }
 
+    // Validate initial balance against creator's available balance before creating user
+    if (userData.initialBalance && userData.initialBalance > 0 && creator.role !== UserRole.OWNER) {
+      const creatorBalance = await balancesRepository.findByUserId(creatorId);
+      if (!creatorBalance || creatorBalance.chipBalance < userData.initialBalance) {
+        throw new AppError(400, ErrorCode.INSUFFICIENT_BALANCE, 'Saldo insuficiente para asignar el balance inicial');
+      }
+    }
+
     // Set parent as creator
     userData.parentUserId = creatorId;
 
@@ -48,6 +57,10 @@ export class UsersDomain {
       userData.firstName,
       userData.lastName
     );
+
+    if (userData.initialBalance && userData.initialBalance > 0) {
+      await chipsDomain.sellChips(creatorId, user.id, userData.initialBalance, 'Balance inicial');
+    }
 
     return user;
   }

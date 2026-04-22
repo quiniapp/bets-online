@@ -63,12 +63,22 @@ export default function CreateUserPage() {
     setPasswordValid(isValid)
   }, [])
 
+  const validateInitialBalance = (value: string) => {
+    if (!value || value === '0') return { state: 'neutral' as const, message: '' }
+    const n = parseFloat(value.replace(',', '.'))
+    if (isNaN(n) || n < 0) return { state: 'invalid' as const, message: 'Debe ser un número mayor o igual a 0' }
+    return { state: 'valid' as const, message: '' }
+  }
+
+  const initialBalanceValidation = validateInitialBalance(formData.initialBalance)
+
   const isFormValid = () => {
     return (
       usernameValidation.state === 'valid' &&
       (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
       passwordValid &&
-      confirmPasswordValidation.state === 'valid'
+      confirmPasswordValidation.state === 'valid' &&
+      initialBalanceValidation.state !== 'invalid'
     )
   }
 
@@ -112,18 +122,13 @@ export default function CreateUserPage() {
         payload.lastName = formData.lastName
       }
       const initialBalance = parseFloat(formData.initialBalance.replace(',', '.'))
+      if (!isNaN(initialBalance) && initialBalance > 0) {
+        payload.initialBalance = initialBalance
+      }
 
-      const response = await apiService.post<{ user: { id: string } }>('/users', payload)
+      const response = await apiService.post('/users', payload)
 
       if (response.success) {
-        if (!isNaN(initialBalance) && initialBalance > 0 && response.data?.user?.id) {
-          await apiService.post('/chips/sell', {
-            playerId: response.data.user.id,
-            amount: initialBalance,
-            description: 'Balance inicial'
-          })
-        }
-
         toast({
           title: "Usuario creado",
           description: "El usuario ha sido creado exitosamente"
@@ -272,6 +277,8 @@ export default function CreateUserPage() {
                     value={formData.initialBalance}
                     onChange={(e) => setFormData((prev) => ({ ...prev, initialBalance: e.target.value }))}
                     placeholder="0.00"
+                    validationState={initialBalanceValidation.state}
+                    errorMessage={initialBalanceValidation.message}
                     showValidationIcon={false}
                   />
                 </div>
