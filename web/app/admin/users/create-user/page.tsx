@@ -63,12 +63,22 @@ export default function CreateUserPage() {
     setPasswordValid(isValid)
   }, [])
 
+  const validateInitialBalance = (value: string) => {
+    if (!value || value === '0') return { state: 'neutral' as const, message: '' }
+    const n = parseFloat(value.replace(',', '.'))
+    if (isNaN(n) || n < 0) return { state: 'invalid' as const, message: 'Debe ser un número mayor o igual a 0' }
+    return { state: 'valid' as const, message: '' }
+  }
+
+  const initialBalanceValidation = validateInitialBalance(formData.initialBalance)
+
   const isFormValid = () => {
     return (
       usernameValidation.state === 'valid' &&
       (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
       passwordValid &&
-      confirmPasswordValidation.state === 'valid'
+      confirmPasswordValidation.state === 'valid' &&
+      initialBalanceValidation.state !== 'invalid'
     )
   }
 
@@ -261,12 +271,13 @@ export default function CreateUserPage() {
                   <Label htmlFor="initialBalance">Balance Inicial ($)</Label>
                   <ValidatedInput
                     id="initialBalance"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.initialBalance}
                     onChange={(e) => setFormData((prev) => ({ ...prev, initialBalance: e.target.value }))}
                     placeholder="0.00"
+                    validationState={initialBalanceValidation.state}
+                    errorMessage={initialBalanceValidation.message}
                     showValidationIcon={false}
                   />
                 </div>

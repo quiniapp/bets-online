@@ -85,6 +85,13 @@ jest.mock('../../src/persistence/repositories/providerTransaction.repository', (
   }
 }));
 
+// ─── Mock rate limiters to prevent MemoryStore setInterval from leaking ───────
+jest.mock('../../src/middleware/rateLimiter.middleware', () => ({
+  globalLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+  authLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+  viralProviderLimiter: (_req: unknown, _res: unknown, next: () => void) => next()
+}));
+
 // Suppress the expected startup error log
 const originalConsoleError = console.error;
 beforeAll(() => {

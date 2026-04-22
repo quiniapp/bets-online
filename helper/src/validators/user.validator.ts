@@ -23,7 +23,8 @@ export const createUserSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   firstName: z.string().max(100).optional().or(z.literal('')),
   lastName: z.string().max(100).optional().or(z.literal('')),
-  password: passwordSchema
+  password: passwordSchema,
+  initialBalance: z.number().min(0).optional()
 });
 
 /**
