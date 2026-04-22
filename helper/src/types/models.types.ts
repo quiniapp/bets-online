@@ -312,6 +312,30 @@ export interface UpdateGameDto {
 }
 
 /**
+ * Provider Model
+ */
+export interface Provider {
+  id: string;
+  name: string;
+  displayName: string | null;
+  isActive: boolean;
+  logoUrl: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Game Type Model
+ */
+export interface GameType {
+  id: string;
+  name: string;
+  displayName: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
  * Create Bet DTO
  */
 export interface CreateBetDto {

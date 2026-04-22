@@ -137,7 +137,15 @@ body {
 
 /* Mobile touch targets */
 @media (max-width: 767px) {
-  button, a, [role="button"] {
+  button:not(.btn-icon), a:not(.btn-icon), [role="button"]:not(.btn-icon) {
     min-height: 44px;
   }
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

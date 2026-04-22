@@ -2,7 +2,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
 import type { Game, CreateGameDto, UpdateGameDto } from 'helper';
 
-export function useGames(activeOnly: boolean = false) {
+interface UseGamesOptions {
+  activeOnly?: boolean;
+  providerName?: string | null;
+  search?: string;
+  gameType?: string | null;
+}
+
+export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false, providerName: string | null = null) {
+  const options: UseGamesOptions = typeof activeOnlyOrOptions === 'boolean'
+    ? { activeOnly: activeOnlyOrOptions, providerName }
+    : activeOnlyOrOptions;
+
+  const activeOnly = options.activeOnly ?? false;
+  const provider = options.providerName ?? null;
+  const search = options.search ?? '';
+  const gameType = options.gameType ?? null;
+
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -20,8 +36,11 @@ export function useGames(activeOnly: boolean = false) {
       setError(null);
 
       try {
-        const qs = new URLSearchParams({ page: String(targetPage), limit: '50' });
+        const qs = new URLSearchParams({ page: String(targetPage), limit: '24' });
         if (activeOnly) qs.set('activeOnly', 'true');
+        if (provider) qs.set('providerName', provider);
+        if (search) qs.set('search', search);
+        if (gameType) qs.set('gameType', gameType);
 
         const response = await apiService.get<Game[]>(`/games?${qs.toString()}`);
 
@@ -40,7 +59,7 @@ export function useGames(activeOnly: boolean = false) {
         else setLoadingMore(false);
       }
     },
-    [activeOnly]
+    [activeOnly, provider, search, gameType]
   );
 
   useEffect(() => {
@@ -48,7 +67,7 @@ export function useGames(activeOnly: boolean = false) {
     setPage(1);
     setTotalPages(1);
     fetchPage(1, true);
-  }, [activeOnly, fetchPage]);
+  }, [activeOnly, provider, search, gameType, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {

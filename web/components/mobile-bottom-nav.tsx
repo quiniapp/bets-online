@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { UserRole } from "helper"
-import { LayoutDashboard, Gamepad2, History, User, Users, BarChart3, Settings } from "lucide-react"
+import { LayoutDashboard, Gamepad2, User, Users, BarChart3, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function MobileBottomNav() {
@@ -16,7 +16,6 @@ export function MobileBottomNav() {
   const playerItems = [
     { href: "/user/dashboard", icon: LayoutDashboard, label: "Inicio" },
     { href: "/user/games", icon: Gamepad2, label: "Juegos" },
-    { href: "/user/bets", icon: History, label: "Apuestas" },
     { href: "/user/profile", icon: User, label: "Perfil" },
   ]
 

@@ -82,9 +82,12 @@ export class GamesDomain {
   async getPaginatedGames(
     page: number,
     limit: number,
-    activeOnly: boolean = false
+    activeOnly: boolean = false,
+    providerName?: string,
+    search?: string,
+    gameType?: string
   ): Promise<{ games: Game[]; total: number }> {
-    if (page === CACHE_PAGE && limit === CACHE_LIMIT) {
+    if (!providerName && !search && !gameType && page === CACHE_PAGE && limit === CACHE_LIMIT) {
       const cached = gamesCache.get(activeOnly);
       if (cached) return cached;
 
@@ -92,7 +95,11 @@ export class GamesDomain {
       gamesCache.set(result, activeOnly);
       return result;
     }
-    return gamesRepository.findPaginated(page, limit, activeOnly);
+    return gamesRepository.findPaginated(page, limit, activeOnly, providerName, search, gameType);
+  }
+
+  async getDistinctGameTypes(): Promise<string[]> {
+    return gamesRepository.findDistinctGameTypes();
   }
 
   /**

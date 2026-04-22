@@ -43,7 +43,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 md:h-16 items-center justify-between border-b bg-background px-4 md:px-6 shrink-0">
+        <header className="flex h-11 md:h-14 items-center justify-between border-b bg-background px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
             {isAdminRole && <MobileSidebar />}
             {title && (
@@ -68,7 +68,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 md:p-6 pb-20 md:pb-6">
+        <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
 

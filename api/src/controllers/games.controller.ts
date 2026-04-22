@@ -24,9 +24,21 @@ export class GamesController {
       const activeOnly = req.query.activeOnly === 'true';
       const page = Math.max(1, parseInt(req.query.page as string) || 1);
       const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
-      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly);
+      const providerName = req.query.providerName as string | undefined;
+      const search = req.query.search as string | undefined;
+      const gameType = req.query.gameType as string | undefined;
+      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType);
 
       return res.json(ApiResponseBuilder.paginated(games, page, limit, total));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async getTypes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const types = await gamesDomain.getDistinctGameTypes();
+      return res.json(ApiResponseBuilder.success({ types }));
     } catch (error) {
       return next(error);
     }

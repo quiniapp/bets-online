@@ -6,6 +6,8 @@ import gamesRoutes from './games';
 import betsRoutes from './bets';
 import integrationsRoutes from './integrations/21viral';
 import adminRoutes from './admin';
+import providersRoutes from './providers';
+import favoritesRoutes from './favorites';
 
 const router = Router();
 
@@ -38,5 +40,7 @@ router.use('/games', gamesRoutes);
 router.use('/bets', betsRoutes);
 router.use('/integrations/21viral', integrationsRoutes);
 router.use('/admin', adminRoutes);
+router.use('/providers', providersRoutes);
+router.use('/favorites', favoritesRoutes);
 
 export default router;

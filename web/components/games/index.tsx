@@ -9,8 +9,12 @@ import { Flex } from "../flex"
 import GameCard from "./game-card"
 import { Loader2 } from "lucide-react"
 
-const GamesList = () => {
-    const { games, loading, loadingMore, loadMore } = useGames(true)
+interface GamesListProps {
+    providerName?: string | null;
+}
+
+const GamesList = ({ providerName = null }: GamesListProps) => {
+    const { games, loading, loadingMore, loadMore } = useGames(true, providerName)
     const { user } = useAuth()
     const router = useRouter()
     const sentinelRef = useRef<HTMLDivElement>(null)

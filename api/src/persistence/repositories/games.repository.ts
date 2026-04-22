@@ -1,6 +1,6 @@
 import { GameModel } from '../models';
 import { Game, CreateGameDto, UpdateGameDto } from 'helper';
-import { Transaction } from 'sequelize';
+import { Transaction, Op } from 'sequelize';
 
 export class GamesRepository {
   async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
@@ -26,10 +26,16 @@ export class GamesRepository {
   async findPaginated(
     page: number,
     limit: number,
-    activeOnly: boolean = false
+    activeOnly: boolean = false,
+    providerName?: string,
+    search?: string,
+    gameType?: string
   ): Promise<{ games: Game[]; total: number }> {
     const offset = (page - 1) * limit;
-    const where = activeOnly ? { isActive: true } : {};
+    const where: Record<string, unknown> = activeOnly ? { isActive: true } : {};
+    if (providerName) where['providerName'] = providerName;
+    if (gameType) where['gameType'] = gameType;
+    if (search) where['name'] = { [Op.iLike]: `%${search}%` };
     const { rows, count } = await GameModel.findAndCountAll({
       where,
       order: [['name', 'ASC']],
@@ -37,6 +43,18 @@ export class GamesRepository {
       offset
     });
     return { games: rows.map(g => this.mapToGame(g)), total: count };
+  }
+
+  async findDistinctGameTypes(): Promise<string[]> {
+    const rows = await GameModel.findAll({
+      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('game_type')), 'gameType']],
+      where: { gameType: { [Op.ne]: null } },
+      raw: true
+    });
+    return (rows as unknown as Array<{ gameType: string }>)
+      .map(r => r.gameType)
+      .filter(Boolean)
+      .sort();
   }
 
   async findById(gameId: string): Promise<Game | null> {

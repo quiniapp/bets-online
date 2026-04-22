@@ -12,3 +12,5 @@ export {
   providerTransactionRepository,
   ProviderTransactionRepository
 } from './providerTransaction.repository';
+export { providersRepository, ProvidersRepository } from './providers.repository';
+export { gameTypesRepository, GameTypesRepository } from './game-types.repository';

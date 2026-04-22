@@ -11,8 +11,6 @@ import {
   ArrowUpDown,
   Gamepad2,
   User,
-  History,
-  CreditCard,
   Settings,
 } from "lucide-react";
 
@@ -154,25 +152,14 @@ export const useSidebarNavigation = () => {
       icon: BarChart3,
     },
     {
-      title: t("nav.profile"),
-      href: "/user/profile",
-      icon: User,
-    },
-    {
       title: t("nav.games"),
       href: "/user/games",
       icon: Gamepad2,
     },
     {
-      title: t("nav.myBets"),
-      href: "/user/bets",
-      icon: History,
-    },
-
-    {
-      title: t("nav.settings"),
-      href: "/user/settings",
-      icon: Settings,
+      title: t("nav.profile"),
+      href: "/user/profile",
+      icon: User,
     },
   ];
 
