@@ -271,9 +271,8 @@ export default function CreateUserPage() {
                   <Label htmlFor="initialBalance">Balance Inicial ($)</Label>
                   <ValidatedInput
                     id="initialBalance"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.initialBalance}
                     onChange={(e) => setFormData((prev) => ({ ...prev, initialBalance: e.target.value }))}
                     placeholder="0.00"
