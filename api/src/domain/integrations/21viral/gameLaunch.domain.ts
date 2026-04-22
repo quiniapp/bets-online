@@ -2,6 +2,8 @@ import Decimal from 'decimal.js';
 import { QueryTypes } from 'sequelize';
 import { viralService } from '../../../services/viral.service';
 import { gamesRepository } from '../../../persistence/repositories/games.repository';
+import { providersRepository } from '../../../persistence/repositories/providers.repository';
+import { gameTypesRepository } from '../../../persistence/repositories/game-types.repository';
 import { userProviderProfileRepository } from '../../../persistence/repositories/userProviderProfile.repository';
 import { balancesRepository } from '../../../persistence/repositories/balances.repository';
 import { usersRepository } from '../../../persistence/repositories/users.repository';
@@ -23,6 +25,13 @@ export interface LaunchGameParams {
 class GameLaunchDomain {
   async syncGames(): Promise<{ synced: number }> {
     const games = await viralService.getGames();
+
+    const uniqueProviders = [...new Set(games.map(g => g.providerName))];
+    const uniqueGameTypes = [...new Set(games.map(g => g.type))];
+
+    await Promise.all(uniqueProviders.map(name => providersRepository.upsertByName(name)));
+    await Promise.all(uniqueGameTypes.map(name => gameTypesRepository.upsertByName(name)));
+
     for (const g of games) {
       await gamesRepository.upsertFromProvider({
         providerName: g.providerName,
