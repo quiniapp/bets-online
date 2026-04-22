@@ -112,13 +112,18 @@ export default function CreateUserPage() {
         payload.lastName = formData.lastName
       }
       const initialBalance = parseFloat(formData.initialBalance.replace(',', '.'))
-      if (!isNaN(initialBalance) && initialBalance > 0) {
-        payload.initialBalance = initialBalance
-      }
 
-      const response = await apiService.post('/users', payload)
+      const response = await apiService.post<{ user: { id: string } }>('/users', payload)
 
       if (response.success) {
+        if (!isNaN(initialBalance) && initialBalance > 0 && response.data?.user?.id) {
+          await apiService.post('/chips/sell', {
+            playerId: response.data.user.id,
+            amount: initialBalance,
+            description: 'Balance inicial'
+          })
+        }
+
         toast({
           title: "Usuario creado",
           description: "El usuario ha sido creado exitosamente"
