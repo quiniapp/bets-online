@@ -14,6 +14,7 @@ import UserProviderProfileModel from './UserProviderProfile.model';
 import ProviderTransactionModel from './ProviderTransaction.model';
 import ProviderModel from './provider.model';
 import GameTypeModel from './game-type.model';
+import UserFavoriteGameModel from './UserFavoriteGame.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -171,6 +172,30 @@ ChipMovementModel.hasMany(RecoveryModel, {
 });
 
 // ===================================
+// FAVORITE GAMES ASSOCIATIONS
+// ===================================
+
+UserModel.hasMany(UserFavoriteGameModel, {
+  foreignKey: 'userId',
+  as: 'favoriteGames'
+});
+
+UserFavoriteGameModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+GameModel.hasMany(UserFavoriteGameModel, {
+  foreignKey: 'gameId',
+  as: 'favoritedBy'
+});
+
+UserFavoriteGameModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// ===================================
 // GAME AND BET ASSOCIATIONS
 // ===================================
 
@@ -242,7 +267,8 @@ export {
   UserProviderProfileModel,
   ProviderTransactionModel,
   ProviderModel,
-  GameTypeModel
+  GameTypeModel,
+  UserFavoriteGameModel
 };
 
 export default {
@@ -261,5 +287,6 @@ export default {
   UserProviderProfileModel,
   ProviderTransactionModel,
   ProviderModel,
-  GameTypeModel
+  GameTypeModel,
+  UserFavoriteGameModel
 };

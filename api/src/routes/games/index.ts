@@ -23,6 +23,7 @@ const router = Router();
 
 // Public routes (no authentication required)
 router.get('/', gamesController.getAll.bind(gamesController));
+router.get('/types', gamesController.getTypes.bind(gamesController));
 router.get('/:id', validateParams(idParamSchema), gamesController.getById.bind(gamesController));
 
 // Protected routes (authentication required)
