@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Download, Users, UserCheck, UserX, DollarSign, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Search, Download, Users, UserCheck, UserX, DollarSign } from "lucide-react"
 import type { User } from "helper"
 import { UserStatus } from "helper"
+import { formatChips } from "@/lib/utils"
 
 // Extended user type for demo purposes (includes balance from separate Balance model)
 interface UserWithBalance extends User {
@@ -131,7 +131,7 @@ export default function UsersReportPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">${totalBalance.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-blue-600">${formatChips(totalBalance)}</div>
               <p className="text-xs text-muted-foreground">En todas las cuentas</p>
             </CardContent>
           </Card>
@@ -201,7 +201,7 @@ export default function UsersReportPage() {
                         <td className="p-2 font-medium">{user.username}</td>
                         <td className="p-2 text-sm text-muted-foreground">{user.email}</td>
                         <td className="p-2">
-                          <span className="font-medium">${user.balance.toFixed(2)}</span>
+                          <span className="font-medium">${formatChips(user.balance)}</span>
                         </td>
                         <td className="p-2">
                           <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"}>
@@ -209,14 +209,14 @@ export default function UsersReportPage() {
                           </Badge>
                         </td>
                         <td className="p-2">{stats.totalBets}</td>
-                        <td className="p-2">${stats.totalBetAmount.toFixed(2)}</td>
+                        <td className="p-2">${formatChips(stats.totalBetAmount)}</td>
                         <td className="p-2">
                           <span className={stats.winRate > 50 ? "text-green-600" : "text-red-600"}>
                             {stats.winRate.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="p-2 text-green-600">${stats.deposits.toFixed(2)}</td>
-                        <td className="p-2 text-red-600">${stats.withdrawals.toFixed(2)}</td>
+                        <td className="p-2 text-green-600">${formatChips(stats.deposits)}</td>
+                        <td className="p-2 text-red-600">${formatChips(stats.withdrawals)}</td>
                         <td className="p-2 text-sm">{user.createdAt.toLocaleDateString()}</td>
                       </tr>
                     )

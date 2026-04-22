@@ -23,6 +23,7 @@ import ROUTER from "@/routes"
 import { useUsers } from "@/hooks/useUsers"
 import { useGames } from "@/hooks/useGames"
 import { useChips } from "@/hooks/useChips"
+import { formatChips } from "@/lib/utils"
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth()
@@ -164,7 +165,7 @@ export default function AdminDashboard() {
             ) : myBalance ? (
               <>
                 <div className="text-2xl font-bold text-green-600">
-                  ${myBalance.chipBalance.toFixed(2)}
+                  ${formatChips(myBalance.chipBalance)}
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
                   Actualizado: {new Date(myBalance.lastUpdatedAt).toLocaleString()}

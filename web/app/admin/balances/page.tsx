@@ -13,6 +13,7 @@ import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Minus, Search, DollarSign, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { UserStatus, type User, type Balance } from "helper"
+import { formatChips } from "@/lib/utils"
 
 const ITEMS_PER_PAGE = 10
 
@@ -139,7 +140,7 @@ export default function AdminBalances() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalSystemBalance.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${formatChips(totalSystemBalance)}</div>
             <p className="text-xs text-muted-foreground">en {users.length} cuentas</p>
           </CardContent>
         </Card>
@@ -174,7 +175,7 @@ export default function AdminBalances() {
                       </div>
                       <p className="text-gray-600 mb-2">{user.email || '-'}</p>
                       <p className="text-2xl font-bold text-green-600 mb-3">
-                        ${(userBalances[user.id] || 0).toFixed(2)}
+                        ${formatChips(userBalances[user.id] || 0)}
                       </p>
                     </div>
                     <Button
@@ -235,7 +236,7 @@ export default function AdminBalances() {
                     <Label className="text-sm font-medium">Usuario seleccionado:</Label>
                     <p className="text-lg font-semibold">{selectedUser.username}</p>
                     <p className="text-sm text-gray-600">
-                      Balance actual: ${(userBalances[selectedUser.id] || 0).toFixed(2)}
+                      Balance actual: ${formatChips(userBalances[selectedUser.id] || 0)}
                     </p>
                   </div>
 

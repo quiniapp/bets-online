@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useChips } from '@/hooks/useChips';
 import { ChipMovement, ChipMovementType, CHIP_MOVEMENT_TYPE_LABELS } from 'helper';
+import { formatChips } from '@/lib/utils';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ChipMovementsTableProps {
@@ -47,7 +48,7 @@ const formatAmount = (amount: number, type: ChipMovementType): string => {
   ].includes(type);
 
   const sign = isPositive ? '+' : '-';
-  return `${sign}$${Math.abs(amount).toFixed(2)}`;
+  return `${sign}$${formatChips(Math.abs(amount))}`;
 };
 
 const getAmountColor = (type: ChipMovementType): string => {
@@ -174,10 +175,10 @@ export function ChipMovementsTable({
                   {formatAmount(movement.amount, movement.type)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-right">
-                  ${movement.previousBalance.toFixed(2)}
+                  ${formatChips(movement.previousBalance)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                  ${movement.newBalance.toFixed(2)}
+                  ${formatChips(movement.newBalance)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
                   {movement.description || '-'}

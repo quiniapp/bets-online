@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { CreateGameDto, UpdateGameDto, Game } from "helper"
+import { formatChips } from "@/lib/utils"
 
 export default function AdminGames() {
   const { user } = useAuth()
@@ -299,11 +300,11 @@ export default function AdminGames() {
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Apuesta mínima:</span>
-                        <span className="font-medium">${game.minBet.toFixed(2)}</span>
+                        <span className="font-medium">${formatChips(game.minBet)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Apuesta máxima:</span>
-                        <span className="font-medium">${game.maxBet.toFixed(2)}</span>
+                        <span className="font-medium">${formatChips(game.maxBet)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">House Edge:</span>

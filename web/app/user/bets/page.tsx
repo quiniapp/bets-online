@@ -10,6 +10,7 @@ import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useBets } from "@/hooks/useBets"
 import { useGames } from "@/hooks/useGames"
+import { formatChips } from "@/lib/utils"
 
 export default function UserBets() {
   const { user } = useAuth()
@@ -85,7 +86,7 @@ export default function UserBets() {
                 <CardContent>
                   <div className="text-2xl font-bold">{statistics.totalBets}</div>
                   <p className="text-xs text-muted-foreground">
-                    Total apostado: ${statistics.totalWagered.toFixed(2)}
+                    Total apostado: ${formatChips(statistics.totalWagered)}
                   </p>
                 </CardContent>
               </Card>
@@ -98,7 +99,7 @@ export default function UserBets() {
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">{statistics.wonBets}</div>
                   <p className="text-xs text-muted-foreground">
-                    +${statistics.totalPayout.toFixed(2)}
+                    +${formatChips(statistics.totalPayout)}
                   </p>
                 </CardContent>
               </Card>
@@ -123,7 +124,7 @@ export default function UserBets() {
                   <div
                     className={`text-2xl font-bold ${statistics.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}
                   >
-                    ${statistics.netProfit.toFixed(2)}
+                    ${formatChips(statistics.netProfit)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {statistics.netProfit >= 0 ? "Ganancia" : "Pérdida"}
@@ -159,14 +160,14 @@ export default function UserBets() {
                       </div>
 
                       <div className="text-right">
-                        <div className="font-semibold">Apostado: ${bet.amount.toFixed(2)}</div>
+                        <div className="font-semibold">Apostado: ${formatChips(bet.amount)}</div>
                         {bet.status === "WON" && bet.multiplier && bet.payout && (
                           <div className="text-green-600 text-sm">
-                            Ganado: ${bet.payout.toFixed(2)} ({bet.multiplier.toFixed(2)}x)
+                            Ganado: ${formatChips(bet.payout)} ({bet.multiplier.toFixed(2)}x)
                           </div>
                         )}
                         {bet.status === "LOST" && (
-                          <div className="text-red-600 text-sm">Perdido: ${bet.amount.toFixed(2)}</div>
+                          <div className="text-red-600 text-sm">Perdido: ${formatChips(bet.amount)}</div>
                         )}
                         <Badge variant={getStatusVariant(bet.status)} className="mt-1">
                           {getStatusLabel(bet.status)}

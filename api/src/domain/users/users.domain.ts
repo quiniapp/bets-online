@@ -13,6 +13,7 @@ import { balancesRepository } from '../../persistence/repositories/balances.repo
 import { sessionsRepository } from '../../persistence/repositories/sessions.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
+import { chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
 
 export class UsersDomain {
@@ -48,6 +49,10 @@ export class UsersDomain {
       userData.firstName,
       userData.lastName
     );
+
+    if (userData.initialBalance && userData.initialBalance > 0) {
+      await chipsDomain.sellChips(creatorId, user.id, userData.initialBalance, 'Balance inicial');
+    }
 
     return user;
   }
