@@ -1,6 +1,8 @@
 import { gameLaunchDomain } from '../../../src/domain/integrations/21viral/gameLaunch.domain';
 import { viralService } from '../../../src/services/viral.service';
 import { gamesRepository } from '../../../src/persistence/repositories/games.repository';
+import { providersRepository } from '../../../src/persistence/repositories/providers.repository';
+import { gameTypesRepository } from '../../../src/persistence/repositories/game-types.repository';
 import { userProviderProfileRepository } from '../../../src/persistence/repositories/userProviderProfile.repository';
 import { balancesRepository } from '../../../src/persistence/repositories/balances.repository';
 import { usersRepository } from '../../../src/persistence/repositories/users.repository';
@@ -29,6 +31,16 @@ jest.mock('../../../src/persistence/repositories/games.repository', () => ({
     findPaginated: jest.fn().mockResolvedValue({ games: [], total: 0 })
   }
 }));
+jest.mock('../../../src/persistence/repositories/providers.repository', () => ({
+  providersRepository: {
+    upsertByName: jest.fn().mockResolvedValue(undefined)
+  }
+}));
+jest.mock('../../../src/persistence/repositories/game-types.repository', () => ({
+  gameTypesRepository: {
+    upsertByName: jest.fn().mockResolvedValue(undefined)
+  }
+}));
 jest.mock('../../../src/persistence/repositories/userProviderProfile.repository', () => ({
   userProviderProfileRepository: {
     findByUserId: jest.fn(),
@@ -53,6 +65,8 @@ jest.mock('../../../src/config/sequelize', () => ({
 
 const mockViralService = viralService as jest.Mocked<typeof viralService>;
 const mockGamesRepo = gamesRepository as jest.Mocked<typeof gamesRepository>;
+const mockProvidersRepo = providersRepository as jest.Mocked<typeof providersRepository>;
+const mockGameTypesRepo = gameTypesRepository as jest.Mocked<typeof gameTypesRepository>;
 const mockProfileRepo = userProviderProfileRepository as jest.Mocked<typeof userProviderProfileRepository>;
 const mockBalancesRepo = balancesRepository as jest.Mocked<typeof balancesRepository>;
 const mockUsersRepo = usersRepository as jest.Mocked<typeof usersRepository>;
@@ -127,6 +141,8 @@ describe('gameLaunchDomain', () => {
       const result = await gameLaunchDomain.syncGames();
 
       expect(mockViralService.getGames).toHaveBeenCalledTimes(1);
+      expect(mockProvidersRepo.upsertByName).toHaveBeenCalledWith('pragmatic');
+      expect(mockGameTypesRepo.upsertByName).toHaveBeenCalledWith('slot');
       expect(mockGamesRepo.upsertFromProvider).toHaveBeenCalledWith({
         providerName: 'pragmatic',
         providerGameId: 'vs25wolfgold',

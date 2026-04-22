@@ -14,6 +14,7 @@ module.exports = {
   },
   testPathIgnorePatterns: ['/node_modules/'],
   testTimeout: 30000,
+  forceExit: true,
   setupFiles: ['<rootDir>/api/tests/setup.ts'],
   collectCoverageFrom: [
     '**/*.{ts,tsx}',
