@@ -12,19 +12,18 @@ import { UserTreeView } from "@/components/admin/user-tree"
 import { useUsers } from "@/hooks/useUsers"
 import { useDebounce } from "@/hooks/useDebounce"
 import {
-  Search, Edit, Ban, CheckCircle, TreePine, Table,
-  ChevronDown, ChevronRight, ChevronLeft, DollarSign,
-  Minus, History, Lock
+  Search, Edit, TreePine, Table,
+  ChevronDown, ChevronRight, ChevronLeft,
+  Lock, Wallet, User as UserIcon
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus } from "helper"
 import type { User, UserTreeNode } from "helper"
 import ROUTER from "@/routes"
 import { cn } from "@/lib/utils"
-import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
-import { MovementsHistoryDialog } from "@/components/admin/movements-history-dialog"
 import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog"
 import { UserDetailDialog } from "@/components/admin/user-detail-dialog"
+import { UserWalletDialog } from "@/components/admin/user-wallet-dialog"
 
 const ITEMS_PER_PAGE = 10
 type ViewMode = 'table' | 'tree'
@@ -41,24 +40,16 @@ function formatDate(date: Date | string | null | undefined, withTime = false) {
 interface ActionButtonsProps {
   user: User
   onEdit: (id: string) => void
-  onToggleStatus: (id: string, status: UserStatus) => void
-  onSellChips: (user: User) => void
-  onWithdraw: (user: User) => void
-  onHistory: (user: User) => void
+  onWallet: (user: User) => void
   onResetPassword: (user: User) => void
+  onViewProfile: (id: string) => void
 }
 
-function ActionButtons({ user, onEdit, onToggleStatus, onSellChips, onWithdraw, onHistory, onResetPassword }: ActionButtonsProps) {
+function ActionButtons({ user, onEdit, onWallet, onResetPassword, onViewProfile }: ActionButtonsProps) {
   return (
     <div className="flex items-center gap-1">
-      <Button variant="outline" size="sm" onClick={() => onSellChips(user)} title="Carga de fichas">
-        <DollarSign className="h-3.5 w-3.5" />
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => onWithdraw(user)} title="Retiro de fichas">
-        <Minus className="h-3.5 w-3.5" />
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => onHistory(user)} title="Ver historial">
-        <History className="h-3.5 w-3.5" />
+      <Button variant="outline" size="sm" onClick={() => onWallet(user)} title="Gestionar saldo e historial">
+        <Wallet className="h-3.5 w-3.5" />
       </Button>
       <Button variant="outline" size="sm" onClick={() => onResetPassword(user)} title="Cambiar contraseña">
         <Lock className="h-3.5 w-3.5" />
@@ -66,15 +57,8 @@ function ActionButtons({ user, onEdit, onToggleStatus, onSellChips, onWithdraw, 
       <Button variant="outline" size="sm" onClick={() => onEdit(user.id)} title="Editar">
         <Edit className="h-3.5 w-3.5" />
       </Button>
-      <Button
-        variant={user.status === UserStatus.ACTIVE ? "destructive" : "default"}
-        size="sm"
-        onClick={() => onToggleStatus(user.id, user.status)}
-        title={user.status === UserStatus.ACTIVE ? "Bloquear" : "Activar"}
-      >
-        {user.status === UserStatus.ACTIVE
-          ? <Ban className="h-3.5 w-3.5" />
-          : <CheckCircle className="h-3.5 w-3.5" />}
+      <Button variant="outline" size="sm" onClick={() => onViewProfile(user.id)} title="Ver perfil / Gestionar acceso">
+        <UserIcon className="h-3.5 w-3.5" />
       </Button>
     </div>
   )
@@ -85,15 +69,13 @@ interface UserRowProps {
   level?: number
   allUsers?: User[]
   onEdit: (id: string) => void
-  onToggleStatus: (id: string, status: UserStatus) => void
-  onSellChips: (user: User) => void
-  onWithdraw: (user: User) => void
-  onHistory: (user: User) => void
+  onWallet: (user: User) => void
   onResetPassword: (user: User) => void
   onViewDetail: (user: User) => void
+  onViewProfile: (id: string) => void
 }
 
-function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onToggleStatus, onSellChips, onWithdraw, onHistory, onResetPassword, onViewDetail }: UserRowProps) {
+function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onResetPassword, onViewDetail, onViewProfile }: UserRowProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
   const directChildren = allUsers.filter(u => u.parentUserId === user.id)
   const hasChildren = directChildren.length > 0
@@ -126,11 +108,9 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onToggleStatus
           <ActionButtons
             user={user}
             onEdit={onEdit}
-            onToggleStatus={onToggleStatus}
-            onSellChips={onSellChips}
-            onWithdraw={onWithdraw}
-            onHistory={onHistory}
+            onWallet={onWallet}
             onResetPassword={onResetPassword}
+            onViewProfile={onViewProfile}
           />
         </div>
       </div>
@@ -189,11 +169,9 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onToggleStatus
           <ActionButtons
             user={user}
             onEdit={onEdit}
-            onToggleStatus={onToggleStatus}
-            onSellChips={onSellChips}
-            onWithdraw={onWithdraw}
-            onHistory={onHistory}
+            onWallet={onWallet}
             onResetPassword={onResetPassword}
+            onViewProfile={onViewProfile}
           />
         </div>
       </div>
@@ -205,12 +183,10 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onToggleStatus
           level={level + 1}
           allUsers={allUsers}
           onEdit={onEdit}
-          onToggleStatus={onToggleStatus}
-          onSellChips={onSellChips}
-          onWithdraw={onWithdraw}
-          onHistory={onHistory}
+          onWallet={onWallet}
           onResetPassword={onResetPassword}
           onViewDetail={onViewDetail}
+          onViewProfile={onViewProfile}
         />
       ))}
     </>
@@ -225,12 +201,12 @@ function UsersPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showAllDescendants, setShowAllDescendants] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [dialogType, setDialogType] = useState<'sell' | 'withdraw' | 'history' | 'reset-password' | 'detail' | null>(null)
+  const [dialogType, setDialogType] = useState<'wallet' | 'reset-password' | 'detail' | null>(null)
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
 
-  const { users, loading, pagination, blockUser, unblockUser, reload, getUserTree } = useUsers({
+  const { users, loading, pagination, reload, getUserTree } = useUsers({
     page: currentPage,
     limit: ITEMS_PER_PAGE,
     search: searchQuery
@@ -270,30 +246,19 @@ function UsersPageContent() {
     ? users.filter(u => !users.some(p => p.id === u.parentUserId))
     : users.filter(u => !u.parentUserId || !users.some(p => p.id === u.parentUserId))
 
-  const handleToggleUserStatus = async (userId: string, currentStatus: UserStatus) => {
-    try {
-      if (currentStatus === UserStatus.ACTIVE) { await blockUser(userId) } else { await unblockUser(userId) }
-    } catch (error) {
-      console.error('Failed to toggle user status:', error)
-    }
-  }
-
   const handleEditUser = (userId: string) => router.push(`${ROUTER.EDIT_USER}?id=${userId}`)
-  const handleSellChips = (user: User) => { setSelectedUser(user); setDialogType('sell') }
-  const handleWithdraw = (user: User) => { setSelectedUser(user); setDialogType('withdraw') }
-  const handleHistory = (user: User) => { setSelectedUser(user); setDialogType('history') }
+  const handleViewProfile = (userId: string) => router.push(`${ROUTER.ADMIN_USERS}/${userId}`)
+  const handleWallet = (user: User) => { setSelectedUser(user); setDialogType('wallet') }
   const handleResetPassword = (user: User) => { setSelectedUser(user); setDialogType('reset-password') }
   const handleViewDetail = (user: User) => { setSelectedUser(user); setDialogType('detail') }
   const handleCloseDialog = () => { setSelectedUser(null); setDialogType(null) }
 
   const sharedRowProps = {
     onEdit: handleEditUser,
-    onToggleStatus: handleToggleUserStatus,
-    onSellChips: handleSellChips,
-    onWithdraw: handleWithdraw,
-    onHistory: handleHistory,
+    onWallet: handleWallet,
     onResetPassword: handleResetPassword,
     onViewDetail: handleViewDetail,
+    onViewProfile: handleViewProfile,
   }
 
   if (loading) {
@@ -366,7 +331,7 @@ function UsersPageContent() {
             {loadingTree ? (
               <div className="text-center py-8 text-muted-foreground">Cargando árbol de usuarios...</div>
             ) : (
-              <UserTreeView tree={userTree} onEditUser={handleEditUser} onToggleStatus={handleToggleUserStatus} />
+              <UserTreeView tree={userTree} onEditUser={handleEditUser} onViewProfile={handleViewProfile} />
             )}
           </CardContent>
         </Card>
@@ -400,13 +365,9 @@ function UsersPageContent() {
         </Card>
       )}
 
-      {selectedUser && (dialogType === 'sell' || dialogType === 'withdraw') && (
-        <ChipOperationDialog user={selectedUser} operationType={dialogType} open={true}
+      {selectedUser && dialogType === 'wallet' && (
+        <UserWalletDialog user={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => reload()} />
-      )}
-      {selectedUser && dialogType === 'history' && (
-        <MovementsHistoryDialog user={selectedUser} open={true}
-          onOpenChange={open => { if (!open) handleCloseDialog() }} />
       )}
       {selectedUser && dialogType === 'reset-password' && (
         <ResetPasswordDialog user={selectedUser} open={true}

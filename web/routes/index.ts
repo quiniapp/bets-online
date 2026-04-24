@@ -11,6 +11,7 @@ const ROUTER = {
   ADMIN_TRANSACTIONS: "/admin/transactions",
   ADMIN_REPORTS: "/admin/reports",
   ADMIN_SETTINGS: "/admin/settings",
+  ADMIN_USER_PROFILE: "/admin/users",
   EDIT_USER: "/admin/users/edit-user",
   CREATE_USER: "/admin/users/create-user",
   CREATE_ADMIN: "/admin/users/create-admin",
