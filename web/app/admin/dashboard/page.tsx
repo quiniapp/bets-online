@@ -116,8 +116,8 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout title="Inicio">
       {/* Stats Cards */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${role === UserRole.OWNER ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} gap-4 mb-6`}>
-        {/* Total Usuarios — clickable */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${role === UserRole.OWNER ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4 mb-6`}>
+        {/* Total Usuarios + Distribución — clickable */}
         <Card
           className="cursor-pointer transition-shadow hover:shadow-md"
           onClick={() => router.push(ROUTER.ADMIN_USERS)}
@@ -126,15 +126,33 @@ export default function AdminDashboard() {
             <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             {loadingStats ? (
               <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
             ) : (
               <>
-                <div className="text-2xl font-bold">{userStats?.total ?? 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  {userStats?.active ?? 0} activos, {userStats?.blocked ?? 0} bloqueados
-                </p>
+                <div>
+                  <div className="text-2xl font-bold">{userStats?.total ?? 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {userStats?.active ?? 0} activos, {userStats?.blocked ?? 0} bloqueados
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pt-1 border-t">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base font-bold text-blue-500">{userStats?.admins ?? 0}</span>
+                    <span className="text-xs text-muted-foreground">Admins</span>
+                  </div>
+                  <div className="text-muted-foreground/40">·</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base font-bold text-orange-500">{userStats?.cashiers ?? 0}</span>
+                    <span className="text-xs text-muted-foreground">Cajeros</span>
+                  </div>
+                  <div className="text-muted-foreground/40">·</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base font-bold text-green-500">{userStats?.players ?? 0}</span>
+                    <span className="text-xs text-muted-foreground">Jugadores</span>
+                  </div>
+                </div>
               </>
             )}
           </CardContent>
@@ -156,34 +174,6 @@ export default function AdminDashboard() {
                   {gameStats?.active ?? 0} activos
                 </p>
               </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Distribución por Rol */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Distribución por Rol</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingStats ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            ) : (
-              <div className="grid grid-cols-3 gap-1 pt-1">
-                <div className="text-center">
-                  <div className="text-xl font-bold text-blue-600">{userStats?.admins ?? 0}</div>
-                  <p className="text-xs text-muted-foreground">Admins</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-orange-600">{userStats?.cashiers ?? 0}</div>
-                  <p className="text-xs text-muted-foreground">Cajeros</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-green-600">{userStats?.players ?? 0}</div>
-                  <p className="text-xs text-muted-foreground">Jugadores</p>
-                </div>
-              </div>
             )}
           </CardContent>
         </Card>
