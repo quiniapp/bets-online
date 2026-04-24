@@ -468,6 +468,17 @@ export class UsersController {
       return next(error);
     }
   }
+  async myStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const stats = await usersDomain.getUserStats(req.user.userId);
+      return res.json(ApiResponseBuilder.success(stats));
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 export const usersController = new UsersController();

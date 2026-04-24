@@ -35,6 +35,25 @@ export class GamesController {
     }
   }
 
+  async stats(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await gamesDomain.getStats();
+      return res.json(ApiResponseBuilder.success(data));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async topPlayed(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = Math.min(20, parseInt(req.query.limit as string) || 5);
+      const data = await gamesDomain.getTopPlayed(limit);
+      return res.json(ApiResponseBuilder.success(data));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async getTypes(req: Request, res: Response, next: NextFunction) {
     try {
       const types = await gamesDomain.getDistinctGameTypes();

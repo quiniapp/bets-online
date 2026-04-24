@@ -1,6 +1,6 @@
 import { GameModel } from '../models';
 import { Game, CreateGameDto, UpdateGameDto } from 'helper';
-import { Transaction, Op } from 'sequelize';
+import { Transaction, Op, QueryTypes } from 'sequelize';
 
 export class GamesRepository {
   async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
@@ -12,6 +12,39 @@ export class GamesRepository {
       { transaction }
     );
     return this.mapToGame(game);
+  }
+
+  async getStats(): Promise<{ total: number; active: number }> {
+    const [total, active] = await Promise.all([
+      GameModel.count(),
+      GameModel.count({ where: { isActive: true } })
+    ]);
+    return { total, active };
+  }
+
+  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number }>> {
+    const db = GameModel.sequelize!;
+    const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string }>(
+      `SELECT g.id, g.name, g.is_active AS "isActive",
+        (
+          COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id), 0) +
+          COALESCE((SELECT COUNT(*) FROM provider_transactions pt
+                    WHERE pt.transaction_type = 'Debit'
+                      AND g.provider_game_id IS NOT NULL
+                      AND pt.provider_game_id = g.provider_game_id
+                      AND pt.provider_name = g.provider_name), 0)
+        ) AS "betCount"
+      FROM games g
+      ORDER BY "betCount" DESC
+      LIMIT :limit`,
+      { replacements: { limit }, type: QueryTypes.SELECT }
+    );
+    return results.map(r => ({
+      id: r.id,
+      name: r.name,
+      isActive: r.isActive,
+      betCount: parseInt(String(r.betCount), 10) || 0
+    }));
   }
 
   async findAll(activeOnly: boolean = false): Promise<Game[]> {

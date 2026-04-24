@@ -158,6 +158,41 @@ export class UsersRepository {
     await user.destroy();
   }
 
+  async getDescendantsStats(userId: string): Promise<{
+    total: number; active: number; blocked: number;
+    admins: number; cashiers: number; players: number;
+  }> {
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id, role, status FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.id, u.role, u.status FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT
+        COUNT(*) - 1 AS total,
+        SUM(CASE WHEN status = 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN status != 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS blocked,
+        SUM(CASE WHEN role = 'ADMIN' AND id != :userId THEN 1 ELSE 0 END) AS admins,
+        SUM(CASE WHEN role = 'CASHIER' AND id != :userId THEN 1 ELSE 0 END) AS cashiers,
+        SUM(CASE WHEN role = 'PLAYER' AND id != :userId THEN 1 ELSE 0 END) AS players
+      FROM descendants
+    `;
+    const [rows] = await sequelize.query(query, {
+      replacements: { userId },
+      type: 'SELECT' as any
+    });
+    const r = rows as any;
+    return {
+      total: parseInt(r.total, 10) || 0,
+      active: parseInt(r.active, 10) || 0,
+      blocked: parseInt(r.blocked, 10) || 0,
+      admins: parseInt(r.admins, 10) || 0,
+      cashiers: parseInt(r.cashiers, 10) || 0,
+      players: parseInt(r.players, 10) || 0,
+    };
+  }
+
   async findDescendants(userId: string): Promise<User[]> {
     // Use recursive CTE to get all descendants
     const query = `

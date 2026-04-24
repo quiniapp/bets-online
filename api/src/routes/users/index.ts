@@ -31,6 +31,7 @@ router.patch(
 );
 
 // User hierarchy
+router.get('/me/stats', usersController.myStats.bind(usersController));
 router.get('/me/children', usersController.getMyChildren.bind(usersController));
 
 router.get('/me/tree', usersController.getMyTree.bind(usersController));

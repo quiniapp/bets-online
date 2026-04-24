@@ -24,6 +24,8 @@ const router = Router();
 // Public routes (no authentication required)
 router.get('/', gamesController.getAll.bind(gamesController));
 router.get('/types', gamesController.getTypes.bind(gamesController));
+router.get('/stats', gamesController.stats.bind(gamesController));
+router.get('/top-played', gamesController.topPlayed.bind(gamesController));
 router.get('/:id', validateParams(idParamSchema), gamesController.getById.bind(gamesController));
 
 // Protected routes (authentication required)

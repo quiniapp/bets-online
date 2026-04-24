@@ -65,6 +65,12 @@ export class UsersDomain {
     return user;
   }
 
+  async getUserStats(requesterId: string) {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+    return usersRepository.getDescendantsStats(requesterId);
+  }
+
   async getUserById(requesterId: string, userId: string): Promise<User> {
     // Get requester
     const requester = await usersRepository.findById(requesterId);
