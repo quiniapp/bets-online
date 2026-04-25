@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import { UserModel } from '../models';
 import { User, CreateUserDto, UpdateUserDto, UserStatus } from 'helper';
 import { sequelize } from '../../config/sequelize';
@@ -178,18 +178,18 @@ export class UsersRepository {
         SUM(CASE WHEN role = 'PLAYER' AND id != :userId THEN 1 ELSE 0 END) AS players
       FROM descendants
     `;
-    const [rows] = await sequelize.query(query, {
+    const rows = await sequelize.query<Record<string, string>>(query, {
       replacements: { userId },
-      type: 'SELECT' as any
+      type: QueryTypes.SELECT
     });
-    const r = rows as any;
+    const r = rows[0] ?? {};
     return {
-      total: parseInt(r.total, 10) || 0,
-      active: parseInt(r.active, 10) || 0,
-      blocked: parseInt(r.blocked, 10) || 0,
-      admins: parseInt(r.admins, 10) || 0,
-      cashiers: parseInt(r.cashiers, 10) || 0,
-      players: parseInt(r.players, 10) || 0,
+      total: parseInt(r['total'], 10) || 0,
+      active: parseInt(r['active'], 10) || 0,
+      blocked: parseInt(r['blocked'], 10) || 0,
+      admins: parseInt(r['admins'], 10) || 0,
+      cashiers: parseInt(r['cashiers'], 10) || 0,
+      players: parseInt(r['players'], 10) || 0,
     };
   }
 
@@ -199,9 +199,13 @@ export class UsersRepository {
     roles: string[],
     limit = 10
   ): Promise<User[]> {
-    if (search.length < 2) return [];
-    const roleList = roles.map(r => `'${r}'`).join(',');
-    const rolesFilter = roleList ? `AND role IN (${roleList})` : '';
+    if (typeof search !== 'string' || search.length < 2) return [];
+
+    const allowedRoles = new Set(Object.values({ ADMIN: 'ADMIN', CASHIER: 'CASHIER', PLAYER: 'PLAYER', OWNER: 'OWNER' }));
+    const safeRoles = roles.filter(r => allowedRoles.has(r));
+    if (safeRoles.length === 0) return [];
+
+    // Fixed SQL with no dynamic structure — role filter applied in memory after fetch
     const query = `
       WITH RECURSIVE descendants AS (
         SELECT id, parent_user_id, role, username, email, first_name, last_name,
@@ -215,16 +219,20 @@ export class UsersRepository {
       )
       SELECT * FROM descendants
       WHERE id != :userId
-      ${rolesFilter}
       AND LOWER(username) LIKE LOWER('%' || :search || '%')
       ORDER BY username ASC
-      LIMIT :limit
+      LIMIT :fetchLimit
     `;
-    const results = await sequelize.query(query, {
-      replacements: { userId, search, limit },
-      type: 'SELECT'
+    const fetchLimit = Math.min(200, limit * 10);
+    const results = await sequelize.query<Record<string, unknown>>(query, {
+      replacements: { userId, search, fetchLimit },
+      type: QueryTypes.SELECT
     });
-    return (results as Record<string, unknown>[]).map(this.mapToUser);
+
+    return results
+      .filter(r => safeRoles.includes(r['role'] as string))
+      .slice(0, limit)
+      .map(this.mapToUser);
   }
 
   async findDescendants(userId: string): Promise<User[]> {

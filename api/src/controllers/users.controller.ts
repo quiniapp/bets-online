@@ -485,13 +485,14 @@ export class UsersController {
       if (!req.user) {
         return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
       }
-      const search = (req.query.search as string) || '';
-      const rolesParam = req.query.roles as string | undefined;
+      const search = typeof req.query.search === 'string' ? req.query.search : '';
+      const rolesParam = typeof req.query.roles === 'string' ? req.query.roles : undefined;
       const validRoles = Object.values(UserRole) as string[];
       const roles = rolesParam
         ? (rolesParam.split(',').filter(r => validRoles.includes(r)) as UserRole[])
         : [];
-      const limit = Math.min(20, parseInt(req.query.limit as string) || 10);
+      const rawLimit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 10;
+      const limit = Math.min(20, isNaN(rawLimit) ? 10 : rawLimit);
       const users = await usersDomain.searchDescendants(req.user.userId, search, roles, limit);
       return res.json(ApiResponseBuilder.success(users));
     } catch (error) {
