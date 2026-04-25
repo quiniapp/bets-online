@@ -20,6 +20,19 @@ export enum Environment {
  *   - APP_ENV=production npm run dev -> carga .env.production
  *   - NODE_ENV=production          -> carga .env.production
  */
+const parseDurationMs = (duration: string): number => {
+  const match = duration.match(/^(\d+)([smhd])$/);
+  if (!match) throw new Error(`Invalid duration format: "${duration}". Use e.g. "15m", "7d", "1h".`);
+  const value = parseInt(match[1], 10);
+  const multipliers: Record<string, number> = {
+    s: 1_000,
+    m: 60 * 1_000,
+    h: 60 * 60 * 1_000,
+    d: 24 * 60 * 60 * 1_000,
+  };
+  return value * multipliers[match[2]];
+};
+
 const getEnvFile = (): string => {
   const appEnv = process.env.APP_ENV as Environment;
   const nodeEnv = process.env.NODE_ENV as Environment;
@@ -72,7 +85,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('20m'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
 
   // Session
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 characters'),
@@ -170,8 +183,10 @@ export const envs = {
   jwt: {
     secret: envVars.JWT_SECRET,
     expiresIn: envVars.JWT_EXPIRES_IN,
+    accessTokenMaxAge: parseDurationMs(envVars.JWT_EXPIRES_IN),
     refreshSecret: envVars.JWT_REFRESH_SECRET,
-    refreshExpiresIn: envVars.JWT_REFRESH_EXPIRES_IN
+    refreshExpiresIn: envVars.JWT_REFRESH_EXPIRES_IN,
+    refreshTokenMaxAge: parseDurationMs(envVars.JWT_REFRESH_EXPIRES_IN),
   },
 
   // Session

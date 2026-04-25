@@ -89,6 +89,7 @@ jest.mock('../../src/persistence/repositories/providerTransaction.repository', (
 jest.mock('../../src/middleware/rateLimiter.middleware', () => ({
   globalLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
   authLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
+  refreshLimiter: (_req: unknown, _res: unknown, next: () => void) => next(),
   viralProviderLimiter: (_req: unknown, _res: unknown, next: () => void) => next()
 }));
 

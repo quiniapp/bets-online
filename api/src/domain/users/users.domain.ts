@@ -76,7 +76,7 @@ export class UsersDomain {
     search: string,
     roles: UserRole[],
     limit = 10
-  ): Promise<User[]> {
+  ): Promise<Pick<User, 'id' | 'role' | 'username'>[]> {
     const requester = await usersRepository.findById(requesterId);
     if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
 

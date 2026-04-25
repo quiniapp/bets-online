@@ -1,19 +1,18 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { apiService } from "@/services/api.service"
 import type { User, UserRole } from "helper"
 import ROUTER from "@/routes"
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutos en ms
-const INACTIVITY_SECONDS = 10 * 60         // 10 minutos en segundos (para maxAge de cookie)
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000
+const INACTIVITY_SECONDS = 10 * 60
 const LAST_ACTIVE_COOKIE = 'last-active'
+// Watchdog runs every 2 min: if cookie gone → logout; piggybacks token refresh every ~10 min.
+const SESSION_WATCHDOG_INTERVAL = 2 * 60 * 1000
 
-// Cookie no-httpOnly manejada desde JS.
-// maxAge=INACTIVITY_SECONDS → el browser la expira automáticamente si no se renueva.
-// La existencia de la cookie indica que la sesión está dentro de la ventana de inactividad.
 const setLastActiveCookie = () => {
   const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
   document.cookie = `${LAST_ACTIVE_COOKIE}=1; max-age=${INACTIVITY_SECONDS}; path=/; SameSite=Strict${secure}`
@@ -35,6 +34,7 @@ interface AuthContextType {
   logout: () => void
   isLoading: boolean
   refreshUser: () => Promise<void>
+  keepAlive: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -74,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const isPublicPage = window.location.pathname === ROUTER.SITE
 
-    // Si hay indicador de sesión pero la cookie de actividad expiró → inactividad detectada
     if (apiService.hasSession() && !hasLastActiveCookie()) {
       clearSession()
       if (!isPublicPage) router.push(ROUTER.SITE)
@@ -143,9 +143,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await loadUser()
   }
 
-  // Sliding window: cada evento de actividad renueva el maxAge de la cookie.
-  // Si pasan 10 min sin eventos → cookie expira sola → próximo loadUser bloquea.
-  // El timer sigue siendo necesario para el logout inmediato con página abierta.
+  // Resets the inactivity timer and renews the last-active cookie.
+  // Extracted so keepAlive can call it without re-registering event listeners.
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
+    setLastActiveCookie()
+    inactivityTimerRef.current = setTimeout(logout, INACTIVITY_TIMEOUT)
+  }, [logout])
+
+  // Exposed for game pages where the iframe swallows all activity events.
+  // Call this on a short interval (~5 min) to keep the session alive while gaming.
+  const keepAlive = useCallback(() => {
+    if (!user) return
+    resetInactivityTimer()
+    apiService.refreshToken().catch(() => {})
+  }, [user, resetInactivityTimer])
+
+  // Sliding window: every activity event renews the cookie maxAge and resets the timer.
   useEffect(() => {
     if (!user) return
 
@@ -153,30 +167,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    let inactivityTimer: NodeJS.Timeout
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer)
-      setLastActiveCookie() // Renueva maxAge → reinicia ventana de 10 min
-      inactivityTimer = setTimeout(() => {
-        logout()
-      }, INACTIVITY_TIMEOUT)
-    }
-
     const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click']
 
     activityEvents.forEach(event => {
-      window.addEventListener(event, resetTimer, { passive: true })
+      window.addEventListener(event, resetInactivityTimer, { passive: true })
     })
 
-    resetTimer()
+    resetInactivityTimer()
 
     return () => {
-      clearTimeout(inactivityTimer)
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
       activityEvents.forEach(event => {
-        window.removeEventListener(event, resetTimer)
+        window.removeEventListener(event, resetInactivityTimer)
       })
     }
+  }, [user, resetInactivityTimer])
+
+  // Session watchdog: runs every 2 min.
+  // - If last-active cookie is gone → user was inactive > 10 min → force logout.
+  // - If cookie alive → piggyback token refresh every 5 cycles (~10 min).
+  // This is the primary fallback for when setTimeout gets throttled in background tabs.
+  useEffect(() => {
+    if (!user) return
+
+    let cycles = 0
+    const check = async () => {
+      if (!hasLastActiveCookie() && apiService.hasSession()) {
+        await logout()
+        return
+      }
+      cycles++
+      if (cycles % 5 === 0) {
+        apiService.refreshToken().catch(() => {})
+      }
+    }
+
+    const interval = setInterval(check, SESSION_WATCHDOG_INTERVAL)
+    return () => clearInterval(interval)
+  }, [user, logout])
+
+  // Tab visibility: immediately check when user returns to an idle tab.
+  useEffect(() => {
+    if (!user) return
+
+    const handleVisibility = async () => {
+      if (document.visibilityState === 'visible' && !hasLastActiveCookie() && apiService.hasSession()) {
+        await logout()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [user, logout])
 
   // Multi-tab: sincronizar logout cuando session_active se elimina en otra tab
@@ -196,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, role, login, logout, isLoading, refreshUser }}>
+    <AuthContext.Provider value={{ user, role, login, logout, isLoading, refreshUser, keepAlive }}>
       {children}
     </AuthContext.Provider>
   )
