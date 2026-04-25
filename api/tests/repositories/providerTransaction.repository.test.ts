@@ -1,5 +1,8 @@
 import { ProviderTransactionRepository } from '../../src/persistence/repositories/providerTransaction.repository';
 import { TransactionType } from 'helper';
+import { sequelize } from '../../src/config/sequelize';
+
+afterAll(() => sequelize.close());
 
 describe('ProviderTransactionRepository', () => {
   const repo = new ProviderTransactionRepository();

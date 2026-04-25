@@ -1,4 +1,7 @@
 import { UserProviderProfileRepository } from '../../src/persistence/repositories/userProviderProfile.repository';
+import { sequelize } from '../../src/config/sequelize';
+
+afterAll(() => sequelize.close());
 
 describe('UserProviderProfileRepository', () => {
   const repo = new UserProviderProfileRepository();
