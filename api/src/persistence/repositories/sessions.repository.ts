@@ -86,18 +86,15 @@ export class SessionsRepository {
     });
   }
 
-  // Housekeeping: borra rows con expiresAt < NOW().
-  // No es crítico porque las sesiones expiradas ya son rechazadas en el query de refresh.
-  // Descomentar y llamar desde cacheSyncJob si el volumen de usuarios genera acumulación.
-  // async deleteExpired(): Promise<void> {
-  //   await SessionModel.destroy({
-  //     where: {
-  //       expiresAt: {
-  //         [Op.lt]: new Date()
-  //       }
-  //     }
-  //   });
-  // }
+  async deleteExpired(): Promise<void> {
+    await SessionModel.destroy({
+      where: {
+        expiresAt: {
+          [Op.lt]: new Date()
+        }
+      }
+    });
+  }
 
   private mapToSession(data: SessionModel | Record<string, unknown>): Session {
     // Convert Sequelize model to plain object if needed

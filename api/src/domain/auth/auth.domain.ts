@@ -18,18 +18,16 @@ import { AppError } from '../../middleware/error.middleware';
 export class AuthDomain {
   async login(username: string, password: string): Promise<{ user: User; tokens: AuthTokens }> {
     // Find user
-    const user = await usersRepository.findByUsername(username);
+    const user = await usersRepository.findByUsernameForAuth(username);
 
     if (!user) {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
-    // Check if user is blocked
     if (user.status === 'BLOCKED') {
       throw new AppError(403, ErrorCode.USER_BLOCKED, 'User is blocked');
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash!);
 
     if (!isPasswordValid) {
@@ -143,7 +141,7 @@ export class AuthDomain {
       config.jwt.refreshSecret as jwt.Secret,
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
-    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     // Rotar sesión: 1 DB op (UPDATE con validación de expiresAt incluida)
     const session = await sessionsRepository.rotateTokens(
@@ -154,6 +152,10 @@ export class AuthDomain {
     );
 
     if (!session) {
+      // JWT valid but token not in DB → already rotated by someone else → possible theft.
+      // Revoke all sessions for this user as a precaution.
+      await sessionsRepository.deleteByUserId(decoded.userId);
+      userCache.invalidate(decoded.userId);
       throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found or expired');
     }
 
@@ -179,12 +181,11 @@ export class AuthDomain {
     newPassword: string
   ): Promise<void> {
     // Get user
-    const user = await usersRepository.findById(userId);
+    const user = await usersRepository.findByIdForAuth(userId);
     if (!user) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    // Verify current password
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash!);
     if (!isPasswordValid) {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Current password is incorrect');
@@ -243,10 +244,7 @@ export class AuthDomain {
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
 
-    // expiresAt = vida del refreshToken (20 min).
-    // Sesiones de corta duración mantienen la tabla pequeña y el servidor
-    // es el árbitro real de la expiración, sin depender del cliente.
-    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     // Save session
     await sessionsRepository.create(user.id, accessToken, refreshToken, expiresAt);

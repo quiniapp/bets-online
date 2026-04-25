@@ -178,9 +178,10 @@ class ApiService {
 
   async refreshToken(): Promise<boolean> {
     try {
+      const csrf = this.csrfToken ?? await this.fetchCsrfToken();
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrf },
         credentials: 'include',
       });
 

@@ -9,15 +9,29 @@ import { useGameLaunch } from '@/hooks/useGameLaunch';
 import { useAuth } from '@/contexts/auth-context';
 import { UserRole } from 'helper';
 
+const GAME_KEEPALIVE_INTERVAL = 5 * 60 * 1000
+
 export default function PlayGamePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { role } = useAuth();
+  const { role, keepAlive } = useAuth();
   const { launchGame, loading, error } = useGameLaunch();
   const [gameStartUrl, setGameStartUrl] = useState<string | null>(null);
 
   const lobbyUrl = `/user/games`;
   const depositUrl = `/user/dashboard`;
+
+  // Iframe captures all user events so the parent window sees no activity.
+  // While the tab is visible the user is actively gaming → reset inactivity timer.
+  // While the tab is hidden the user is away → let the 10-min timer expire normally.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        keepAlive()
+      }
+    }, GAME_KEEPALIVE_INTERVAL)
+    return () => clearInterval(interval)
+  }, [keepAlive])
 
   useEffect(() => {
     if (role !== null && role !== UserRole.PLAYER) {
