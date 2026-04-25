@@ -334,6 +334,7 @@ export class ChipsDomain {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      compact?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number; page: number; limit: number }> {
     const requester = await usersRepository.findById(requesterId);
@@ -361,7 +362,8 @@ export class ChipsDomain {
       offset,
       startDate: options?.startDate,
       endDate: options?.endDate,
-      type: options?.type
+      type: options?.type,
+      compact: options?.compact,
     });
 
     return {
@@ -392,7 +394,7 @@ export class ChipsDomain {
       }
     }
 
-    const balance = await balancesRepository.findByUserId(userId);
+    const balance = await balancesRepository.findBalanceSummary(userId);
 
     if (!balance) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Balance not found');

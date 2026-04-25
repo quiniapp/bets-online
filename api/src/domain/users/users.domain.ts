@@ -65,6 +65,33 @@ export class UsersDomain {
     return user;
   }
 
+  async getUserStats(requesterId: string) {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+    return usersRepository.getDescendantsStats(requesterId);
+  }
+
+  async searchDescendants(
+    requesterId: string,
+    search: string,
+    roles: UserRole[],
+    limit = 10
+  ): Promise<User[]> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+
+    const allowedByRole: Record<string, UserRole[]> = {
+      [UserRole.OWNER]: [UserRole.ADMIN, UserRole.CASHIER, UserRole.PLAYER],
+      [UserRole.ADMIN]: [UserRole.CASHIER, UserRole.PLAYER],
+      [UserRole.CASHIER]: [UserRole.PLAYER],
+    };
+    const allowed = allowedByRole[requester.role] ?? [];
+    const filteredRoles = roles.length > 0 ? roles.filter(r => allowed.includes(r)) : allowed;
+    if (filteredRoles.length === 0) return [];
+
+    return usersRepository.searchDescendants(requesterId, search, filteredRoles, limit);
+  }
+
   async getUserById(requesterId: string, userId: string): Promise<User> {
     // Get requester
     const requester = await usersRepository.findById(requesterId);

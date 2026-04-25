@@ -13,7 +13,7 @@ interface LanguageContextType {
 const translations = {
   es: {
     // Navigation
-    "nav.statistics": "Estadísticas",
+    "nav.statistics": "Inicio",
     "nav.users": "Usuarios",
     "nav.games": "Casino",
     "nav.reports": "Reportes",

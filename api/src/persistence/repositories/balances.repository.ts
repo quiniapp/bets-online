@@ -11,6 +11,18 @@ export class BalancesRepository {
     return this.mapToBalance(balance);
   }
 
+  async findBalanceSummary(userId: string): Promise<Pick<Balance, 'chipBalance' | 'lastUpdatedAt'> | null> {
+    const balance = await BalanceModel.findOne({
+      where: { userId },
+      attributes: ['chipBalance', 'lastUpdatedAt']
+    });
+    if (!balance) return null;
+    return {
+      chipBalance: parseFloat(String(balance.chipBalance)),
+      lastUpdatedAt: new Date(balance.lastUpdatedAt)
+    };
+  }
+
   async findByUserIds(userIds: string[]): Promise<Balance[]> {
     const balances = await BalanceModel.findAll({
       where: {

@@ -49,6 +49,7 @@ export class ChipMovementsRepository {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      compact?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number }> {
     const where: Record<string, unknown> = { userId };
@@ -68,15 +69,26 @@ export class ChipMovementsRepository {
       where.createdAt = createdAtFilter;
     }
 
+    // Exclude GAME_WIN rows with amount <= 0: NOT(type=GAME_WIN AND amount<=0) = (type!=GAME_WIN OR amount>0)
+    (where as Record<string | symbol, unknown>)[Op.or] = [
+      { type: { [Op.ne]: ChipMovementType.GAME_WIN } },
+      { amount: { [Op.gt]: 0 } }
+    ];
+
+    const attributes = options?.compact
+      ? ['id', 'type', 'amount', 'createdAt']
+      : undefined;
+
     const { count, rows } = await ChipMovementModel.findAndCountAll({
       where,
+      attributes,
       limit: options?.limit,
       offset: options?.offset,
       order: [['createdAt', 'DESC']]
     });
 
     return {
-      movements: rows.map(this.mapToMovement),
+      movements: rows.map(m => options?.compact ? this.mapToCompact(m) : this.mapToMovement(m)),
       total: count
     };
   }
@@ -156,6 +168,21 @@ export class ChipMovementsRepository {
     const totalPrizes = prizesResult.reduce((sum, m) => sum + parseFloat(String(m.amount)), 0);
 
     return { totalSales, totalPrizes };
+  }
+
+  private mapToCompact(data: ChipMovementModel): ChipMovement {
+    const plain = data.get({ plain: true });
+    return {
+      id: plain.id as string,
+      type: plain.type as ChipMovementType,
+      amount: parseFloat(String(plain.amount)),
+      createdAt: new Date(plain.createdAt || plain.created_at),
+      userId: '',
+      relatedUserId: null,
+      previousBalance: 0,
+      newBalance: 0,
+      idempotencyKey: null,
+    };
   }
 
   private mapToMovement(data: ChipMovementModel | Record<string, unknown>): ChipMovement {

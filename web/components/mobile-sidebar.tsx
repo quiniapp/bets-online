@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useLanguage } from "@/contexts/language-context"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   BarChart3,
@@ -21,7 +21,6 @@ import {
   Gamepad2,
   User,
   History,
-  CreditCard,
   Settings,
   Menu,
 } from "lucide-react"
@@ -137,6 +136,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
+        <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
         <div className="flex h-full flex-col">
     
           <div className="flex h-16 items-center border-b px-6">

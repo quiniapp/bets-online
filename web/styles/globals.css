@@ -135,12 +135,6 @@ body {
   height: 100dvh;
 }
 
-/* Mobile touch targets */
-@media (max-width: 767px) {
-  button:not(.btn-icon), a:not(.btn-icon), [role="button"]:not(.btn-icon) {
-    min-height: 44px;
-  }
-}
 
 .scrollbar-none {
   scrollbar-width: none;

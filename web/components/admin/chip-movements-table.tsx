@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useChips } from '@/hooks/useChips';
 import { ChipMovement, ChipMovementType, CHIP_MOVEMENT_TYPE_LABELS } from 'helper';
 import { formatChips } from '@/lib/utils';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 interface ChipMovementsTableProps {
   userId: string;
@@ -15,7 +15,9 @@ interface ChipMovementsTableProps {
   startDate?: Date;
   endDate?: Date;
   type?: ChipMovementType;
-  onRefresh?: number; // Timestamp to trigger refresh
+  onRefresh?: number;
+  compact?: boolean;
+  infiniteScroll?: boolean;
 }
 
 const getMovementBadgeColor = (type: ChipMovementType): string => {
@@ -68,147 +70,158 @@ export function ChipMovementsTable({
   startDate,
   endDate,
   type,
-  onRefresh
+  onRefresh,
+  compact = false,
+  infiniteScroll = false,
 }: ChipMovementsTableProps) {
   const { getMovements } = useChips();
   const [movements, setMovements] = useState<ChipMovement[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const loadMovements = async () => {
+  const loadMovements = useCallback(async (pageNum: number, append = false) => {
     setLoading(true);
     try {
-      const response = await getMovements(userId, {
-        page,
-        limit,
-        startDate,
-        endDate,
-        type
-      });
-
+      const response = await getMovements(userId, { page: pageNum, limit, startDate, endDate, type, compact });
       if (response.success && response.data) {
-        setMovements(response.data);
-        if (response.meta) {
-          setTotalPages(response.meta.totalPages || 1);
-        }
+        setMovements(prev => append ? [...prev, ...response.data!] : response.data!);
+        const tp = response.meta?.totalPages || 1;
+        setTotalPages(tp);
+        setHasMore(pageNum < tp);
       }
     } catch (error) {
       console.error('Failed to load movements:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, limit, startDate, endDate, type, compact, getMovements]);
 
+  // Reset and reload on key changes or refresh
   useEffect(() => {
-    loadMovements();
-  }, [userId, page, limit, startDate, endDate, type, onRefresh]);
+    setPage(1);
+    setMovements([]);
+    setHasMore(true);
+    loadMovements(1, false);
+  }, [userId, startDate, endDate, type, onRefresh, loadMovements]);
+
+  // Infinite scroll — listen to scroll on container
+  useEffect(() => {
+    if (!infiniteScroll) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      if (loading || !hasMore) return;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
+        const next = page + 1;
+        setPage(next);
+        loadMovements(next, true);
+      }
+    };
+
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [infiniteScroll, loading, hasMore, page, loadMovements]);
 
   const handlePreviousPage = () => {
-    if (page > 1) setPage(page - 1);
+    if (page > 1) { setPage(p => p - 1); loadMovements(page - 1, false); }
   };
 
   const handleNextPage = () => {
-    if (page < totalPages) setPage(page + 1);
+    if (page < totalPages) { setPage(p => p + 1); loadMovements(page + 1, false); }
   };
 
   if (loading && movements.length === 0) {
-    return (
-      <Card className="p-4">
-        <p className="text-center text-gray-500">Cargando movimientos...</p>
-      </Card>
-    );
+    return <p className="text-center text-sm text-muted-foreground py-4">Cargando movimientos...</p>;
   }
 
   if (movements.length === 0) {
+    return <p className="text-center text-sm text-muted-foreground py-4">Sin movimientos registrados</p>;
+  }
+
+  /* Compact list — used inside dialogs */
+  if (compact) {
     return (
-      <Card className="p-4">
-        <p className="text-center text-gray-500">No hay movimientos registrados</p>
-      </Card>
+      <div ref={scrollRef} className="rounded-md overflow-y-auto border" style={{ maxHeight: '9rem' }}>
+        {movements.map((m, i) => (
+          <div key={i} className={`grid items-center gap-2 px-2 py-2 text-sm ${i % 2 === 0 ? 'bg-muted/30' : 'bg-background'}`} style={{ gridTemplateColumns: '5rem 1fr auto' }}>
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {new Date(m.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+            </span>
+            <Badge className={`${getMovementBadgeColor(m.type)} text-xs w-fit`}>
+              {CHIP_MOVEMENT_TYPE_LABELS[m.type] || m.type}
+            </Badge>
+            <span className={`font-semibold tabular-nums text-right ${getAmountColor(m.type)}`}>
+              {formatAmount(m.amount, m.type)}
+            </span>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-center py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {!loading && movements.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-4">Sin movimientos</p>
+        )}
+      </div>
     );
   }
 
+  /* Full table — used in standalone pages */
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted border-b">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Fecha
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tipo
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Monto
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Balance Anterior
-              </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Balance Nuevo
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Descripción
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Anterior</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Nuevo</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripción</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {movements.map((movement) => (
-              <tr key={movement.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                  {new Date(movement.createdAt).toLocaleString('es-ES', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+          <tbody className="divide-y divide-border">
+            {movements.map(m => (
+              <tr key={m.id} className="hover:bg-muted/50">
+                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                  {new Date(m.createdAt).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <Badge className={getMovementBadgeColor(movement.type)}>
-                    {CHIP_MOVEMENT_TYPE_LABELS[movement.type] || movement.type}
+                  <Badge className={getMovementBadgeColor(m.type)}>
+                    {CHIP_MOVEMENT_TYPE_LABELS[m.type] || m.type}
                   </Badge>
                 </td>
-                <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold text-right ${getAmountColor(movement.type)}`}>
-                  {formatAmount(movement.amount, movement.type)}
+                <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold text-right ${getAmountColor(m.type)}`}>
+                  {formatAmount(m.amount, m.type)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-right">
-                  ${formatChips(movement.previousBalance)}
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground text-right">
+                  ${formatChips(m.previousBalance)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                  ${formatChips(movement.newBalance)}
+                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
+                  ${formatChips(m.newBalance)}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {movement.description || '-'}
+                <td className="px-4 py-3 text-sm text-muted-foreground">
+                  {m.description || '-'}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
       {totalPages > 1 && (
-        <div className="px-4 py-3 bg-gray-50 border-t flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Página {page} de {totalPages}
-          </div>
+        <div className="px-4 py-3 bg-muted border-t flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Página {page} de {totalPages}</span>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreviousPage}
-              disabled={page === 1 || loading}
-            >
+            <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={page === 1 || loading}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNextPage}
-              disabled={page === totalPages || loading}
-            >
+            <Button variant="outline" size="sm" onClick={handleNextPage} disabled={page === totalPages || loading}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

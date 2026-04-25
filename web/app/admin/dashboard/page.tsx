@@ -5,46 +5,62 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
-import { Users, Gamepad2, DollarSign, Loader2 } from "lucide-react"
+import { Users, Gamepad2, DollarSign, Loader2, TrendingUp } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
+import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
 import Link from "next/link"
 import ROUTER from "@/routes"
-import { useUsers } from "@/hooks/useUsers"
-import { useGames } from "@/hooks/useGames"
 import { useChips } from "@/hooks/useChips"
 import { formatChips } from "@/lib/utils"
+import { apiService } from "@/services/api.service"
+
+interface UserStats {
+  total: number
+  active: number
+  blocked: number
+  admins: number
+  cashiers: number
+  players: number
+}
+
+interface GameStats {
+  total: number
+  active: number
+}
+
+interface TopGame {
+  id: string
+  name: string
+  isActive: boolean
+  betCount: number
+}
 
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth()
   const router = useRouter()
-  // Use high limit for dashboard stats
-  const { users, loading: loadingUsers } = useUsers({ limit: 1000 })
-  const { games, loading: loadingGames } = useGames()
   const { balance: myBalance, loadBalance } = useChips()
   const [loadBalanceOpen, setLoadBalanceOpen] = useState(false)
+  const [chipLoadOpen, setChipLoadOpen] = useState(false)
+
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
+  const [gameStats, setGameStats] = useState<GameStats | null>(null)
+  const [topGames, setTopGames] = useState<TopGame[]>([])
+  const [loadingStats, setLoadingStats] = useState(true)
 
   useEffect(() => {
     if (!isLoading) {
       if (role !== UserRole.OWNER && role !== UserRole.ADMIN && role !== UserRole.CASHIER) {
-        console.log("❌ Access denied. Redirecting to home...", { role })
         router.push(ROUTER.SITE)
-      } else {
-        console.log("✅ Access granted:", { role })
       }
     }
   }, [role, router, isLoading])
-
 
   useEffect(() => {
     if (user && (role === UserRole.ADMIN || role === UserRole.CASHIER)) {
@@ -52,6 +68,20 @@ export default function AdminDashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, role])
+
+  useEffect(() => {
+    if (!user) return
+    setLoadingStats(true)
+    Promise.all([
+      apiService.get<UserStats>('/users/me/stats'),
+      apiService.get<GameStats>('/games/stats'),
+      apiService.get<TopGame[]>('/games/top-played?limit=5'),
+    ]).then(([uRes, gRes, tRes]) => {
+      if (uRes.success && uRes.data) setUserStats(uRes.data)
+      if (gRes.success && gRes.data) setGameStats(gRes.data)
+      if (tRes.success && tRes.data) setTopGames(tRes.data)
+    }).finally(() => setLoadingStats(false))
+  }, [user])
 
   if (isLoading) {
     return (
@@ -65,11 +95,7 @@ export default function AdminDashboard() {
     return null
   }
 
-  const activeUsers = users.filter((u) => u.status === "ACTIVE").length
-  const blockedUsers = users.filter((u) => u.status === "BLOCKED").length
-  const activeGames = games.filter((g) => g.isActive).length
-
-  // Demo data for charts (since we don't have time-series endpoints yet)
+  // Demo chart data
   const dailyRevenue = [
     { day: "Lun", revenue: 2400, bets: 45 },
     { day: "Mar", revenue: 1398, bets: 32 },
@@ -91,108 +117,143 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <DashboardLayout title="Estadísticas">
+    <DashboardLayout title="Inicio">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {/* Total Usuarios + Distribución — clickable */}
+        <Card
+          className="cursor-pointer transition-shadow hover:shadow-md gap-2 py-4"
+          onClick={() => router.push(ROUTER.ADMIN_USERS)}
+        >
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">Total Usuarios</CardTitle>
+            <Users className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            {loadingUsers ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{users.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {activeUsers} activos, {blockedUsers} bloqueados
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
-            <Users className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            {loadingUsers ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                  {users.length > 0 ? ((activeUsers / users.length) * 100).toFixed(1) : 0}% del total
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Juegos Activos</CardTitle>
-            <Gamepad2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingGames ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{activeGames}</div>
-                <p className="text-xs text-muted-foreground">de {games.length} totales</p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {role === UserRole.OWNER ? "Rol" : "Mi Balance"}
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {role === UserRole.OWNER ? (
-              <>
-                <div className="text-2xl font-bold">Owner</div>
-                <p className="text-xs text-muted-foreground">Sin balance propio</p>
-              </>
-            ) : myBalance ? (
-              <>
-                <div className="text-2xl font-bold text-green-600">
-                  ${formatChips(myBalance.chipBalance)}
+          <CardContent className="px-5">
+            {loadingStats ? (
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-16" />
+                  <Skeleton className="h-4 w-36" />
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Actualizado: {new Date(myBalance.lastUpdatedAt).toLocaleString()}
-                </p>
-                <Button size="sm" className="w-full" onClick={() => setLoadBalanceOpen(true)}>
-                  <DollarSign className="h-3 w-3 mr-1" />
-                  Cargar Saldo
-                </Button>
-              </>
+                <div className="flex flex-col gap-2 items-end">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
             ) : (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-4xl font-bold">{userStats?.total ?? 0}</div>
+                  <p className="text-base text-muted-foreground mt-1">
+                    {userStats?.active ?? 0} activos · {userStats?.blocked ?? 0} bloqueados
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1 text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm text-muted-foreground">Admins</span>
+                    <span className="text-base font-bold text-blue-500 w-6 text-right">{userStats?.admins ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm text-muted-foreground">Cajeros</span>
+                    <span className="text-base font-bold text-orange-500 w-6 text-right">{userStats?.cashiers ?? 0}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm text-muted-foreground">Jugadores</span>
+                    <span className="text-base font-bold text-green-500 w-6 text-right">{userStats?.players ?? 0}</span>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Juegos */}
+        <Card className="gap-2 py-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">Juegos</CardTitle>
+            <Gamepad2 className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="px-5">
+            {loadingStats ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ) : (
+              <>
+                <div className="text-4xl font-bold">{gameStats?.total ?? 0}</div>
+                <p className="text-base text-muted-foreground mt-1">
+                  {gameStats?.active ?? 0} activos
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Gestión de Balances — solo OWNER */}
+        {role === UserRole.OWNER && (
+          <Card className="gap-2 py-4">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+              <CardTitle className="text-lg font-semibold">Gestión de Balances</CardTitle>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-5">
+              <p className="text-base text-muted-foreground mb-3">
+                Asignar y retirar fichas a usuarios
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="outline" onClick={() => router.push(ROUTER.ADMIN_BALANCES)}>
+                  Ver Balances
+                </Button>
+                <Button size="sm" onClick={() => setChipLoadOpen(true)}>
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  Cargar Fichas
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mi Balance — solo ADMIN/CASHIER */}
+        {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
+          <Card className="gap-2 py-4">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+              <CardTitle className="text-lg font-semibold">Mi Balance</CardTitle>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-5">
+              {myBalance ? (
+                <>
+                  <div className="text-4xl font-bold text-green-600">
+                    ${formatChips(myBalance.chipBalance)}
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1 mb-3">
+                    {new Date(myBalance.lastUpdatedAt).toLocaleString('es-ES')}
+                  </p>
+                  <Button size="sm" className="w-full" onClick={() => setLoadBalanceOpen(true)}>
+                    <DollarSign className="h-3 w-3 mr-1" />
+                    Cargar Saldo
+                  </Button>
+                </>
+              ) : (
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle>Ingresos Diarios</CardTitle>
-            <CardDescription>
-              Ingresos y apuestas por día (Demo Data)
-            </CardDescription>
+            <CardTitle className="text-base">Ingresos Diarios</CardTitle>
+            <CardDescription>Ingresos y apuestas por día (Demo)</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={dailyRevenue}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
@@ -208,11 +269,11 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Actividad de Usuarios</CardTitle>
-            <CardDescription>Usuarios activos por hora (Demo Data)</CardDescription>
+            <CardTitle className="text-base">Actividad de Usuarios</CardTitle>
+            <CardDescription>Usuarios activos por hora (Demo)</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <BarChart data={userActivity}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="hour" />
@@ -225,98 +286,54 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* User Distribution by Role */}
-      <Card className="mb-8">
+      {/* Top Juegos Más Jugados */}
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Distribución de Usuarios por Rol</CardTitle>
-          <CardDescription>Usuarios en tu árbol jerárquico</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Juegos Más Jugados</CardTitle>
+              <CardDescription>Ordenado por cantidad de rondas</CardDescription>
+            </div>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </div>
         </CardHeader>
         <CardContent>
-          {loadingUsers ? (
+          {loadingStats ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
             </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-3xl font-bold text-purple-600">
-                  {users.filter((u) => u.role === UserRole.OWNER).length}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Owners</p>
-              </div>
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-3xl font-bold text-blue-600">
-                  {users.filter((u) => u.role === UserRole.ADMIN).length}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Admins</p>
-              </div>
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-3xl font-bold text-orange-600">
-                  {users.filter((u) => u.role === UserRole.CASHIER).length}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Cashiers</p>
-              </div>
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-3xl font-bold text-green-600">
-                  {users.filter((u) => u.role === UserRole.PLAYER).length}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Players</p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Games Overview */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Resumen de Juegos</CardTitle>
-          <CardDescription>Configuración actual de juegos</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loadingGames ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </div>
-          ) : games.length > 0 ? (
-            <div className="space-y-3">
-              {games.slice(0, 5).map((game) => (
+          ) : topGames.length > 0 ? (
+            <div className="space-y-2">
+              {topGames.map((game, index) => (
                 <div
                   key={game.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
+                  className="flex items-center gap-3 p-3 border rounded-lg"
                 >
-                  <div>
-                    <p className="font-semibold">{game.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      ${game.minBet} - ${game.maxBet} • House Edge: {game.houseEdge}%
+                  <span className="text-lg font-bold text-muted-foreground w-6 text-center">
+                    {index + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{game.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {game.betCount} rondas jugadas
                     </p>
                   </div>
-                  <div>
-                    {game.isActive ? (
-                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                        Activo
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                        Inactivo
-                      </span>
-                    )}
-                  </div>
+                  <Badge variant={game.isActive ? "default" : "secondary"} className="shrink-0 text-xs">
+                    {game.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
                 </div>
               ))}
-              {games.length > 5 && (
-                <Link href="/admin/games">
-                  <Button variant="outline" className="w-full">
-                    Ver todos los juegos ({games.length})
-                  </Button>
-                </Link>
-              )}
+              <Link href="/admin/games">
+                <Button variant="outline" className="w-full mt-2">
+                  Ver todos los juegos
+                </Button>
+              </Link>
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No hay juegos creados</p>
+              <p className="text-muted-foreground mb-4">No hay datos de juegos</p>
               <Link href="/admin/games">
-                <Button>Crear Primer Juego</Button>
+                <Button>Ver Juegos</Button>
               </Link>
             </div>
           )}
@@ -324,14 +341,14 @@ export default function AdminDashboard() {
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Users className="h-4 w-4" />
               Gestión de Usuarios
             </CardTitle>
-            <CardDescription>Administrar cuentas de usuario, balances y permisos</CardDescription>
+            <CardDescription>Administrar cuentas, balances y permisos</CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/admin/users">
@@ -342,11 +359,11 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gamepad2 className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Gamepad2 className="h-4 w-4" />
               Gestión de Juegos
             </CardTitle>
-            <CardDescription>Configurar juegos, límites de apuesta y disponibilidad</CardDescription>
+            <CardDescription>Configurar juegos, límites y disponibilidad</CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/admin/games">
@@ -355,26 +372,11 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Gestión de Balances
-            </CardTitle>
-            <CardDescription>Ajustar balances, procesar depósitos y retiros</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/admin/balances">
-              <Button className="w-full">Ver Balances</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
         {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base">
+                <DollarSign className="h-4 w-4" />
                 Cargar Saldo
               </CardTitle>
               <CardDescription>Asignar fichas a un usuario</CardDescription>
@@ -393,6 +395,10 @@ export default function AdminDashboard() {
         open={loadBalanceOpen}
         onOpenChange={setLoadBalanceOpen}
         onSuccess={loadBalance}
+      />
+      <ChipLoadDialog
+        open={chipLoadOpen}
+        onOpenChange={setChipLoadOpen}
       />
     </DashboardLayout>
   )

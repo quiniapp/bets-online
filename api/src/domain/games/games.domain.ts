@@ -98,6 +98,14 @@ export class GamesDomain {
     return gamesRepository.findPaginated(page, limit, activeOnly, providerName, search, gameType);
   }
 
+  async getStats(): Promise<{ total: number; active: number }> {
+    return gamesRepository.getStats();
+  }
+
+  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number }>> {
+    return gamesRepository.getTopPlayed(limit);
+  }
+
   async getDistinctGameTypes(): Promise<string[]> {
     return gamesRepository.findDistinctGameTypes();
   }

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
+import { ApiResponseBuilder, SUCCESS_MESSAGES, UserRole } from 'helper';
 import { usersDomain } from '../domain/users/users.domain';
 
 export class UsersController {
@@ -464,6 +464,37 @@ export class UsersController {
       return res.json(
         ApiResponseBuilder.success({ message: SUCCESS_MESSAGES.PASSWORD_RESET })
       );
+    } catch (error) {
+      return next(error);
+    }
+  }
+  async myStats(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const stats = await usersDomain.getUserStats(req.user.userId);
+      return res.json(ApiResponseBuilder.success(stats));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async searchDescendants(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const search = typeof req.query.search === 'string' ? req.query.search : '';
+      const rolesParam = typeof req.query.roles === 'string' ? req.query.roles : undefined;
+      const validRoles = Object.values(UserRole) as string[];
+      const roles = rolesParam
+        ? (rolesParam.split(',').filter(r => validRoles.includes(r)) as UserRole[])
+        : [];
+      const rawLimit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 10;
+      const limit = Math.min(20, isNaN(rawLimit) ? 10 : rawLimit);
+      const users = await usersDomain.searchDescendants(req.user.userId, search, roles, limit);
+      return res.json(ApiResponseBuilder.success(users));
     } catch (error) {
       return next(error);
     }

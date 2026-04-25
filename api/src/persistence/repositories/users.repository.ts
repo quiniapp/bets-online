@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import { UserModel } from '../models';
 import { User, CreateUserDto, UpdateUserDto, UserStatus } from 'helper';
 import { sequelize } from '../../config/sequelize';
@@ -156,6 +156,83 @@ export class UsersRepository {
       throw new Error('User not found');
     }
     await user.destroy();
+  }
+
+  async getDescendantsStats(userId: string): Promise<{
+    total: number; active: number; blocked: number;
+    admins: number; cashiers: number; players: number;
+  }> {
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id, role, status FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.id, u.role, u.status FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT
+        COUNT(*) - 1 AS total,
+        SUM(CASE WHEN status = 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN status != 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS blocked,
+        SUM(CASE WHEN role = 'ADMIN' AND id != :userId THEN 1 ELSE 0 END) AS admins,
+        SUM(CASE WHEN role = 'CASHIER' AND id != :userId THEN 1 ELSE 0 END) AS cashiers,
+        SUM(CASE WHEN role = 'PLAYER' AND id != :userId THEN 1 ELSE 0 END) AS players
+      FROM descendants
+    `;
+    const rows = await sequelize.query<Record<string, string>>(query, {
+      replacements: { userId },
+      type: QueryTypes.SELECT
+    });
+    const r = rows[0] ?? {};
+    return {
+      total: parseInt(r['total'], 10) || 0,
+      active: parseInt(r['active'], 10) || 0,
+      blocked: parseInt(r['blocked'], 10) || 0,
+      admins: parseInt(r['admins'], 10) || 0,
+      cashiers: parseInt(r['cashiers'], 10) || 0,
+      players: parseInt(r['players'], 10) || 0,
+    };
+  }
+
+  async searchDescendants(
+    userId: string,
+    search: string,
+    roles: string[],
+    limit = 10
+  ): Promise<User[]> {
+    if (typeof search !== 'string' || search.length < 2) return [];
+
+    const allowedRoles = new Set(Object.values({ ADMIN: 'ADMIN', CASHIER: 'CASHIER', PLAYER: 'PLAYER', OWNER: 'OWNER' }));
+    const safeRoles = roles.filter(r => allowedRoles.has(r));
+    if (safeRoles.length === 0) return [];
+
+    // Fixed SQL with no dynamic structure — role filter applied in memory after fetch
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id, parent_user_id, role, username, email, first_name, last_name,
+               password_hash, status, last_connection, last_activity, created_at, updated_at
+        FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.id, u.parent_user_id, u.role, u.username, u.email, u.first_name, u.last_name,
+               u.password_hash, u.status, u.last_connection, u.last_activity, u.created_at, u.updated_at
+        FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT * FROM descendants
+      WHERE id != :userId
+      AND LOWER(username) LIKE LOWER('%' || :search || '%')
+      ORDER BY username ASC
+      LIMIT :fetchLimit
+    `;
+    const fetchLimit = Math.min(200, limit * 10);
+    const results = await sequelize.query<Record<string, unknown>>(query, {
+      replacements: { userId, search, fetchLimit },
+      type: QueryTypes.SELECT
+    });
+
+    return results
+      .filter(r => safeRoles.includes(r['role'] as string))
+      .slice(0, limit)
+      .map(this.mapToUser);
   }
 
   async findDescendants(userId: string): Promise<User[]> {
