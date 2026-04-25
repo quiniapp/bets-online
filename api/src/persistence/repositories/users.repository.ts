@@ -193,6 +193,40 @@ export class UsersRepository {
     };
   }
 
+  async searchDescendants(
+    userId: string,
+    search: string,
+    roles: string[],
+    limit = 10
+  ): Promise<User[]> {
+    if (search.length < 2) return [];
+    const roleList = roles.map(r => `'${r}'`).join(',');
+    const rolesFilter = roleList ? `AND role IN (${roleList})` : '';
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id, parent_user_id, role, username, email, first_name, last_name,
+               password_hash, status, last_connection, last_activity, created_at, updated_at
+        FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.id, u.parent_user_id, u.role, u.username, u.email, u.first_name, u.last_name,
+               u.password_hash, u.status, u.last_connection, u.last_activity, u.created_at, u.updated_at
+        FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT * FROM descendants
+      WHERE id != :userId
+      ${rolesFilter}
+      AND LOWER(username) LIKE LOWER('%' || :search || '%')
+      ORDER BY username ASC
+      LIMIT :limit
+    `;
+    const results = await sequelize.query(query, {
+      replacements: { userId, search, limit },
+      type: 'SELECT'
+    });
+    return (results as Record<string, unknown>[]).map(this.mapToUser);
+  }
+
   async findDescendants(userId: string): Promise<User[]> {
     // Use recursive CTE to get all descendants
     const query = `

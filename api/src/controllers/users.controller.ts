@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
+import { ApiResponseBuilder, SUCCESS_MESSAGES, UserRole } from 'helper';
 import { usersDomain } from '../domain/users/users.domain';
 
 export class UsersController {
@@ -475,6 +475,25 @@ export class UsersController {
       }
       const stats = await usersDomain.getUserStats(req.user.userId);
       return res.json(ApiResponseBuilder.success(stats));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async searchDescendants(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const search = (req.query.search as string) || '';
+      const rolesParam = req.query.roles as string | undefined;
+      const validRoles = Object.values(UserRole) as string[];
+      const roles = rolesParam
+        ? (rolesParam.split(',').filter(r => validRoles.includes(r)) as UserRole[])
+        : [];
+      const limit = Math.min(20, parseInt(req.query.limit as string) || 10);
+      const users = await usersDomain.searchDescendants(req.user.userId, search, roles, limit);
+      return res.json(ApiResponseBuilder.success(users));
     } catch (error) {
       return next(error);
     }

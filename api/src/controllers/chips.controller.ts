@@ -271,7 +271,7 @@ export class ChipsController {
       }
 
       const { id } = req.params;
-      const { page, limit, startDate, endDate, type } = req.query;
+      const { page, limit, startDate, endDate, type, compact } = req.query;
 
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
@@ -281,18 +281,16 @@ export class ChipsController {
           limit: limit ? parseInt(limit as string) : undefined,
           startDate: startDate ? new Date(startDate as string) : undefined,
           endDate: endDate ? new Date(endDate as string) : undefined,
-          type: type as ChipMovementType | undefined
+          type: type as ChipMovementType | undefined,
+          compact: compact === 'true',
         }
       );
 
-      return res.json(
-        ApiResponseBuilder.paginated(
-          result.movements,
-          result.page,
-          result.limit,
-          result.total
-        )
-      );
+      const data = compact === 'true'
+        ? result.movements.map(({ type, amount, createdAt }) => ({ type, amount, createdAt }))
+        : result.movements;
+
+      return res.json(ApiResponseBuilder.paginated(data, result.page, result.limit, result.total));
     } catch (error) {
       return next(error);
     }
@@ -327,8 +325,9 @@ export class ChipsController {
       const { id } = req.params;
 
       const balance = await chipsDomain.getBalance(req.user.userId, id);
+      const { chipBalance, lastUpdatedAt } = balance;
 
-      return res.json(ApiResponseBuilder.success({ balance }));
+      return res.json(ApiResponseBuilder.success({ balance: { chipBalance, lastUpdatedAt } }));
     } catch (error) {
       return next(error);
     }

@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
 import { Users, Gamepad2, DollarSign, Loader2, TrendingUp } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
+import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
@@ -45,6 +47,7 @@ export default function AdminDashboard() {
   const router = useRouter()
   const { balance: myBalance, loadBalance } = useChips()
   const [loadBalanceOpen, setLoadBalanceOpen] = useState(false)
+  const [chipLoadOpen, setChipLoadOpen] = useState(false)
 
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [gameStats, setGameStats] = useState<GameStats | null>(null)
@@ -116,61 +119,72 @@ export default function AdminDashboard() {
   return (
     <DashboardLayout title="Inicio">
       {/* Stats Cards */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${role === UserRole.OWNER ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-4 mb-6`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {/* Total Usuarios + Distribución — clickable */}
         <Card
-          className="cursor-pointer transition-shadow hover:shadow-md"
+          className="cursor-pointer transition-shadow hover:shadow-md gap-2 py-4"
           onClick={() => router.push(ROUTER.ADMIN_USERS)}
         >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">Total Usuarios</CardTitle>
+            <Users className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="px-5">
             {loadingStats ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-16" />
+                  <Skeleton className="h-4 w-36" />
+                </div>
+                <div className="flex flex-col gap-2 items-end">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
             ) : (
-              <>
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-2xl font-bold">{userStats?.total ?? 0}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {userStats?.active ?? 0} activos, {userStats?.blocked ?? 0} bloqueados
+                  <div className="text-4xl font-bold">{userStats?.total ?? 0}</div>
+                  <p className="text-base text-muted-foreground mt-1">
+                    {userStats?.active ?? 0} activos · {userStats?.blocked ?? 0} bloqueados
                   </p>
                 </div>
-                <div className="flex items-center gap-3 pt-1 border-t">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base font-bold text-blue-500">{userStats?.admins ?? 0}</span>
-                    <span className="text-xs text-muted-foreground">Admins</span>
+                <div className="flex flex-col gap-1 text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm text-muted-foreground">Admins</span>
+                    <span className="text-base font-bold text-blue-500 w-6 text-right">{userStats?.admins ?? 0}</span>
                   </div>
-                  <div className="text-muted-foreground/40">·</div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base font-bold text-orange-500">{userStats?.cashiers ?? 0}</span>
-                    <span className="text-xs text-muted-foreground">Cajeros</span>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm text-muted-foreground">Cajeros</span>
+                    <span className="text-base font-bold text-orange-500 w-6 text-right">{userStats?.cashiers ?? 0}</span>
                   </div>
-                  <div className="text-muted-foreground/40">·</div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base font-bold text-green-500">{userStats?.players ?? 0}</span>
-                    <span className="text-xs text-muted-foreground">Jugadores</span>
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="text-sm text-muted-foreground">Jugadores</span>
+                    <span className="text-base font-bold text-green-500 w-6 text-right">{userStats?.players ?? 0}</span>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* Juegos */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Juegos</CardTitle>
-            <Gamepad2 className="h-4 w-4 text-muted-foreground" />
+        <Card className="gap-2 py-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">Juegos</CardTitle>
+            <Gamepad2 className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-5">
             {loadingStats ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
             ) : (
               <>
-                <div className="text-2xl font-bold">{gameStats?.total ?? 0}</div>
-                <p className="text-xs text-muted-foreground">
+                <div className="text-4xl font-bold">{gameStats?.total ?? 0}</div>
+                <p className="text-base text-muted-foreground mt-1">
                   {gameStats?.active ?? 0} activos
                 </p>
               </>
@@ -178,20 +192,44 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Gestión de Balances — solo OWNER */}
+        {role === UserRole.OWNER && (
+          <Card className="gap-2 py-4">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+              <CardTitle className="text-lg font-semibold">Gestión de Balances</CardTitle>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-5">
+              <p className="text-base text-muted-foreground mb-3">
+                Asignar y retirar fichas a usuarios
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="outline" onClick={() => router.push(ROUTER.ADMIN_BALANCES)}>
+                  Ver Balances
+                </Button>
+                <Button size="sm" onClick={() => setChipLoadOpen(true)}>
+                  <DollarSign className="h-3 w-3 mr-1" />
+                  Cargar Fichas
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Mi Balance — solo ADMIN/CASHIER */}
         {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Mi Balance</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <Card className="gap-2 py-4">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+              <CardTitle className="text-lg font-semibold">Mi Balance</CardTitle>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-5">
               {myBalance ? (
                 <>
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-4xl font-bold text-green-600">
                     ${formatChips(myBalance.chipBalance)}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">
+                  <p className="text-sm text-muted-foreground mt-1 mb-3">
                     {new Date(myBalance.lastUpdatedAt).toLocaleString('es-ES')}
                   </p>
                   <Button size="sm" className="w-full" onClick={() => setLoadBalanceOpen(true)}>
@@ -334,21 +372,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4" />
-              Gestión de Balances
-            </CardTitle>
-            <CardDescription>Ajustar balances, depósitos y retiros</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/admin/balances">
-              <Button className="w-full">Ver Balances</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
         {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
           <Card>
             <CardHeader>
@@ -372,6 +395,10 @@ export default function AdminDashboard() {
         open={loadBalanceOpen}
         onOpenChange={setLoadBalanceOpen}
         onSuccess={loadBalance}
+      />
+      <ChipLoadDialog
+        open={chipLoadOpen}
+        onOpenChange={setChipLoadOpen}
       />
     </DashboardLayout>
   )

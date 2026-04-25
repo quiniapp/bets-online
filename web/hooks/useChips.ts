@@ -136,6 +136,7 @@ export function useChips(userId?: string) {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      compact?: boolean;
     }
   ) => {
     const queryParams = new URLSearchParams();
@@ -144,6 +145,7 @@ export function useChips(userId?: string) {
     if (options?.startDate) queryParams.append('startDate', options.startDate.toISOString());
     if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
     if (options?.type) queryParams.append('type', options.type);
+    if (options?.compact) queryParams.append('compact', 'true');
 
     return await apiService.get<ChipMovement[]>(
       `/chips/movements/${targetUserId}?${queryParams.toString()}`
