@@ -72,16 +72,21 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user) return
     setLoadingStats(true)
+    const controller = new AbortController()
     Promise.all([
       apiService.get<UserStats>('/users/me/stats'),
       apiService.get<GameStats>('/games/stats'),
       apiService.get<TopGame[]>('/games/top-played?limit=5'),
     ]).then(([uRes, gRes, tRes]) => {
+      if (controller.signal.aborted) return
       if (uRes.success && uRes.data) setUserStats(uRes.data)
       if (gRes.success && gRes.data) setGameStats(gRes.data)
       if (tRes.success && tRes.data) setTopGames(tRes.data)
-    }).finally(() => setLoadingStats(false))
-  }, [user])
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoadingStats(false)
+    })
+    return () => controller.abort()
+  }, [user?.id])
 
   if (isLoading) {
     return (
@@ -170,7 +175,10 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Juegos */}
-        <Card className="gap-2 py-4">
+        <Card
+          className="cursor-pointer transition-shadow hover:shadow-md gap-2 py-4"
+          onClick={() => router.push(ROUTER.ADMIN_GAMES)}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
             <CardTitle className="text-lg font-semibold">Juegos</CardTitle>
             <Gamepad2 className="h-5 w-5 text-muted-foreground" />

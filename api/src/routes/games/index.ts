@@ -24,6 +24,7 @@ const router = Router();
 // Public routes (no authentication required)
 router.get('/', gamesController.getAll.bind(gamesController));
 router.get('/types', gamesController.getTypes.bind(gamesController));
+router.get('/providers', gamesController.getProviders.bind(gamesController));
 router.get('/stats', gamesController.stats.bind(gamesController));
 router.get('/top-played', gamesController.topPlayed.bind(gamesController));
 router.get('/:id', validateParams(idParamSchema), gamesController.getById.bind(gamesController));
@@ -42,6 +43,16 @@ router.patch(
   validateParams(idParamSchema),
   validate(updateGameSchema),
   gamesController.update.bind(gamesController)
+);
+
+router.post(
+  '/bulk-status',
+  gamesController.bulkSetStatus.bind(gamesController)
+);
+
+router.post(
+  '/bulk-status-by-filter',
+  gamesController.bulkSetStatusByFilter.bind(gamesController)
 );
 
 router.post(

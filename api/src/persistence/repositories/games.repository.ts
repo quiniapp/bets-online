@@ -62,10 +62,13 @@ export class GamesRepository {
     activeOnly: boolean = false,
     providerName?: string,
     search?: string,
-    gameType?: string
+    gameType?: string,
+    status?: 'active' | 'inactive' | 'all'
   ): Promise<{ games: Game[]; total: number }> {
     const offset = (page - 1) * limit;
-    const where: Record<string, unknown> = activeOnly ? { isActive: true } : {};
+    const where: Record<string, unknown> = {};
+    if (status === 'active' || (!status && activeOnly)) where['isActive'] = true;
+    else if (status === 'inactive') where['isActive'] = false;
     if (providerName) where['providerName'] = providerName;
     if (gameType) where['gameType'] = gameType;
     if (search) where['name'] = { [Op.iLike]: `%${search}%` };
@@ -76,6 +79,41 @@ export class GamesRepository {
       offset
     });
     return { games: rows.map(g => this.mapToGame(g)), total: count };
+  }
+
+  async bulkSetStatus(ids: string[], isActive: boolean): Promise<number> {
+    const [affectedCount] = await GameModel.update(
+      { isActive },
+      { where: { id: { [Op.in]: ids } } }
+    );
+    return affectedCount;
+  }
+
+  async bulkSetStatusByFilter(
+    isActive: boolean,
+    providerName?: string,
+    gameType?: string,
+    currentStatus?: 'active' | 'inactive' | 'all'
+  ): Promise<number> {
+    const where: Record<string, unknown> = {};
+    if (currentStatus === 'active') where['isActive'] = true;
+    else if (currentStatus === 'inactive') where['isActive'] = false;
+    if (providerName) where['providerName'] = providerName;
+    if (gameType) where['gameType'] = gameType;
+    const [affectedCount] = await GameModel.update({ isActive }, { where });
+    return affectedCount;
+  }
+
+  async findDistinctProviders(): Promise<string[]> {
+    const rows = await GameModel.findAll({
+      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('provider_name')), 'providerName']],
+      where: { providerName: { [Op.ne]: null } },
+      raw: true
+    });
+    return (rows as unknown as Array<{ providerName: string }>)
+      .map(r => r.providerName)
+      .filter(Boolean)
+      .sort();
   }
 
   async findDistinctGameTypes(): Promise<string[]> {
