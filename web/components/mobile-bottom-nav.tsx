@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { UserRole } from "helper"
-import { LayoutDashboard, Gamepad2, User, Users, BarChart3, Settings, DollarSign } from "lucide-react"
+import { LayoutDashboard, Gamepad2, User, Users, BarChart3, Settings, DollarSign, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
@@ -39,6 +39,7 @@ export function MobileBottomNav() {
     { href: "/admin/dashboard", icon: BarChart3, label: "Stats" },
     { href: "/admin/users", icon: Users, label: "Usuarios" },
     { href: "/admin/games", icon: Gamepad2, label: "Juegos" },
+    { href: "/admin/balances", icon: Wallet, label: "Balances" },
     { href: "/admin/settings", icon: Settings, label: "Config" },
   ]
 

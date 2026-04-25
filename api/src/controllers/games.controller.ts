@@ -27,7 +27,9 @@ export class GamesController {
       const providerName = req.query.providerName as string | undefined;
       const search = req.query.search as string | undefined;
       const gameType = req.query.gameType as string | undefined;
-      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType);
+      const rawStatus = req.query.status as string | undefined;
+      const status = rawStatus === 'active' || rawStatus === 'inactive' || rawStatus === 'all' ? rawStatus : undefined;
+      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType, status);
 
       return res.json(ApiResponseBuilder.paginated(games, page, limit, total));
     } catch (error) {
@@ -58,6 +60,55 @@ export class GamesController {
     try {
       const types = await gamesDomain.getDistinctGameTypes();
       return res.json(ApiResponseBuilder.success({ types }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async getProviders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const providers = await gamesDomain.getDistinctProviders();
+      return res.json(ApiResponseBuilder.success({ providers }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async bulkSetStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const { ids, isActive } = req.body as { ids: string[]; isActive: boolean };
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json(ApiResponseBuilder.error('VALIDATION_ERROR', 'ids must be a non-empty array'));
+      }
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json(ApiResponseBuilder.error('VALIDATION_ERROR', 'isActive must be a boolean'));
+      }
+      const affected = await gamesDomain.bulkSetStatus(req.user.userId, ids, isActive);
+      return res.json(ApiResponseBuilder.success({ affected, message: `${affected} juegos ${isActive ? 'activados' : 'desactivados'}` }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async bulkSetStatusByFilter(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const { isActive, providerName, gameType, currentStatus } = req.body as {
+        isActive: boolean;
+        providerName?: string;
+        gameType?: string;
+        currentStatus?: 'active' | 'inactive' | 'all';
+      };
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json(ApiResponseBuilder.error('VALIDATION_ERROR', 'isActive must be a boolean'));
+      }
+      const affected = await gamesDomain.bulkSetStatusByFilter(req.user.userId, isActive, providerName, gameType, currentStatus);
+      return res.json(ApiResponseBuilder.success({ affected, message: `${affected} juegos ${isActive ? 'activados' : 'desactivados'}` }));
     } catch (error) {
       return next(error);
     }

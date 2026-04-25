@@ -143,3 +143,11 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+@media (max-width: 767px) {
+  button:not(.btn-icon):not([role="checkbox"]),
+  a:not(.btn-icon),
+  [role="button"]:not(.btn-icon):not([role="checkbox"]) {
+    min-height: 44px;
+  }
+}

@@ -7,6 +7,7 @@ interface UseGamesOptions {
   providerName?: string | null;
   search?: string;
   gameType?: string | null;
+  status?: 'all' | 'active' | 'inactive';
 }
 
 export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false, providerName: string | null = null) {
@@ -18,6 +19,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
   const provider = options.providerName ?? null;
   const search = options.search ?? '';
   const gameType = options.gameType ?? null;
+  const status = options.status ?? null;
 
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,8 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
 
       try {
         const qs = new URLSearchParams({ page: String(targetPage), limit: '24' });
-        if (activeOnly) qs.set('activeOnly', 'true');
+        if (status && status !== 'all') qs.set('status', status);
+        else if (activeOnly) qs.set('activeOnly', 'true');
         if (provider) qs.set('providerName', provider);
         if (search) qs.set('search', search);
         if (gameType) qs.set('gameType', gameType);
@@ -59,7 +62,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
         else setLoadingMore(false);
       }
     },
-    [activeOnly, provider, search, gameType]
+    [activeOnly, provider, search, gameType, status]
   );
 
   useEffect(() => {
@@ -67,7 +70,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
     setPage(1);
     setTotalPages(1);
     fetchPage(1, true);
-  }, [activeOnly, provider, search, gameType, fetchPage]);
+  }, [activeOnly, provider, search, gameType, status, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -124,6 +127,26 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
     return apiService.get<{ game: Game }>(`/games/${gameId}`);
   };
 
+  const bulkSetStatus = async (ids: string[], isActive: boolean) => {
+    const response = await apiService.post<{ affected: number; message: string }>('/games/bulk-status', { ids, isActive });
+    if (response.success) reload();
+    return response;
+  };
+
+  const bulkSetStatusByFilter = async (
+    isActive: boolean,
+    filters: { providerName?: string | null; gameType?: string | null; currentStatus?: string }
+  ) => {
+    const response = await apiService.post<{ affected: number; message: string }>('/games/bulk-status-by-filter', {
+      isActive,
+      providerName: filters.providerName || undefined,
+      gameType: filters.gameType || undefined,
+      currentStatus: filters.currentStatus || undefined,
+    });
+    if (response.success) reload();
+    return response;
+  };
+
   const syncGames = async () => {
     const response = await apiService.post<{ synced: number }>('/integrations/21viral/games/sync');
     if (response.success) reload();
@@ -145,6 +168,8 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
     createGame,
     updateGame,
     toggleGameStatus,
+    bulkSetStatus,
+    bulkSetStatusByFilter,
     deleteGame,
     getGameById,
     syncGames,

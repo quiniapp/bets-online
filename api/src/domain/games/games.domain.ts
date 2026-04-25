@@ -85,17 +85,23 @@ export class GamesDomain {
     activeOnly: boolean = false,
     providerName?: string,
     search?: string,
-    gameType?: string
+    gameType?: string,
+    status?: 'active' | 'inactive' | 'all'
   ): Promise<{ games: Game[]; total: number }> {
-    if (!providerName && !search && !gameType && page === CACHE_PAGE && limit === CACHE_LIMIT) {
-      const cached = gamesCache.get(activeOnly);
+    const resolvedActiveOnly = status === 'active' ? true : activeOnly;
+    if (!providerName && !search && !gameType && !status && page === CACHE_PAGE && limit === CACHE_LIMIT) {
+      const cached = gamesCache.get(resolvedActiveOnly);
       if (cached) return cached;
 
-      const result = await gamesRepository.findPaginated(page, limit, activeOnly);
-      gamesCache.set(result, activeOnly);
+      const result = await gamesRepository.findPaginated(page, limit, resolvedActiveOnly);
+      gamesCache.set(result, resolvedActiveOnly);
       return result;
     }
-    return gamesRepository.findPaginated(page, limit, activeOnly, providerName, search, gameType);
+    return gamesRepository.findPaginated(page, limit, resolvedActiveOnly, providerName, search, gameType, status);
+  }
+
+  async getDistinctProviders(): Promise<string[]> {
+    return gamesRepository.findDistinctProviders();
   }
 
   async getStats(): Promise<{ total: number; active: number }> {
@@ -211,6 +217,41 @@ export class GamesDomain {
     const updated = await gamesRepository.update(gameId, updateData);
     gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
     return updated;
+  }
+
+  private async requireAdminOrOwner(requesterId: string): Promise<void> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    if (![UserRole.OWNER, UserRole.ADMIN].includes(requester.role)) {
+      throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Only OWNER or ADMIN can bulk update games');
+    }
+  }
+
+  /**
+   * Bulk set status by explicit IDs (OWNER/ADMIN only)
+   */
+  async bulkSetStatus(requesterId: string, ids: string[], isActive: boolean): Promise<number> {
+    await this.requireAdminOrOwner(requesterId);
+    if (!ids.length) return 0;
+    const affected = await gamesRepository.bulkSetStatus(ids, isActive);
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    return affected;
+  }
+
+  /**
+   * Bulk set status by filter (OWNER/ADMIN only) — applies to ALL matching games
+   */
+  async bulkSetStatusByFilter(
+    requesterId: string,
+    isActive: boolean,
+    providerName?: string,
+    gameType?: string,
+    currentStatus?: 'active' | 'inactive' | 'all'
+  ): Promise<number> {
+    await this.requireAdminOrOwner(requesterId);
+    const affected = await gamesRepository.bulkSetStatusByFilter(isActive, providerName, gameType, currentStatus);
+    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    return affected;
   }
 
   /**
