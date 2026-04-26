@@ -12,7 +12,10 @@ export class ProvidersRepository {
           )
         }
       },
-      order: [['name', 'ASC']]
+      order: [
+        [literal(`COALESCE("ProviderModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
     });
     return rows.map(r => this.map(r));
   }
