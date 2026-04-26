@@ -8,6 +8,12 @@
 
 html {
   font-family: var(--font-sans), sans-serif;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 :root {

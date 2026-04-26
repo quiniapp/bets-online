@@ -13,7 +13,7 @@ export default function LandingPage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   return (
-    <Box className="flex flex-col min-h-full">
+    <Box className="flex flex-col min-h-full overflow-x-hidden">
       <HeaderIndex />
       <FlexCol className="items-center w-full flex-1">
         <HeroBannerIndex />
