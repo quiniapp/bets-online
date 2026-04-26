@@ -151,7 +151,7 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-4xl font-bold text-green-600">{userStats?.active ?? 0}</div>
-                  <p className="text-sm text-muted-foreground">activos</p>
+                  <p className="text-sm text-muted-foreground">activos (7d)</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {userStats?.total ?? 0} total · {userStats?.blocked ?? 0} bloqueados
                   </p>
