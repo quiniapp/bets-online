@@ -350,55 +350,22 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
+      {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
+        <Card className="max-w-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" />
-              Gestión de Usuarios
+              <DollarSign className="h-4 w-4" />
+              Cargar Saldo
             </CardTitle>
-            <CardDescription>Administrar cuentas, balances y permisos</CardDescription>
+            <CardDescription>Asignar fichas a un usuario</CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/admin/users">
-              <Button className="w-full">Ver Usuarios</Button>
-            </Link>
+            <Button className="w-full" onClick={() => setLoadBalanceOpen(true)}>
+              Cargar Saldo
+            </Button>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Gamepad2 className="h-4 w-4" />
-              Gestión de Juegos
-            </CardTitle>
-            <CardDescription>Configurar juegos, límites y disponibilidad</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/admin/games">
-              <Button className="w-full">Ver Juegos</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <DollarSign className="h-4 w-4" />
-                Cargar Saldo
-              </CardTitle>
-              <CardDescription>Asignar fichas a un usuario</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" onClick={() => setLoadBalanceOpen(true)}>
-                Cargar Saldo
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      )}
 
       <ChipOperationDialog
         operationType="sell"
