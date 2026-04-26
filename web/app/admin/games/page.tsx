@@ -13,7 +13,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import {
-  Edit, ToggleLeft, ToggleRight, Loader2, Gamepad2,
+  Edit, Loader2, Gamepad2,
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useGames } from "@/hooks/useGames"
@@ -49,7 +49,7 @@ export default function AdminGames() {
 
   const {
     games, loading, loadingMore, hasMore, total,
-    loadMore, updateGame, bulkSetStatus, bulkSetStatusByFilter
+    loadMore, updateGame, bulkSetStatus
   } = useGames({
     status: statusFilter,
     providerName: providerFilter === 'all' ? null : providerFilter,
@@ -116,28 +116,6 @@ export default function AdminGames() {
     setBulkLoading(true)
     try {
       const response = await bulkSetStatus(Array.from(selected), isActive)
-      if (response.success) {
-        toast({ title: isActive ? "Juegos activados" : "Juegos desactivados", description: response.data?.message })
-        setSelected(new Set())
-      } else {
-        toast({ title: "Error", description: response.error?.message, variant: "destructive" })
-      }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
-    } finally {
-      setBulkLoading(false)
-    }
-  }
-
-  // Bulk activate/deactivate ALL games matching current filters (ignores pagination)
-  const handleBulkFiltered = async (isActive: boolean) => {
-    setBulkLoading(true)
-    try {
-      const response = await bulkSetStatusByFilter(isActive, {
-        providerName: providerFilter === 'all' ? null : providerFilter,
-        gameType: typeFilter === 'all' ? null : typeFilter,
-        currentStatus: statusFilter === 'all' ? undefined : statusFilter,
-      })
       if (response.success) {
         toast({ title: isActive ? "Juegos activados" : "Juegos desactivados", description: response.data?.message })
         setSelected(new Set())
@@ -266,19 +244,6 @@ export default function AdminGames() {
         </div>
       </div>
 
-      {/* Filter bulk actions — only when filters active and nothing selected */}
-      {filtersActive && !someSelected && (
-        <div className="flex gap-1.5 mb-3">
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1" onClick={() => handleBulkFiltered(true)} disabled={bulkLoading}>
-            {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ToggleRight className="h-3 w-3" />}
-            Activar todos
-          </Button>
-          <Button size="sm" variant="destructive" className="h-7 text-xs gap-1 flex-1" onClick={() => handleBulkFiltered(false)} disabled={bulkLoading}>
-            {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ToggleLeft className="h-3 w-3" />}
-            Desactivar todos
-          </Button>
-        </div>
-      )}
 
       {/* Game table */}
       {loading ? (
