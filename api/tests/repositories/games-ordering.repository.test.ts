@@ -1,4 +1,5 @@
 import { gamesRepository } from '../../src/persistence/repositories/games.repository';
+import { GameModel } from '../../src/persistence/models';
 
 jest.mock('../../src/persistence/models', () => ({
   GameModel: {
@@ -11,7 +12,6 @@ describe('GamesRepository ordering', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('findAll uses provider sort_order then game sort_order ORDER BY', async () => {
-    const { GameModel } = require('../../src/persistence/models');
     await gamesRepository.findAll(false);
     const call = (GameModel.findAll as jest.Mock).mock.calls[0][0];
     const orderStr = JSON.stringify(call.order);
@@ -20,7 +20,6 @@ describe('GamesRepository ordering', () => {
   });
 
   it('findPaginated uses provider sort_order then game sort_order ORDER BY', async () => {
-    const { GameModel } = require('../../src/persistence/models');
     await gamesRepository.findPaginated(1, 10);
     const call = (GameModel.findAndCountAll as jest.Mock).mock.calls[0][0];
     const orderStr = JSON.stringify(call.order);
