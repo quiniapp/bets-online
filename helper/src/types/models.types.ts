@@ -305,7 +305,6 @@ export interface CreateGameDto {
  * Update Game DTO
  */
 export interface UpdateGameDto {
-  name?: string;
   description?: string;
   isActive?: boolean;
   minBet?: number;

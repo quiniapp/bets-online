@@ -172,14 +172,14 @@ export class UsersRepository {
   }> {
     const query = `
       WITH RECURSIVE descendants AS (
-        SELECT id, role, status FROM users WHERE id = :userId
+        SELECT id, role, status, last_activity FROM users WHERE id = :userId
         UNION ALL
-        SELECT u.id, u.role, u.status FROM users u
+        SELECT u.id, u.role, u.status, u.last_activity FROM users u
         INNER JOIN descendants d ON u.parent_user_id = d.id
       )
       SELECT
         COUNT(*) - 1 AS total,
-        SUM(CASE WHEN status = 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN last_activity >= NOW() - INTERVAL '7 days' AND id != :userId THEN 1 ELSE 0 END) AS active,
         SUM(CASE WHEN status != 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS blocked,
         SUM(CASE WHEN role = 'ADMIN' AND id != :userId THEN 1 ELSE 0 END) AS admins,
         SUM(CASE WHEN role = 'CASHIER' AND id != :userId THEN 1 ELSE 0 END) AS cashiers,

@@ -150,9 +150,10 @@ export default function AdminDashboard() {
             ) : (
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-4xl font-bold">{userStats?.total ?? 0}</div>
-                  <p className="text-base text-muted-foreground mt-1">
-                    {userStats?.active ?? 0} activos · {userStats?.blocked ?? 0} bloqueados
+                  <div className="text-4xl font-bold text-green-600">{userStats?.active ?? 0}</div>
+                  <p className="text-sm text-muted-foreground">activos (7d)</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {userStats?.total ?? 0} total · {userStats?.blocked ?? 0} bloqueados
                   </p>
                 </div>
                 <div className="flex flex-col gap-1 text-right">
@@ -180,7 +181,7 @@ export default function AdminDashboard() {
           onClick={() => router.push(ROUTER.ADMIN_GAMES)}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
-            <CardTitle className="text-lg font-semibold">Juegos</CardTitle>
+            <CardTitle className="text-lg font-semibold">Juegos Activos</CardTitle>
             <Gamepad2 className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-5">
@@ -191,9 +192,10 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <>
-                <div className="text-4xl font-bold">{gameStats?.total ?? 0}</div>
+                <div className="text-4xl font-bold text-green-600">{gameStats?.active ?? 0}</div>
+
                 <p className="text-base text-muted-foreground mt-1">
-                  {gameStats?.active ?? 0} activos
+                  {gameStats?.total ?? 0} totales
                 </p>
               </>
             )}
@@ -348,55 +350,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-4 w-4" />
-              Gestión de Usuarios
-            </CardTitle>
-            <CardDescription>Administrar cuentas, balances y permisos</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/admin/users">
-              <Button className="w-full">Ver Usuarios</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Gamepad2 className="h-4 w-4" />
-              Gestión de Juegos
-            </CardTitle>
-            <CardDescription>Configurar juegos, límites y disponibilidad</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/admin/games">
-              <Button className="w-full">Ver Juegos</Button>
-            </Link>
-          </CardContent>
-        </Card>
-
-        {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <DollarSign className="h-4 w-4" />
-                Cargar Saldo
-              </CardTitle>
-              <CardDescription>Asignar fichas a un usuario</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" onClick={() => setLoadBalanceOpen(true)}>
-                Cargar Saldo
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
 
       <ChipOperationDialog
         operationType="sell"

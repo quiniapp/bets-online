@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,11 +11,9 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select"
 import {
-  Edit, ToggleLeft, ToggleRight, Loader2, RefreshCw,
-  ChevronLeft, ChevronRight, Gamepad2,
+  Edit, Loader2, Gamepad2,
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useGames } from "@/hooks/useGames"
@@ -30,6 +28,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { UpdateGameDto, Game } from "helper"
 import { formatChips } from "@/lib/utils"
@@ -49,8 +48,8 @@ export default function AdminGames() {
   const [gameTypes, setGameTypes] = useState<string[]>([])
 
   const {
-    games, loading, page, totalPages, total,
-    goToPage, updateGame, toggleGameStatus, bulkSetStatus, bulkSetStatusByFilter, syncGames
+    games, loading, loadingMore, hasMore, total,
+    loadMore, updateGame, bulkSetStatus
   } = useGames({
     status: statusFilter,
     providerName: providerFilter === 'all' ? null : providerFilter,
@@ -60,10 +59,11 @@ export default function AdminGames() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
-  const [formData, setFormData] = useState({ name: "", description: "", minBet: 1, maxBet: 1000, houseEdge: 2.5 })
+  const [formData, setFormData] = useState({ description: "", minBet: 1, maxBet: 1000, houseEdge: 2.5 })
   const [submitting, setSubmitting] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
-  const [syncing, setSyncing] = useState(false)
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     Promise.all([
@@ -75,13 +75,25 @@ export default function AdminGames() {
     })
   }, [])
 
-  useEffect(() => { setSelected(new Set()) }, [statusFilter, providerFilter, typeFilter, page])
+  useEffect(() => { setSelected(new Set()) }, [statusFilter, providerFilter, typeFilter])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore() },
+      { threshold: 0.1 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   if (!user) return null
 
   const filtersActive = statusFilter !== 'all' || providerFilter !== 'all' || typeFilter !== 'all'
   const allPageSelected = games.length > 0 && games.every(g => selected.has(g.id))
   const someSelected = selected.size > 0
+  const allSelectedActive = someSelected && games.filter(g => selected.has(g.id)).every(g => g.isActive)
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
@@ -117,50 +129,11 @@ export default function AdminGames() {
     }
   }
 
-  // Bulk activate/deactivate ALL games matching current filters (ignores pagination)
-  const handleBulkFiltered = async (isActive: boolean) => {
-    setBulkLoading(true)
-    try {
-      const response = await bulkSetStatusByFilter(isActive, {
-        providerName: providerFilter === 'all' ? null : providerFilter,
-        gameType: typeFilter === 'all' ? null : typeFilter,
-        currentStatus: statusFilter === 'all' ? undefined : statusFilter,
-      })
-      if (response.success) {
-        toast({ title: isActive ? "Juegos activados" : "Juegos desactivados", description: response.data?.message })
-        setSelected(new Set())
-      } else {
-        toast({ title: "Error", description: response.error?.message, variant: "destructive" })
-      }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
-    } finally {
-      setBulkLoading(false)
-    }
-  }
-
-  const handleSync = async () => {
-    setSyncing(true)
-    try {
-      const response = await syncGames()
-      if (response.success) {
-        toast({ title: "Sincronización completa", description: `${response.data?.synced ?? 0} juegos sincronizados` })
-      } else {
-        toast({ title: "Error", description: response.error?.message || "No se pudo sincronizar", variant: "destructive" })
-      }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
-    } finally {
-      setSyncing(false)
-    }
-  }
-
   const handleEdit = async () => {
     if (!selectedGame) return
     setSubmitting(true)
     try {
       const updateData: UpdateGameDto = {
-        name: formData.name,
         description: formData.description,
         minBet: formData.minBet,
         maxBet: formData.maxBet,
@@ -168,7 +141,7 @@ export default function AdminGames() {
       }
       const response = await updateGame(selectedGame.id, updateData)
       if (response.success) {
-        toast({ title: "Juego actualizado", description: `${formData.name} actualizado exitosamente` })
+        toast({ title: "Juego actualizado", description: `${selectedGame.name} actualizado exitosamente` })
         setIsEditDialogOpen(false)
         setSelectedGame(null)
       } else {
@@ -181,151 +154,98 @@ export default function AdminGames() {
     }
   }
 
-  const handleToggleStatus = async (gameId: string) => {
-    try {
-      const response = await toggleGameStatus(gameId)
-      if (!response.success) {
-        toast({ title: "Error", description: response.error?.message, variant: "destructive" })
-      }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
-    }
-  }
-
   const openEditDialog = (game: Game) => {
     setSelectedGame(game)
-    setFormData({ name: game.name, description: game.description, minBet: game.minBet, maxBet: game.maxBet, houseEdge: game.houseEdge })
+    setFormData({ description: game.description, minBet: game.minBet, maxBet: game.maxBet, houseEdge: game.houseEdge })
     setIsEditDialogOpen(true)
   }
 
   return (
     <DashboardLayout title="Juegos">
-      {/* Top action bar */}
-      <div className="flex items-center gap-2 mb-3">
-        <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing} className="gap-1.5">
-          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          <span className="hidden sm:inline">Sincronizar</span>
-        </Button>
-
-        {/* Select all on current page */}
-        <div
-          role="button"
-          tabIndex={games.length === 0 ? -1 : 0}
-          onClick={games.length === 0 ? undefined : toggleSelectAll}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (games.length > 0) toggleSelectAll(); } }}
-          aria-disabled={games.length === 0}
-          className={`inline-flex items-center justify-center gap-1.5 ml-auto rounded-md border border-input bg-background px-3 h-8 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${games.length === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
-        >
-          <Checkbox
-            checked={allPageSelected}
-            className="h-3.5 w-3.5 pointer-events-none"
-            aria-hidden
-          />
-          <span>{allPageSelected ? 'Deseleccionar' : 'Seleccionar'} página</span>
-        </div>
-      </div>
-
       {/* Filter bar */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
-          {(['all', 'active', 'inactive'] as StatusFilter[]).map(s => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === s
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              {s === 'all' ? 'Todos' : s === 'active' ? 'Activos' : 'Inactivos'}
-            </button>
-          ))}
+      <div className="space-y-2 mb-3">
+        {/* Row 1: status tabs + switch */}
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-border overflow-hidden flex-1">
+            {(['all', 'active', 'inactive'] as StatusFilter[]).map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`flex-1 px-2 py-1 text-xs font-medium transition-colors ${
+                  statusFilter === s
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {s === 'all' ? 'Todos' : s === 'active' ? 'Activos' : 'Inactivos'}
+              </button>
+            ))}
+          </div>
+          {bulkLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+          <Label htmlFor="bulk-switch" className="text-xs text-muted-foreground cursor-pointer shrink-0">Activo</Label>
+          <Switch
+            id="bulk-switch"
+            checked={allSelectedActive}
+            onCheckedChange={handleBulkSelected}
+            disabled={!someSelected || bulkLoading}
+          />
         </div>
 
-        {providers.length > 0 && (
-          <Select value={providerFilter} onValueChange={setProviderFilter}>
-            <SelectTrigger className="h-8 w-auto min-w-[130px] text-xs">
-              <SelectValue placeholder="Proveedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los proveedores</SelectItem>
-              {providers.map(p => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* Row 2: dropdowns + actions */}
+        <div className="flex items-center gap-2">
+          {providers.length > 0 && (
+            <Select value={providerFilter} onValueChange={setProviderFilter}>
+              <SelectTrigger className="h-8 flex-1 min-w-0 text-xs">
+                <span className="truncate">
+                  {providerFilter === 'all' ? 'Proveedores' : providerFilter}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {providers.map(p => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-        {gameTypes.length > 0 && (
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="h-8 w-auto min-w-[130px] text-xs">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los tipos</SelectItem>
-              {gameTypes.map(t => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+          {gameTypes.length > 0 && (
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-8 flex-1 min-w-0 text-xs">
+                <span className="truncate">
+                  {typeFilter === 'all' ? 'Tipos' : typeFilter}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {gameTypes.map(t => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-        {filtersActive && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs text-muted-foreground"
-            onClick={() => { setStatusFilter('all'); setProviderFilter('all'); setTypeFilter('all') }}
-          >
-            Limpiar
-          </Button>
-        )}
-      </div>
+          {someSelected && (
+            <Button size="sm" variant="ghost" className="h-8 text-xs px-2 shrink-0" onClick={() => setSelected(new Set())}>
+              Cancelar
+            </Button>
+          )}
 
-      {/* Bulk action bar — shows when items selected OR filters active */}
-      {(someSelected || filtersActive) && (
-        <div className="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg bg-muted/60 border border-border">
-          {someSelected ? (
-            <>
-              <span className="text-xs font-medium text-foreground">
-                {selected.size} seleccionado{selected.size !== 1 ? 's' : ''} en esta página
-              </span>
-              <div className="flex gap-1.5 ml-auto flex-wrap">
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleBulkSelected(true)} disabled={bulkLoading}>
-                  {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ToggleRight className="h-3 w-3" />}
-                  Activar seleccionados
-                </Button>
-                <Button size="sm" variant="destructive" className="h-7 text-xs gap-1" onClick={() => handleBulkSelected(false)} disabled={bulkLoading}>
-                  {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ToggleLeft className="h-3 w-3" />}
-                  Desactivar seleccionados
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>
-                  Cancelar
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-xs text-muted-foreground">
-                {total} juego{total !== 1 ? 's' : ''} con los filtros actuales
-              </span>
-              <div className="flex gap-1.5 ml-auto flex-wrap">
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleBulkFiltered(true)} disabled={bulkLoading}>
-                  {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ToggleRight className="h-3 w-3" />}
-                  Activar todos
-                </Button>
-                <Button size="sm" variant="destructive" className="h-7 text-xs gap-1" onClick={() => handleBulkFiltered(false)} disabled={bulkLoading}>
-                  {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ToggleLeft className="h-3 w-3" />}
-                  Desactivar todos
-                </Button>
-              </div>
-            </>
+          {filtersActive && !someSelected && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground px-2 shrink-0"
+              onClick={() => { setStatusFilter('all'); setProviderFilter('all'); setTypeFilter('all') }}
+            >
+              Limpiar
+            </Button>
           )}
         </div>
-      )}
+      </div>
 
-      {/* Game grid */}
+
+      {/* Game table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -338,100 +258,156 @@ export default function AdminGames() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-          {games.map((game) => {
-            const isSelected = selected.has(game.id)
-            return (
-              <Card
-                key={game.id}
-                className={`overflow-hidden transition-colors ${isSelected ? 'border-primary/50 bg-primary/5' : ''}`}
-              >
-                <div className="flex gap-3 p-3">
-                  {/* Thumbnail + checkbox */}
-                  <div className="shrink-0 relative">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                      {game.defaultLogo ? (
-                        <img src={game.defaultLogo} alt={game.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Gamepad2 className="h-6 w-6 text-muted-foreground/50" />
-                      )}
-                    </div>
-                    <div className="absolute -top-1 -left-1">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(game.id)}
-                        className="h-4 w-4 bg-background border-border shadow-sm"
-                      />
-                    </div>
+        <>
+          {/* Mobile: 2-column on tiny screens, 3-column on wider mobile */}
+          <div className="grid grid-cols-2 min-[400px]:grid-cols-3 gap-2 md:hidden">
+            {games.map((game) => {
+              const isSelected = selected.has(game.id)
+              return (
+                <div
+                  key={game.id}
+                  className={`relative rounded-lg border overflow-hidden cursor-pointer transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}
+                  onClick={() => toggleSelect(game.id)}
+                >
+                  <div className="absolute top-1.5 left-1.5 z-10">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelect(game.id)}
+                      className="h-4 w-4 bg-white dark:bg-white border-gray-400"
+                      onClick={e => e.stopPropagation()}
+                    />
                   </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <p className="font-semibold text-sm leading-tight truncate">{game.name}</p>
-                      <Badge
-                        variant={game.isActive ? "default" : "secondary"}
-                        className="shrink-0 text-[10px] px-1.5 py-0"
-                      >
-                        {game.isActive ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </div>
-                    {game.providerName && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 mb-1.5">{game.providerName}</Badge>
+                  <div className="aspect-square w-full bg-muted flex items-center justify-center overflow-hidden">
+                    {game.defaultLogo ? (
+                      <img src={game.defaultLogo} alt={game.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Gamepad2 className="h-6 w-6 text-muted-foreground/40" />
                     )}
-                    <p className="text-xs text-muted-foreground">
-                      Min ${formatChips(game.minBet)} · Max ${formatChips(game.maxBet)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Edge {game.houseEdge}%
-                      {game.gameType && <span className="ml-1 opacity-60">· {game.gameType}</span>}
+                  </div>
+                  <div className="p-1.5">
+                    <p className="text-[10px] font-medium leading-tight line-clamp-1 text-muted-foreground">
+                      {game.providerName ?? '—'}
                     </p>
                   </div>
-                </div>
-
-                {/* Card actions */}
-                <div className="flex gap-2 px-3 pb-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-8 text-xs"
-                    onClick={() => openEditDialog(game)}
+                  <button
+                    className="w-full text-[10px] text-muted-foreground border-t border-border py-1 hover:bg-muted/50 flex items-center justify-center gap-1"
+                    onClick={e => { e.stopPropagation(); openEditDialog(game) }}
                   >
-                    <Edit className="h-3 w-3 mr-1" />
+                    <Edit className="h-2.5 w-2.5" />
                     Editar
-                  </Button>
-                  <Button
-                    variant={game.isActive ? "destructive" : "default"}
-                    size="sm"
-                    className="flex-1 h-8 text-xs"
-                    onClick={() => handleToggleStatus(game.id)}
-                  >
-                    {game.isActive
-                      ? <><ToggleLeft className="h-3 w-3 mr-1" />Desactivar</>
-                      : <><ToggleRight className="h-3 w-3 mr-1" />Activar</>}
-                  </Button>
+                  </button>
                 </div>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
 
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-muted-foreground">
-            {total} juego{total !== 1 ? 's' : ''} · pág {page}/{totalPages}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => goToPage(page - 1)} disabled={page <= 1}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => goToPage(page + 1)} disabled={page >= totalPages}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          {/* Desktop: table */}
+          <div className="hidden md:block rounded-lg border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-base">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="w-10 px-4 py-3 text-left">
+                    <Checkbox
+                      checked={allPageSelected}
+                      onCheckedChange={toggleSelectAll}
+                      className="h-4 w-4 bg-white dark:bg-white border-gray-400"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Juego</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden md:table-cell">Proveedor</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Tipo</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Min / Max</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Edge</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Estado</th>
+                  <th className="px-4 py-3 text-right font-medium text-sm text-muted-foreground uppercase tracking-wide">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {games.map((game) => {
+                  const isSelected = selected.has(game.id)
+                  return (
+                    <tr
+                      key={game.id}
+                      className={`transition-colors hover:bg-muted/30 ${isSelected ? 'bg-primary/5' : ''}`}
+                    >
+                      <td className="px-4 py-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(game.id)}
+                          className="h-4 w-4 bg-white dark:bg-white border-gray-400"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                            {game.defaultLogo ? (
+                              <img src={game.defaultLogo} alt={game.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <Gamepad2 className="h-5 w-5 text-muted-foreground/50" />
+                            )}
+                          </div>
+                          <span className="font-medium truncate max-w-[200px]">{game.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell">
+                        {game.providerName ? (
+                          <Badge variant="outline" className="text-xs px-2 py-0.5">{game.providerName}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                        {game.gameType || <span className="opacity-40">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell whitespace-nowrap">
+                        ${formatChips(game.minBet)} / ${formatChips(game.maxBet)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
+                        {game.houseEdge}%
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant={game.isActive ? "default" : "secondary"}
+                          className="text-xs px-2 py-0.5"
+                        >
+                          {game.isActive ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-sm px-3"
+                            onClick={() => openEditDialog(game)}
+                          >
+                            <Edit className="h-3.5 w-3.5 mr-1.5" />
+                            Editar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
+        </>
+      )}
+
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-4" />
+      {loadingMore && (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      {!loading && !hasMore && total > 0 && (
+        <p className="text-center text-xs text-muted-foreground py-3">
+          {total} juego{total !== 1 ? 's' : ''} en total
+        </p>
       )}
 
       {/* Edit Dialog */}
@@ -442,10 +418,6 @@ export default function AdminGames() {
             <DialogDescription>Modifica la configuración del juego</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <Label htmlFor="edit-name">Nombre del Juego</Label>
-              <Input id="edit-name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-            </div>
             <div>
               <Label htmlFor="edit-description">Descripción</Label>
               <Textarea id="edit-description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />

@@ -155,18 +155,6 @@ export class GamesDomain {
       throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
     }
 
-    // If updating name, check it doesn't conflict with another game
-    if (updateData.name && updateData.name !== game.name) {
-      const existingGame = await gamesRepository.findByName(updateData.name);
-      if (existingGame) {
-        throw new AppError(
-          409,
-          ErrorCode.GAME_ALREADY_EXISTS,
-          'Game with this name already exists'
-        );
-      }
-    }
-
     // Validate bet limits if provided
     if (updateData.minBet !== undefined && updateData.minBet <= 0) {
       throw new AppError(
