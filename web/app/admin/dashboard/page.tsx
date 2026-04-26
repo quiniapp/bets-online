@@ -350,22 +350,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
 
-      {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
-        <Card className="max-w-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4" />
-              Cargar Saldo
-            </CardTitle>
-            <CardDescription>Asignar fichas a un usuario</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full" onClick={() => setLoadBalanceOpen(true)}>
-              Cargar Saldo
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       <ChipOperationDialog
         operationType="sell"
