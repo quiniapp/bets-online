@@ -1,9 +1,19 @@
+import { Op, literal } from 'sequelize';
 import { ProviderModel } from '../models/provider.model';
 import { Provider } from 'helper';
 
 export class ProvidersRepository {
   async findAll(): Promise<Provider[]> {
-    const rows = await ProviderModel.findAll({ order: [['name', 'ASC']] });
+    const rows = await ProviderModel.findAll({
+      where: {
+        name: {
+          [Op.in]: literal(
+            `(SELECT DISTINCT provider_name FROM games WHERE is_active = true AND provider_name IS NOT NULL)`
+          )
+        }
+      },
+      order: [['name', 'ASC']]
+    });
     return rows.map(r => this.map(r));
   }
 

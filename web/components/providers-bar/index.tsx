@@ -54,7 +54,7 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
   return (
     <>
       {/* Mobile: horizontal scroll */}
-      <div className="sm:hidden w-full overflow-x-auto scrollbar-none">
+      <div className="sm:hidden w-full min-w-0 overflow-x-auto scrollbar-none">
         <Flex className="gap-2 px-4 py-3 w-max">
           {allPills}
         </Flex>
