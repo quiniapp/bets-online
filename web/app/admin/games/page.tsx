@@ -208,20 +208,21 @@ export default function AdminGames() {
         </Button>
 
         {/* Select all on current page */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={toggleSelectAll}
-          disabled={games.length === 0}
-          className="gap-1.5 ml-auto"
+        <div
+          role="button"
+          tabIndex={games.length === 0 ? -1 : 0}
+          onClick={games.length === 0 ? undefined : toggleSelectAll}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (games.length > 0) toggleSelectAll(); } }}
+          aria-disabled={games.length === 0}
+          className={`inline-flex items-center justify-center gap-1.5 ml-auto rounded-md border border-input bg-background px-3 h-8 text-xs font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${games.length === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
         >
           <Checkbox
             checked={allPageSelected}
             className="h-3.5 w-3.5 pointer-events-none"
             aria-hidden
           />
-          <span className="text-xs">{allPageSelected ? 'Deseleccionar' : 'Seleccionar'} página</span>
-        </Button>
+          <span>{allPageSelected ? 'Deseleccionar' : 'Seleccionar'} página</span>
+        </div>
       </div>
 
       {/* Filter bar */}
