@@ -1,3 +1,4 @@
+import { literal } from 'sequelize';
 import { GameTypeModel } from '../models/game-type.model';
 import { GameType, UpdateGameTypeDto } from 'helper';
 
@@ -5,7 +6,7 @@ export class GameTypesRepository {
   async findAll(): Promise<GameType[]> {
     const rows = await GameTypeModel.findAll({
       order: [
-        [GameTypeModel.sequelize!.literal(`COALESCE("GameTypeModel"."sort_order", 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameTypeModel"."sort_order", 2147483647)`), 'ASC'],
         ['name', 'ASC']
       ]
     });
