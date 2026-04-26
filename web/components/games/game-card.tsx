@@ -1,5 +1,6 @@
+import { Play, Gamepad2 } from "lucide-react"
 import type { Game } from "helper"
-import { Flex, FlexCol } from "../flex"
+import { cn } from "@/lib/utils"
 
 interface GameCardProps {
   game: Game
@@ -8,28 +9,34 @@ interface GameCardProps {
 
 const GameCard = ({ game, onClick }: GameCardProps) => {
   return (
-    <Flex
-      className="flex-1 min-w-[300px] h-[100px] bg-accent rounded-md overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.03] hover:shadow-lg hover:brightness-110"
+    <div
       onClick={onClick}
-    >
-      {game.defaultLogo ? (
-        <img
-          src={game.defaultLogo}
-          alt={game.name}
-          className="h-full w-[100px] object-cover flex-shrink-0"
-        />
-      ) : (
-        <Flex className="h-full w-[100px] bg-muted flex-shrink-0 items-center justify-center text-muted-foreground text-xs">
-          Sin imagen
-        </Flex>
+      className={cn(
+        "group rounded-lg border border-border overflow-hidden cursor-pointer transition-all",
+        "hover:border-primary/40 bg-card"
       )}
-      <FlexCol className="p-3 gap-1 justify-center">
-        <span className="font-semibold text-sm leading-tight">{game.name}</span>
-        {game.gameType && (
-          <span className="text-xs text-muted-foreground capitalize">{game.gameType}</span>
+    >
+      <div className="relative aspect-[3/4] bg-black overflow-hidden">
+        {game.defaultLogo ? (
+          <img
+            src={game.defaultLogo}
+            alt={game.name}
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-muted">
+            <Gamepad2 className="h-6 w-6 text-muted-foreground/30" />
+          </div>
         )}
-      </FlexCol>
-    </Flex>
+        <div className="absolute inset-x-0 bottom-2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-lg pointer-events-none">
+            <Play className="h-2.5 w-2.5 fill-current" />
+            Jugar
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
+
 export default GameCard
