@@ -150,9 +150,10 @@ export default function AdminDashboard() {
             ) : (
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-4xl font-bold">{userStats?.total ?? 0}</div>
-                  <p className="text-base text-muted-foreground mt-1">
-                    {userStats?.active ?? 0} activos · {userStats?.blocked ?? 0} bloqueados
+                  <div className="text-4xl font-bold text-green-600">{userStats?.active ?? 0}</div>
+                  <p className="text-sm text-muted-foreground">activos</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {userStats?.total ?? 0} total · {userStats?.blocked ?? 0} bloqueados
                   </p>
                 </div>
                 <div className="flex flex-col gap-1 text-right">
@@ -180,7 +181,7 @@ export default function AdminDashboard() {
           onClick={() => router.push(ROUTER.ADMIN_GAMES)}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
-            <CardTitle className="text-lg font-semibold">Juegos</CardTitle>
+            <CardTitle className="text-lg font-semibold">Juegos Activos</CardTitle>
             <Gamepad2 className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="px-5">
@@ -191,9 +192,10 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <>
-                <div className="text-4xl font-bold">{gameStats?.total ?? 0}</div>
+                <div className="text-4xl font-bold text-green-600">{gameStats?.active ?? 0}</div>
+
                 <p className="text-base text-muted-foreground mt-1">
-                  {gameStats?.active ?? 0} activos
+                  {gameStats?.total ?? 0} totales
                 </p>
               </>
             )}
