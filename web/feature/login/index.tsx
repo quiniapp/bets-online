@@ -8,9 +8,8 @@ import LoginForm from "./components/login-form";
 
 const LoginPageContent = () => {
     return (
-        <Box className="grid grid-cols-1 sm:bg-primary-foreground h-full ">
-            
-            <FlexCol className="h-full items-center justify-center  xs:mx-4 ">
+        <Box className="min-h-full sm:bg-primary-foreground">
+            <FlexCol className="min-h-full items-center justify-start sm:justify-center py-2 sm:py-12 px-4 sm:px-0">
                 <LoginForm />
             </FlexCol>
         </Box>
