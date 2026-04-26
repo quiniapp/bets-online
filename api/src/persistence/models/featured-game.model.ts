@@ -1,16 +1,16 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../../config/sequelize';
 
-export class GameTypeModel extends Model {
+export class FeaturedGameModel extends Model {
   declare id: string;
-  declare name: string;
-  declare displayName: string | null;
-  declare sortOrder: number | null;
+  declare gameId: string;
+  declare sortOrder: number;
+  declare isActive: boolean;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
 
-GameTypeModel.init(
+FeaturedGameModel.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -18,22 +18,22 @@ GameTypeModel.init(
       primaryKey: true,
       field: 'id'
     },
-    name: {
-      type: DataTypes.STRING(50),
+    gameId: {
+      type: DataTypes.UUID,
       allowNull: false,
-      unique: true,
-      field: 'name'
-    },
-    displayName: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-      field: 'display_name'
+      field: 'game_id'
     },
     sortOrder: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: null,
+      allowNull: false,
+      defaultValue: 0,
       field: 'sort_order'
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'is_active'
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -50,7 +50,7 @@ GameTypeModel.init(
   },
   {
     sequelize,
-    tableName: 'game_types',
+    tableName: 'featured_games',
     timestamps: true,
     underscored: true,
     createdAt: 'created_at',
@@ -58,4 +58,4 @@ GameTypeModel.init(
   }
 );
 
-export default GameTypeModel;
+export default FeaturedGameModel;

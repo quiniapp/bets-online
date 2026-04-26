@@ -1,6 +1,6 @@
 import { GameModel } from '../models';
 import { Game, CreateGameDto, UpdateGameDto } from 'helper';
-import { Transaction, Op, QueryTypes } from 'sequelize';
+import { Transaction, Op, QueryTypes, literal } from 'sequelize';
 
 export class GamesRepository {
   async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
@@ -51,7 +51,12 @@ export class GamesRepository {
     const where = activeOnly ? { isActive: true } : {};
     const games = await GameModel.findAll({
       where,
-      order: [['name', 'ASC']]
+      order: [
+        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
     });
     return games.map(g => this.mapToGame(g));
   }
@@ -74,7 +79,12 @@ export class GamesRepository {
     if (search) where['name'] = { [Op.iLike]: `%${search}%` };
     const { rows, count } = await GameModel.findAndCountAll({
       where,
-      order: [['name', 'ASC']],
+      order: [
+        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ],
       limit,
       offset
     });
@@ -228,6 +238,7 @@ export class GamesRepository {
       providerName: plain.providerName ?? null,
       defaultLogo: plain.defaultLogo ?? null,
       gameType: plain.gameType ?? null,
+      sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };

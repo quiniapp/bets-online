@@ -258,6 +258,7 @@ export interface Game {
   providerName?: string | null;     // e.g. "pragmatic"
   defaultLogo?: string | null;      // thumbnail URL from Provider
   gameType?: string | null;         // e.g. "slot"
+  sortOrder?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -310,6 +311,7 @@ export interface UpdateGameDto {
   minBet?: number;
   maxBet?: number;
   houseEdge?: number;
+  sortOrder?: number | null;
 }
 
 /**
@@ -321,6 +323,7 @@ export interface Provider {
   displayName: string | null;
   isActive: boolean;
   logoUrl: string | null;
+  sortOrder: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -332,8 +335,97 @@ export interface GameType {
   id: string;
   name: string;
   displayName: string | null;
+  sortOrder: number | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Update Provider DTO
+ */
+export interface UpdateProviderDto {
+  displayName?: string | null;
+  isActive?: boolean;
+  logoUrl?: string | null;
+  sortOrder?: number | null;
+}
+
+/**
+ * Update GameType DTO
+ */
+export interface UpdateGameTypeDto {
+  displayName?: string | null;
+  sortOrder?: number | null;
+}
+
+/**
+ * Featured Game Model
+ */
+export interface FeaturedGame {
+  id: string;
+  gameId: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Featured Game with embedded game data (for public reads)
+ */
+export interface FeaturedGameWithGame extends FeaturedGame {
+  game: Game;
+}
+
+/**
+ * Create Featured Game DTO
+ */
+export interface CreateFeaturedGameDto {
+  gameId: string;
+  sortOrder: number;
+}
+
+/**
+ * Update Featured Game DTO
+ */
+export interface UpdateFeaturedGameDto {
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+/**
+ * Game Banner Model
+ */
+export interface GameBanner {
+  id: string;
+  gameId: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Game Banner with embedded game data (for public reads)
+ */
+export interface GameBannerWithGame extends GameBanner {
+  game: Game;
+}
+
+/**
+ * Create Game Banner DTO
+ */
+export interface CreateGameBannerDto {
+  gameId: string;
+  sortOrder: number;
+}
+
+/**
+ * Update Game Banner DTO
+ */
+export interface UpdateGameBannerDto {
+  sortOrder?: number;
+  isActive?: boolean;
 }
 
 /**

@@ -7,6 +7,7 @@ export class ProviderModel extends Model {
   declare displayName: string | null;
   declare isActive: boolean;
   declare logoUrl: string | null;
+  declare sortOrder: number | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -40,6 +41,12 @@ ProviderModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'logo_url'
+    },
+    sortOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+      field: 'sort_order'
     },
     createdAt: {
       type: DataTypes.DATE,

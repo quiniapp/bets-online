@@ -1,6 +1,6 @@
 import { Op, literal } from 'sequelize';
 import { ProviderModel } from '../models/provider.model';
-import { Provider } from 'helper';
+import { Provider, UpdateProviderDto } from 'helper';
 
 export class ProvidersRepository {
   async findAll(): Promise<Provider[]> {
@@ -12,7 +12,10 @@ export class ProvidersRepository {
           )
         }
       },
-      order: [['name', 'ASC']]
+      order: [
+        [literal(`COALESCE("ProviderModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
     });
     return rows.map(r => this.map(r));
   }
@@ -30,10 +33,7 @@ export class ProvidersRepository {
     return this.map(row);
   }
 
-  async update(
-    name: string,
-    data: { displayName?: string; isActive?: boolean; logoUrl?: string }
-  ): Promise<Provider | null> {
+  async update(name: string, data: UpdateProviderDto): Promise<Provider | null> {
     const row = await ProviderModel.findOne({ where: { name } });
     if (!row) return null;
     await row.update(data);
@@ -48,6 +48,7 @@ export class ProvidersRepository {
       displayName: plain.displayName ?? null,
       isActive: plain.isActive,
       logoUrl: plain.logoUrl ?? null,
+      sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };

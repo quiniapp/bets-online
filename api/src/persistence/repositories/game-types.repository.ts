@@ -1,9 +1,15 @@
+import { literal } from 'sequelize';
 import { GameTypeModel } from '../models/game-type.model';
-import { GameType } from 'helper';
+import { GameType, UpdateGameTypeDto } from 'helper';
 
 export class GameTypesRepository {
   async findAll(): Promise<GameType[]> {
-    const rows = await GameTypeModel.findAll({ order: [['name', 'ASC']] });
+    const rows = await GameTypeModel.findAll({
+      order: [
+        [literal(`COALESCE("GameTypeModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
+    });
     return rows.map(r => this.map(r));
   }
 
@@ -20,7 +26,7 @@ export class GameTypesRepository {
     return this.map(row);
   }
 
-  async update(name: string, data: { displayName?: string }): Promise<GameType | null> {
+  async update(name: string, data: UpdateGameTypeDto): Promise<GameType | null> {
     const row = await GameTypeModel.findOne({ where: { name } });
     if (!row) return null;
     await row.update(data);
@@ -33,6 +39,7 @@ export class GameTypesRepository {
       id: plain.id,
       name: plain.name,
       displayName: plain.displayName ?? null,
+      sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };
