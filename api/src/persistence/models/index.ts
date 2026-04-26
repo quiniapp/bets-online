@@ -15,6 +15,8 @@ import ProviderTransactionModel from './ProviderTransaction.model';
 import ProviderModel from './provider.model';
 import GameTypeModel from './game-type.model';
 import UserFavoriteGameModel from './UserFavoriteGame.model';
+import FeaturedGameModel from './featured-game.model';
+import GameBannerModel from './game-banner.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -221,6 +223,26 @@ BetModel.belongsTo(UserModel, {
   as: 'user'
 });
 
+// GameModel -> FeaturedGameModel (1:N)
+GameModel.hasMany(FeaturedGameModel, {
+  foreignKey: 'gameId',
+  as: 'featuredEntries'
+});
+FeaturedGameModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// GameModel -> GameBannerModel (1:N)
+GameModel.hasMany(GameBannerModel, {
+  foreignKey: 'gameId',
+  as: 'bannerEntries'
+});
+GameBannerModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
 // ===================================
 // PROVIDER ASSOCIATIONS
 // ===================================
@@ -268,7 +290,9 @@ export {
   ProviderTransactionModel,
   ProviderModel,
   GameTypeModel,
-  UserFavoriteGameModel
+  UserFavoriteGameModel,
+  FeaturedGameModel,
+  GameBannerModel
 };
 
 export default {
@@ -288,5 +312,7 @@ export default {
   ProviderTransactionModel,
   ProviderModel,
   GameTypeModel,
-  UserFavoriteGameModel
+  UserFavoriteGameModel,
+  FeaturedGameModel,
+  GameBannerModel
 };
