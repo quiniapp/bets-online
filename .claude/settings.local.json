@@ -1,58 +1,30 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run api:dev:*)",
-      "Bash(npx tsc:*)",
-      "Bash(test:*)",
-      "Bash(cat:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run dev:*)",
-      "Bash(npm run build:*)",
-      "Bash(npm run web:dev:*)",
-      "Bash(ln:*)",
-      "Bash(npm run lint:*)",
-      "Bash(grep:*)",
-      "Bash(curl:*)",
-      "Bash(pnpm dev:*)",
-      "Bash(docker exec:*)",
-      "Bash(pnpm type-check:*)",
-      "Bash(ping:*)",
-      "Bash(npm run db:seed:*)",
-      "Bash(npm run db:seed:undo:*)",
-      "Bash(cmd //c \"set APP_ENV=local && npx ts-node src/server.ts\")",
-      "Bash(git add:*)",
-      "Bash(git reset:*)",
-      "Bash(pnpm --filter helper build:*)",
-      "Bash(pnpm run build)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix Next.js build configuration and remove NODE_ENV override\n\n- Remove invalid next.config.mjs options \\(eslint, dynamicIO\\)\n- Remove NODE_ENV from .env.example \\(Next.js sets this automatically\\)\n- Clean configuration allows proper dynamic rendering\n- Local build tested successfully - all pages render as dynamic \\(ƒ\\)\n\nThis fixes the Vercel build error:\n\"You are using a non-standard NODE_ENV value\"\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push:*)",
-      "Bash(git commit:*)",
-      "Bash(pnpm --filter api lint:*)",
-      "Bash(pnpm --filter web lint:*)",
-      "Bash(pnpm --filter web type-check:*)",
-      "Bash(pnpm run lint)",
-      "Bash(npx next lint --help:*)",
-      "Bash(pnpm build:*)",
-      "Bash(pnpm:*)",
-      "Bash(pnpm --filter web build:*)",
-      "Bash(git restore:*)",
-      "Bash(gh run list:*)",
-      "Bash(git remote get-url:*)",
-      "Bash(git rev-parse:*)",
-      "Bash(python3:*)",
-      "Bash(npx next lint:*)",
-      "Bash(./node_modules/.bin/next lint:*)",
-      "Bash(echo:*)",
-      "Bash(git checkout:*)",
-      "Bash(git pull:*)",
-      "Bash(git stash:*)",
-      "Bash(tasklist:*)",
-      "Bash(ls:*)",
-      "Bash(npx next --version)",
-      "Bash(npx eslint .)",
-      "Bash(git worktree:*)"
+      "Bash",
+      "Read",
+      "Write",
+      "WebSearch",
+      "mcp__github__get_me",
+      "mcp__github__list_branches",
+      "mcp__github__list_pull_requests",
+      "mcp__github__list_commits",
+      "mcp__supabase__list_projects",
+      "mcp__github__search_repositories",
+      "mcp__github__get_file_contents",
+      "mcp__ide__getDiagnostics"
     ],
-    "deny": [],
-    "ask": []
-  }
+    "deny": [
+      "Bash(git push:*)"
+    ],
+    "ask": [
+      "Read(.env*)",
+      "Read(.git/**)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "github"
+  ]
 }

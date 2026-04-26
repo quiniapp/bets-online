@@ -25,15 +25,18 @@ const HeaderIndex = () => {
                 {user ? (
                     <>
                         <Button variant='ghost' onClick={() => router.push(getDashboardRoute())} role='button' aria-label='ir al panel'>
-                            <LayoutDashboardIcon /> {user.username ?? 'Panel'}
+                            <LayoutDashboardIcon />
+                            <span className="hidden sm:inline">{user.username ?? 'Panel'}</span>
                         </Button>
                         <Button variant='ghost' onClick={logout} role='button' aria-label='cerrar sesion'>
-                            <LogOutIcon /> Salir
+                            <LogOutIcon />
+                            <span className="hidden sm:inline">Salir</span>
                         </Button>
                     </>
                 ) : (
                     <Button variant='ghost' onClick={() => router.push(ROUTER.LOGIN)} role='button' aria-label='ingresar'>
-                        <UserIcon /> Ingresar
+                        <UserIcon />
+                        <span className="hidden sm:inline">Ingresar</span>
                     </Button>
                 )}
                 <ThemeToggle />

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import ROUTER from "@/routes"
-import { Flex } from "../flex"
 import GameCard from "./game-card"
-import { Loader2 } from "lucide-react"
+import { Loader2, Gamepad2 } from "lucide-react"
 
 interface GamesListProps {
     providerName?: string | null;
 }
+
+const GRID = "grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-1.5 sm:gap-2"
 
 const GamesList = ({ providerName = null }: GamesListProps) => {
     const { games, loading, loadingMore, loadMore } = useGames(true, providerName)
@@ -45,31 +46,34 @@ const GamesList = ({ providerName = null }: GamesListProps) => {
 
     if (loading) {
         return (
-            <Flex className="max-w-[1440px] w-full gap-4 h-full flex-wrap">
-                {[...Array(8)].map((_, i) => (
-                    <Flex key={i} className="flex-1 min-w-[300px] h-[100px] bg-accent animate-pulse rounded-md" />
+            <div className={`max-w-[1440px] w-full ${GRID}`}>
+                {[...Array(12)].map((_, i) => (
+                    <div key={i} className="aspect-[3/4] bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 animate-pulse rounded-md" />
                 ))}
-            </Flex>
+            </div>
         )
     }
 
     if (games.length === 0) {
         return (
-            <Flex className="max-w-[1440px] w-full items-center justify-center py-12 text-muted-foreground">
-                No hay juegos disponibles
-            </Flex>
+            <div className="max-w-[1440px] w-full flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+                <Gamepad2 className="h-12 w-12 opacity-40" />
+                <p className="text-sm font-medium">No hay juegos disponibles</p>
+            </div>
         )
     }
 
     return (
-        <Flex className="max-w-[1440px] w-full gap-4 h-full flex-wrap">
-            {games.map((game) => (
-                <GameCard key={game.id} game={game} onClick={() => handleGameClick(game.id)} />
-            ))}
+        <div className="max-w-[1440px] w-full">
+            <div className={GRID}>
+                {games.map((game) => (
+                    <GameCard key={game.id} game={game} onClick={() => handleGameClick(game.id)} />
+                ))}
+            </div>
             <div ref={sentinelRef} className="w-full flex justify-center py-4">
                 {loadingMore && <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}
             </div>
-        </Flex>
+        </div>
     )
 }
 

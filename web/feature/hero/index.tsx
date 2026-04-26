@@ -1,8 +1,6 @@
 "use client"
 import * as React from "react"
 import Autoplay from "embla-carousel-autoplay"
- 
-
 
 import {
     Carousel,
@@ -11,35 +9,28 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/components/ui/carousel"
-import { Card, CardContent } from "@/components/ui/card"
-import { Flex } from "@/components/flex";
 
 const HeroBannerIndex = () => {
-  const plugin = React.useRef(
-    Autoplay({ delay: 2000, stopOnInteraction: true })
-  )
-
-
+    const plugin = React.useRef(
+        Autoplay({ delay: 2000, stopOnInteraction: true })
+    )
 
     return (
-        <Carousel  plugins={[plugin.current]} className="w-full max-w-[95vw] py-4">
-            <CarouselContent className="-ml-1">
-                {Array.from({ length: 5 }).map((_, index) => (
-                    <CarouselItem key={index} className="pl-1 md:w-full lg:w-full h-[600px]">
-                        <Flex className="p-1 items-center bg-pink  h-full">
-                            <Card className="flex-1 h-full bg-pink">
-                                <CardContent className="flex h-full  items-center justify-center bg-pink ">
-                                    <span className="text-2xl font-semibold">{index + 1}</span>
-                                </CardContent>
-                            </Card>
-                        </Flex>
-                    </CarouselItem>
-                ))}
-            </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
-        </Carousel>
-
+        <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
+            <Carousel plugins={[plugin.current]} className="w-full">
+                <CarouselContent className="-ml-1">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                        <CarouselItem key={index} className="pl-1">
+                            <div className="h-[120px] xs:h-[160px] sm:h-[280px] md:h-[400px] lg:h-[520px] w-full rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 text-lg font-semibold">
+                                {index + 1}
+                            </div>
+                        </CarouselItem>
+                    ))}
+                </CarouselContent>
+                <CarouselPrevious className="hidden sm:flex" />
+                <CarouselNext className="hidden sm:flex" />
+            </Carousel>
+        </div>
     )
 }
-export default HeroBannerIndex;
+export default HeroBannerIndex

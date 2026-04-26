@@ -15,9 +15,9 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
 
   if (loading) {
     return (
-      <Flex className="w-full max-w-[95vw] gap-2 px-4 py-3 flex-wrap">
+      <Flex className="w-full max-w-[95vw] gap-2 px-4 py-3 overflow-x-auto scrollbar-none">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-8 w-24 bg-accent animate-pulse rounded-full" />
+          <div key={i} className="h-8 w-24 shrink-0 bg-accent animate-pulse rounded-full" />
         ))}
       </Flex>
     );
@@ -27,27 +27,23 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
 
   const activeProviders = providers.filter(p => p.isActive);
 
-  const pills = (
+  const pillClass = (active: boolean) =>
+    `shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
+      active
+        ? 'bg-primary text-primary-foreground scale-105'
+        : 'bg-accent text-accent-foreground hover:bg-primary/80 hover:text-primary-foreground hover:scale-105'
+    }`;
+
+  const allPills = (
     <>
-      <button
-        onClick={() => onSelect(null)}
-        className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
-          selected === null
-            ? 'bg-primary text-primary-foreground scale-105'
-            : 'bg-accent text-accent-foreground hover:bg-primary/80 hover:text-primary-foreground hover:scale-105'
-        }`}
-      >
+      <button onClick={() => onSelect(null)} className={pillClass(selected === null)}>
         Todos
       </button>
       {activeProviders.map(provider => (
         <button
           key={provider.id}
           onClick={() => onSelect(selected === provider.name ? null : provider.name)}
-          className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
-            selected === provider.name
-              ? 'bg-primary text-primary-foreground scale-105'
-              : 'bg-accent text-accent-foreground hover:bg-primary/80 hover:text-primary-foreground hover:scale-105'
-          }`}
+          className={pillClass(selected === provider.name)}
         >
           {provider.displayName ?? provider.name}
         </button>
@@ -55,34 +51,44 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
     </>
   );
 
-  if (expanded) {
-    return (
-      <Flex className="w-full max-w-[95vw] gap-2 px-4 py-3 flex-wrap">
-        {pills}
-        <button
-          onClick={() => setExpanded(false)}
-          className="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
-          aria-label="Contraer"
-        >
-          −
-        </button>
-      </Flex>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-2 w-full max-w-[95vw] px-4 py-3">
-      <div className="flex gap-2 flex-nowrap overflow-hidden flex-1">
-        {pills}
+    <>
+      {/* Mobile: horizontal scroll */}
+      <div className="sm:hidden w-full overflow-x-auto scrollbar-none">
+        <Flex className="gap-2 px-4 py-3 w-max">
+          {allPills}
+        </Flex>
       </div>
-      <button
-        onClick={() => setExpanded(true)}
-        className="shrink-0 px-3 py-1.5 rounded-full text-sm font-bold bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground hover:scale-105 transition-all cursor-pointer"
-        aria-label="Expandir"
-      >
-        +
-      </button>
-    </div>
+
+      {/* Desktop: expand/collapse */}
+      <div className="hidden sm:block w-full max-w-[95vw]">
+        {expanded ? (
+          <Flex className="gap-2 px-4 py-3 flex-wrap">
+            {allPills}
+            <button
+              onClick={() => setExpanded(false)}
+              className="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
+              aria-label="Contraer"
+            >
+              −
+            </button>
+          </Flex>
+        ) : (
+          <div className="flex items-center gap-2 px-4 py-3">
+            <div className="flex gap-2 flex-nowrap overflow-hidden flex-1">
+              {allPills}
+            </div>
+            <button
+              onClick={() => setExpanded(true)}
+              className="shrink-0 px-3 py-1.5 rounded-full text-sm font-bold bg-accent text-accent-foreground hover:bg-primary hover:text-primary-foreground hover:scale-105 transition-all cursor-pointer"
+              aria-label="Expandir"
+            >
+              +
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
