@@ -33,6 +33,7 @@ export class GameTypesRepository {
       id: plain.id,
       name: plain.name,
       displayName: plain.displayName ?? null,
+      sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };

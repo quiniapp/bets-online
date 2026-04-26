@@ -48,6 +48,7 @@ export class ProvidersRepository {
       displayName: plain.displayName ?? null,
       isActive: plain.isActive,
       logoUrl: plain.logoUrl ?? null,
+      sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };

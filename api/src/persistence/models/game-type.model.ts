@@ -5,6 +5,7 @@ export class GameTypeModel extends Model {
   declare id: string;
   declare name: string;
   declare displayName: string | null;
+  declare sortOrder: number | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -27,6 +28,12 @@ GameTypeModel.init(
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'display_name'
+    },
+    sortOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+      field: 'sort_order'
     },
     createdAt: {
       type: DataTypes.DATE,
