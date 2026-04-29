@@ -56,14 +56,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (role !== UserRole.OWNER && role !== UserRole.ADMIN && role !== UserRole.CASHIER) {
+      if (role === UserRole.CASHIER) {
+        router.push(ROUTER.CASHIER_DASHBOARD)
+      } else if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
         router.push(ROUTER.SITE)
       }
     }
   }, [role, router, isLoading])
 
   useEffect(() => {
-    if (user && (role === UserRole.ADMIN || role === UserRole.CASHIER)) {
+    if (user && role === UserRole.ADMIN) {
       loadBalance()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +98,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (role !== UserRole.OWNER && role !== UserRole.ADMIN && role !== UserRole.CASHIER) {
+  if (role !== UserRole.OWNER && role !== UserRole.ADMIN) {
     return null
   }
 
@@ -226,8 +228,8 @@ export default function AdminDashboard() {
           </Card>
         )}
 
-        {/* Mi Balance — solo ADMIN/CASHIER */}
-        {(role === UserRole.ADMIN || role === UserRole.CASHIER) && (
+        {/* Mi Balance — solo ADMIN */}
+        {role === UserRole.ADMIN && (
           <Card className="gap-2 py-4">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
               <CardTitle className="text-lg font-semibold">Mi Balance</CardTitle>

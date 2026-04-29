@@ -144,6 +144,32 @@ export const useSidebarNavigation = () => {
     },
   ];
 
+  // Menu para CASHIER (Cajero) - Gestión de usuarios y balance
+  const cashierMenuItems: MenuItem[] = [
+    {
+      title: t("nav.statistics"),
+      href: "/cashier/dashboard",
+      icon: BarChart3,
+    },
+    {
+      title: t("nav.users"),
+      icon: Users,
+      collapsible: true,
+      isOpen: usersOpen,
+      setOpen: setUsersOpen,
+      items: [
+        { title: t("users.list"), href: "/admin/users" },
+        { title: "Crear Cajero", href: "/admin/users/create-manager" },
+        { title: "Crear Jugador", href: "/admin/users/create-user" },
+      ],
+    },
+    {
+      title: t("nav.transactions"),
+      href: "/admin/transactions",
+      icon: ArrowUpDown,
+    },
+  ];
+
   // Menu para USER (Jugador) - Panel de usuario normal
   const userMenuItems: MenuItem[] = [
     {
@@ -170,6 +196,8 @@ export const useSidebarNavigation = () => {
         return superAdminMenuItems;
       case UserRole.ADMIN:
         return adminMenuItems;
+      case UserRole.CASHIER:
+        return cashierMenuItems;
       case UserRole.PLAYER:
         return userMenuItems;
       default:
