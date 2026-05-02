@@ -108,7 +108,7 @@ export class GamesDomain {
     return gamesRepository.getStats();
   }
 
-  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number }>> {
+  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
     return gamesRepository.getTopPlayed(limit);
   }
 

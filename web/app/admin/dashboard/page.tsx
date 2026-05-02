@@ -40,6 +40,7 @@ interface TopGame {
   name: string
   isActive: boolean
   betCount: number
+  totalWagered: number
 }
 
 export default function AdminDashboard() {
@@ -327,7 +328,7 @@ export default function AdminDashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{game.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {game.betCount} rondas jugadas
+                      {game.betCount} rondas · ${formatChips(game.totalWagered)} apostados
                     </p>
                   </div>
                   <Badge variant={game.isActive ? "default" : "secondary"} className="shrink-0 text-xs">
