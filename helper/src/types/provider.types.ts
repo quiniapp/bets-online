@@ -115,6 +115,7 @@ export interface UserProviderProfile {
   currency: string;
   countryCode: string;
   isActive: boolean;
+  currentProviderGameId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

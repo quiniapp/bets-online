@@ -9,6 +9,7 @@ export class UserProviderProfileModel extends Model {
   declare currency: string;
   declare countryCode: string;
   declare isActive: boolean;
+  declare currentProviderGameId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -58,6 +59,12 @@ UserProviderProfileModel.init(
       allowNull: false,
       defaultValue: true,
       field: 'is_active'
+    },
+    currentProviderGameId: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+      field: 'current_provider_game_id'
     },
     createdAt: {
       type: DataTypes.DATE,

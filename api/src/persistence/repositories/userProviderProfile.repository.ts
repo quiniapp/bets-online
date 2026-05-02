@@ -53,6 +53,17 @@ export class UserProviderProfileRepository {
     return this.mapToProfile(profile);
   }
 
+  async updateCurrentGame(
+    providerName: string,
+    providerPlayerId: string,
+    providerGameId: string | null
+  ): Promise<void> {
+    await UserProviderProfileModel.update(
+      { currentProviderGameId: providerGameId },
+      { where: { providerName, providerPlayerId } }
+    );
+  }
+
   private mapToProfile(model: UserProviderProfileModel): UserProviderProfile {
     const plain = model.get({ plain: true });
     return {
@@ -63,6 +74,7 @@ export class UserProviderProfileRepository {
       currency: plain.currency,
       countryCode: plain.countryCode,
       isActive: plain.isActive,
+      currentProviderGameId: plain.currentProviderGameId ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };

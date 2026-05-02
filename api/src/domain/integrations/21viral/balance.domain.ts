@@ -4,6 +4,7 @@ import { userProviderProfileRepository } from '../../../persistence/repositories
 import { balancesRepository } from '../../../persistence/repositories/balances.repository';
 import { usersRepository } from '../../../persistence/repositories/users.repository';
 
+
 export class ViralError extends Error {
   constructor(public viralErrorCode: ViralErrorCode, message: string) {
     super(message);
@@ -44,6 +45,10 @@ export class BalanceDomain {
 
     if (!balance) {
       throw new ViralError(ViralErrorCode.GeneralFailure, 'Balance record not found');
+    }
+
+    if (req.providerGameId && req.providerGameId !== profile.currentProviderGameId) {
+      await userProviderProfileRepository.updateCurrentGame('21viral', req.playerId, req.providerGameId);
     }
 
     return {
