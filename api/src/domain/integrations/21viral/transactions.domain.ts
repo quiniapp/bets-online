@@ -100,7 +100,7 @@ export class TransactionsDomain {
 
   private async executeTransaction(
     req: ProviderTransactionRequest,
-    profile: { userId: string; providerPlayerId: string; currency: string },
+    profile: { userId: string; providerPlayerId: string; currency: string; currentProviderGameId: string | null },
     t: Transaction
   ): Promise<ProviderTransactionResponse> {
     const balance = await balancesRepository.findByUserIdWithLock(profile.userId, t);
@@ -154,7 +154,7 @@ export class TransactionsDomain {
         providerName: '21viral',
         providerTransactionId: req.providerTransactionId,
         providerGameRoundId: req.providerGameRoundId ?? null,
-        providerGameId: req.providerGameId ?? null,
+        providerGameId: req.providerGameId ?? profile.currentProviderGameId ?? null,
         providerPlayerId: profile.providerPlayerId,
         userId: profile.userId,
         transactionType: req.transactionType,
