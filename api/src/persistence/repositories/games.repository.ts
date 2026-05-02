@@ -22,9 +22,9 @@ export class GamesRepository {
     return { total, active };
   }
 
-  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number }>> {
+  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
     const db = GameModel.sequelize!;
-    const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string }>(
+    const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string; totalWagered: string }>(
       `SELECT g.id, g.name, g.is_active AS "isActive",
         (
           COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id), 0) +
@@ -33,7 +33,15 @@ export class GamesRepository {
                       AND g.provider_game_id IS NOT NULL
                       AND pt.provider_game_id = g.provider_game_id
                       AND pt.provider_name = g.provider_name), 0)
-        ) AS "betCount"
+        ) AS "betCount",
+        (
+          COALESCE((SELECT SUM(b.amount) FROM bets b WHERE b.game_id = g.id), 0) +
+          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
+                    WHERE pt.transaction_type = 'Debit'
+                      AND g.provider_game_id IS NOT NULL
+                      AND pt.provider_game_id = g.provider_game_id
+                      AND pt.provider_name = g.provider_name), 0)
+        ) AS "totalWagered"
       FROM games g
       ORDER BY "betCount" DESC
       LIMIT :limit`,
@@ -43,7 +51,8 @@ export class GamesRepository {
       id: r.id,
       name: r.name,
       isActive: r.isActive,
-      betCount: parseInt(String(r.betCount), 10) || 0
+      betCount: parseInt(String(r.betCount), 10) || 0,
+      totalWagered: parseFloat(String(r.totalWagered)) || 0
     }));
   }
 
