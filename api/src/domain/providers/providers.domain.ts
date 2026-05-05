@@ -6,6 +6,10 @@ export class ProvidersDomain {
     return providersRepository.findAll();
   }
 
+  async getAllForAdmin(): Promise<Provider[]> {
+    return providersRepository.findAllForAdmin();
+  }
+
   async update(name: string, data: UpdateProviderDto): Promise<Provider | null> {
     return providersRepository.update(name, data);
   }

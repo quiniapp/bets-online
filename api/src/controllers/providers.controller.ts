@@ -22,6 +22,15 @@ export class ProvidersController {
     }
   }
 
+  async getAllForAdmin(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const providers = await providersDomain.getAllForAdmin();
+      return res.json(ApiResponseBuilder.success(providers));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async update(req: Request, res: Response, next: NextFunction) {
     try {
       const { name } = req.params;
