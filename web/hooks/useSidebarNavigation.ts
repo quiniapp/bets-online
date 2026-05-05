@@ -32,6 +32,7 @@ export const useSidebarNavigation = () => {
   
   const [usersOpen, setUsersOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(pathname);
 
   // Actualizar el item activo cuando cambia la ruta
@@ -44,6 +45,9 @@ export const useSidebarNavigation = () => {
     }
     if (pathname.startsWith('/admin/reports')) {
       setReportsOpen(true);
+    }
+    if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners')) {
+      setGamesOpen(true);
     }
   }, [pathname]);
 
@@ -82,8 +86,16 @@ export const useSidebarNavigation = () => {
     },
     {
       title: t("nav.games"),
-      href: "/admin/games",
       icon: Gamepad2,
+      collapsible: true,
+      isOpen: gamesOpen,
+      setOpen: setGamesOpen,
+      items: [
+        { title: "Catálogo", href: "/admin/games" },
+        { title: "Proveedores", href: "/admin/providers" },
+        { title: "Destacados", href: "/admin/featured-games" },
+        { title: "Banners", href: "/admin/banners" },
+      ],
     },
     {
       title: t("nav.reports"),
@@ -134,8 +146,16 @@ export const useSidebarNavigation = () => {
     },
     {
       title: t("nav.games"),
-      href: "/admin/games",
       icon: Gamepad2,
+      collapsible: true,
+      isOpen: gamesOpen,
+      setOpen: setGamesOpen,
+      items: [
+        { title: "Catálogo", href: "/admin/games" },
+        { title: "Proveedores", href: "/admin/providers" },
+        { title: "Destacados", href: "/admin/featured-games" },
+        { title: "Banners", href: "/admin/banners" },
+      ],
     },
     {
       title: t("nav.transactions"),

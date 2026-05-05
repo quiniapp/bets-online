@@ -59,7 +59,7 @@ export default function AdminGames() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
-  const [formData, setFormData] = useState({ description: "", minBet: 1, maxBet: 1000, houseEdge: 2.5 })
+  const [formData, setFormData] = useState({ description: "", minBet: 1, maxBet: 1000, houseEdge: 2.5, sortOrder: "" as string })
   const [submitting, setSubmitting] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
 
@@ -138,6 +138,7 @@ export default function AdminGames() {
         minBet: formData.minBet,
         maxBet: formData.maxBet,
         houseEdge: formData.houseEdge,
+        sortOrder: formData.sortOrder !== "" ? Number(formData.sortOrder) : null,
       }
       const response = await updateGame(selectedGame.id, updateData)
       if (response.success) {
@@ -156,7 +157,7 @@ export default function AdminGames() {
 
   const openEditDialog = (game: Game) => {
     setSelectedGame(game)
-    setFormData({ description: game.description, minBet: game.minBet, maxBet: game.maxBet, houseEdge: game.houseEdge })
+    setFormData({ description: game.description, minBet: game.minBet, maxBet: game.maxBet, houseEdge: game.houseEdge, sortOrder: game.sortOrder != null ? String(game.sortOrder) : "" })
     setIsEditDialogOpen(true)
   }
 
@@ -435,6 +436,18 @@ export default function AdminGames() {
             <div>
               <Label htmlFor="edit-houseEdge">House Edge (%)</Label>
               <Input id="edit-houseEdge" type="number" step="0.1" value={formData.houseEdge} onChange={(e) => setFormData({ ...formData, houseEdge: parseFloat(e.target.value) })} />
+            </div>
+            <div>
+              <Label htmlFor="edit-sortOrder">Orden (vacío = automático)</Label>
+              <Input
+                id="edit-sortOrder"
+                type="number"
+                min="1"
+                placeholder="Automático (alfabético)"
+                value={formData.sortOrder}
+                onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Número menor aparece primero. Vacío = orden alfabético.</p>
             </div>
           </div>
           <DialogFooter>

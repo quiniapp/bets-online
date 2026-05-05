@@ -20,6 +20,16 @@ export class ProvidersRepository {
     return rows.map(r => this.map(r));
   }
 
+  async findAllForAdmin(): Promise<Provider[]> {
+    const rows = await ProviderModel.findAll({
+      order: [
+        [literal(`COALESCE("ProviderModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
+    });
+    return rows.map(r => this.map(r));
+  }
+
   async findByName(name: string): Promise<Provider | null> {
     const row = await ProviderModel.findOne({ where: { name } });
     return row ? this.map(row) : null;
