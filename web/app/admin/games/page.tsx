@@ -13,7 +13,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import {
-  Edit, Loader2, Gamepad2,
+  Edit, Loader2, Gamepad2, ImageIcon,
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useGames } from "@/hooks/useGames"
@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { UpdateGameDto, Game } from "helper"
 import { formatChips } from "@/lib/utils"
 import { apiService } from "@/services/api.service"
+import { GameImageManager } from "@/components/admin/game-image-manager"
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
@@ -62,6 +63,7 @@ export default function AdminGames() {
   const [formData, setFormData] = useState({ description: "", minBet: 1, maxBet: 1000, houseEdge: 2.5, sortOrder: "" as string })
   const [submitting, setSubmitting] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [imageManagerGame, setImageManagerGame] = useState<{ id: string; name: string; defaultLogo: string | null } | null>(null)
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -290,13 +292,22 @@ export default function AdminGames() {
                       {game.providerName ?? '—'}
                     </p>
                   </div>
-                  <button
-                    className="w-full text-[10px] text-muted-foreground border-t border-border py-1 hover:bg-muted/50 flex items-center justify-center gap-1"
-                    onClick={e => { e.stopPropagation(); openEditDialog(game) }}
-                  >
-                    <Edit className="h-2.5 w-2.5" />
-                    Editar
-                  </button>
+                  <div className="flex border-t border-border divide-x divide-border">
+                    <button
+                      className="flex-1 text-[10px] text-muted-foreground py-1 hover:bg-muted/50 flex items-center justify-center gap-1"
+                      onClick={e => { e.stopPropagation(); openEditDialog(game) }}
+                    >
+                      <Edit className="h-2.5 w-2.5" />
+                      Editar
+                    </button>
+                    <button
+                      className="flex-1 text-[10px] text-muted-foreground py-1 hover:bg-muted/50 flex items-center justify-center gap-1"
+                      onClick={e => { e.stopPropagation(); setImageManagerGame({ id: game.id, name: game.name, defaultLogo: game.defaultLogo ?? null }) }}
+                    >
+                      <ImageIcon className="h-2.5 w-2.5" />
+                      Imágenes
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -381,6 +392,15 @@ export default function AdminGames() {
                             variant="outline"
                             size="sm"
                             className="h-8 text-sm px-3"
+                            onClick={() => setImageManagerGame({ id: game.id, name: game.name, defaultLogo: game.defaultLogo ?? null })}
+                          >
+                            <ImageIcon className="h-3.5 w-3.5 mr-1.5" />
+                            Imágenes
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-sm px-3"
                             onClick={() => openEditDialog(game)}
                           >
                             <Edit className="h-3.5 w-3.5 mr-1.5" />
@@ -409,6 +429,17 @@ export default function AdminGames() {
         <p className="text-center text-xs text-muted-foreground py-3">
           {total} juego{total !== 1 ? 's' : ''} en total
         </p>
+      )}
+
+      {/* Image Manager Dialog */}
+      {imageManagerGame && (
+        <GameImageManager
+          gameId={imageManagerGame.id}
+          gameName={imageManagerGame.name}
+          defaultLogo={imageManagerGame.defaultLogo}
+          open={!!imageManagerGame}
+          onOpenChange={open => !open && setImageManagerGame(null)}
+        />
       )}
 
       {/* Edit Dialog */}

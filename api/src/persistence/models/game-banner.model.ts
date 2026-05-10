@@ -6,6 +6,7 @@ export class GameBannerModel extends Model {
   declare gameId: string;
   declare sortOrder: number;
   declare isActive: boolean;
+  declare imageUrl: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -34,6 +35,11 @@ GameBannerModel.init(
       allowNull: false,
       defaultValue: true,
       field: 'is_active'
+    },
+    imageUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'image_url'
     },
     createdAt: {
       type: DataTypes.DATE,

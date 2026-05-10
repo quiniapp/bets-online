@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.0",
+    "@types/multer": "^2.1.0",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -47,6 +48,7 @@
     "helper": "file:../helper",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",

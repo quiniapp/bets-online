@@ -257,6 +257,7 @@ export interface Game {
   providerGameId?: string | null;   // e.g. "vs25wolfgold"
   providerName?: string | null;     // e.g. "pragmatic"
   defaultLogo?: string | null;      // thumbnail URL from Provider
+  customLogo?: string | null;       // custom uploaded image, overrides defaultLogo in UI
   gameType?: string | null;         // e.g. "slot"
   sortOrder?: number | null;
   createdAt: Date;
@@ -400,6 +401,7 @@ export interface GameBanner {
   gameId: string;
   sortOrder: number;
   isActive: boolean;
+  imageUrl?: string | null;   // custom banner image (overrides game thumbnail in hero)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -425,6 +427,26 @@ export interface CreateGameBannerDto {
 export interface UpdateGameBannerDto {
   sortOrder?: number;
   isActive?: boolean;
+}
+
+/**
+ * Game Image Model (custom uploaded image for a game)
+ */
+export interface GameImage {
+  id: string;
+  gameId: string;
+  url: string;
+  label?: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Create Game Image DTO
+ */
+export interface CreateGameImageDto {
+  gameId: string;
+  url: string;
+  label?: string;
 }
 
 /**
