@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +21,7 @@ import { apiService } from "@/services/api.service"
 import type { Game } from "helper"
 import { cn, formatChips } from "@/lib/utils"
 
-export default function UserGames() {
+function UserGamesContent() {
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -374,5 +375,13 @@ export default function UserGames() {
         </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function UserGames() {
+  return (
+    <Suspense>
+      <UserGamesContent />
+    </Suspense>
   )
 }
