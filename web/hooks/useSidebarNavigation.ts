@@ -33,6 +33,7 @@ export const useSidebarNavigation = () => {
   const [usersOpen, setUsersOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
+  const [casinoOpen, setCasinoOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(pathname);
 
   // Actualizar el item activo cuando cambia la ruta
@@ -48,6 +49,9 @@ export const useSidebarNavigation = () => {
     }
     if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners')) {
       setGamesOpen(true);
+    }
+    if (pathname.startsWith('/user/games')) {
+      setCasinoOpen(true);
     }
   }, [pathname]);
 
@@ -198,9 +202,18 @@ export const useSidebarNavigation = () => {
       icon: BarChart3,
     },
     {
-      title: t("nav.games"),
-      href: "/user/games",
+      title: "Casino",
       icon: Gamepad2,
+      collapsible: true,
+      isOpen: casinoOpen,
+      setOpen: setCasinoOpen,
+      items: [
+        { title: "Todos los juegos", href: "/user/games" },
+        { title: "Slots", href: "/user/games?type=VideoSlot" },
+        { title: "Casino en Vivo", href: "/user/games?type=LiveGames" },
+        { title: "Ruletas", href: "/user/games?type=Roulette" },
+        { title: "Otros", href: "/user/games?type=__otros__" },
+      ],
     },
     {
       title: t("nav.profile"),

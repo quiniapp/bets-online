@@ -17,6 +17,7 @@ import GameTypeModel from './game-type.model';
 import UserFavoriteGameModel from './UserFavoriteGame.model';
 import FeaturedGameModel from './featured-game.model';
 import GameBannerModel from './game-banner.model';
+import GameImageModel from './game-image.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -243,6 +244,16 @@ GameBannerModel.belongsTo(GameModel, {
   as: 'game'
 });
 
+// GameModel -> GameImageModel (1:N)
+GameModel.hasMany(GameImageModel, {
+  foreignKey: 'gameId',
+  as: 'gameImages'
+});
+GameImageModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
 // ===================================
 // PROVIDER ASSOCIATIONS
 // ===================================
@@ -292,7 +303,8 @@ export {
   GameTypeModel,
   UserFavoriteGameModel,
   FeaturedGameModel,
-  GameBannerModel
+  GameBannerModel,
+  GameImageModel
 };
 
 export default {
@@ -314,5 +326,6 @@ export default {
   GameTypeModel,
   UserFavoriteGameModel,
   FeaturedGameModel,
-  GameBannerModel
+  GameBannerModel,
+  GameImageModel
 };

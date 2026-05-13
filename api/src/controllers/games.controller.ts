@@ -29,7 +29,9 @@ export class GamesController {
       const gameType = req.query.gameType as string | undefined;
       const rawStatus = req.query.status as string | undefined;
       const status = rawStatus === 'active' || rawStatus === 'inactive' || rawStatus === 'all' ? rawStatus : undefined;
-      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType, status);
+      const rawExclude = req.query.excludeGameTypes as string | undefined;
+      const excludeGameTypes = rawExclude ? rawExclude.split(',').map(t => t.trim()).filter(Boolean) : undefined;
+      const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType, status, excludeGameTypes);
 
       return res.json(ApiResponseBuilder.paginated(games, page, limit, total));
     } catch (error) {

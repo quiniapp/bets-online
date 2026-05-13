@@ -1,7 +1,8 @@
 "use client"
 
+import { Suspense } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Play, Loader2, Gamepad2, X, Heart, Search } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useGames } from "@/hooks/useGames"
 import { useBets } from "@/hooks/useBets"
 import { useChips } from "@/hooks/useChips"
@@ -20,18 +21,34 @@ import { apiService } from "@/services/api.service"
 import type { Game } from "helper"
 import { cn, formatChips } from "@/lib/utils"
 
-export default function UserGames() {
+function UserGamesContent() {
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { favoriteIds, toggleFavorite } = useFavorites()
 
-  // Filters state
+  // URL-driven filter state (reactive to URL changes)
+  const selectedProvider = searchParams.get('provider')
+  const selectedType = searchParams.get('type')
+
+  // Local-only state
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
-  const [selectedType, setSelectedType] = useState<string | null>(null)
   const [gameTypes, setGameTypes] = useState<string[]>([])
+
+  const updateUrl = useCallback((params: { provider?: string | null; type?: string | null }) => {
+    const qs = new URLSearchParams()
+    const p = params.provider !== undefined ? params.provider : selectedProvider
+    const t = params.type !== undefined ? params.type : selectedType
+    if (p) qs.set('provider', p)
+    if (t) qs.set('type', t)
+    router.replace(`${pathname}?${qs.toString()}`, { scroll: false })
+  }, [selectedProvider, selectedType, pathname, router])
+
+  const setSelectedProvider = useCallback((p: string | null) => updateUrl({ provider: p }), [updateUrl])
+  const setSelectedType = useCallback((t: string | null) => updateUrl({ type: t }), [updateUrl])
 
   // Bet state
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
@@ -39,11 +56,13 @@ export default function UserGames() {
   const [placing, setPlacing] = useState(false)
 
   const { providers } = useProviders()
+  const isOtros = selectedType === '__otros__'
   const { games, loading, loadingMore, hasMore, loadMore } = useGames({
     activeOnly: true,
     providerName: selectedProvider,
     search: debouncedSearch,
-    gameType: selectedType,
+    gameType: isOtros ? null : selectedType,
+    excludeGameTypes: isOtros ? 'videoSlots,LiveGames,Roulette' : null,
   })
   const { bets, placeBet, loadBets } = useBets()
   const { balance, loadBalance } = useChips()
@@ -356,5 +375,13 @@ export default function UserGames() {
         </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function UserGames() {
+  return (
+    <Suspense>
+      <UserGamesContent />
+    </Suspense>
   )
 }

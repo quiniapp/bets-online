@@ -17,9 +17,9 @@ const GameCard = ({ game, onClick }: GameCardProps) => {
       )}
     >
       <div className="relative aspect-[3/4] bg-black overflow-hidden">
-        {game.defaultLogo ? (
+        {(game.customLogo ?? game.defaultLogo) ? (
           <img
-            src={game.defaultLogo}
+            src={game.customLogo ?? game.defaultLogo!}
             alt={game.name}
             className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
           />

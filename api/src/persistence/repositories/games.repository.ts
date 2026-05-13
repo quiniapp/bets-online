@@ -77,7 +77,8 @@ export class GamesRepository {
     providerName?: string,
     search?: string,
     gameType?: string,
-    status?: 'active' | 'inactive' | 'all'
+    status?: 'active' | 'inactive' | 'all',
+    excludeGameTypes?: string[]
   ): Promise<{ games: Game[]; total: number }> {
     const offset = (page - 1) * limit;
     const where: Record<string, unknown> = {};
@@ -85,6 +86,7 @@ export class GamesRepository {
     else if (status === 'inactive') where['isActive'] = false;
     if (providerName) where['providerName'] = providerName;
     if (gameType) where['gameType'] = gameType;
+    else if (excludeGameTypes && excludeGameTypes.length > 0) where['gameType'] = { [Op.notIn]: excludeGameTypes };
     if (search) where['name'] = { [Op.iLike]: `%${search}%` };
     const { rows, count } = await GameModel.findAndCountAll({
       where,

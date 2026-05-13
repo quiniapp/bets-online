@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
-import { Users, Gamepad2, DollarSign, Loader2, TrendingUp } from "lucide-react"
+import { Users, Gamepad2, DollarSign, Loader2, TrendingUp, Wifi, UserPlus, Activity } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
 import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
@@ -18,6 +18,7 @@ import {
 import Link from "next/link"
 import ROUTER from "@/routes"
 import { useChips } from "@/hooks/useChips"
+import { useAdminStats } from "@/hooks/useAdminStats"
 import { formatChips } from "@/lib/utils"
 import { apiService } from "@/services/api.service"
 
@@ -54,6 +55,7 @@ export default function AdminDashboard() {
   const [gameStats, setGameStats] = useState<GameStats | null>(null)
   const [topGames, setTopGames] = useState<TopGame[]>([])
   const [loadingStats, setLoadingStats] = useState(true)
+  const { stats: adminStats, loading: loadingAdminStats } = useAdminStats()
 
   useEffect(() => {
     if (!isLoading) {
@@ -103,16 +105,22 @@ export default function AdminDashboard() {
     return null
   }
 
-  // Demo chart data
+  // Demo chart data (fallback while real data loads)
   const dailyRevenue = [
-    { day: "Lun", revenue: 2400, bets: 45 },
-    { day: "Mar", revenue: 1398, bets: 32 },
-    { day: "Mié", revenue: 9800, bets: 78 },
-    { day: "Jue", revenue: 3908, bets: 56 },
-    { day: "Vie", revenue: 4800, bets: 89 },
-    { day: "Sáb", revenue: 3800, bets: 67 },
-    { day: "Dom", revenue: 4300, bets: 72 },
+    { day: "Lun", loaded: 2400, withdrawn: 45 },
+    { day: "Mar", loaded: 1398, withdrawn: 32 },
+    { day: "Mié", loaded: 9800, withdrawn: 78 },
+    { day: "Jue", loaded: 3908, withdrawn: 56 },
+    { day: "Vie", loaded: 4800, withdrawn: 89 },
+    { day: "Sáb", loaded: 3800, withdrawn: 67 },
+    { day: "Dom", loaded: 4300, withdrawn: 72 },
   ]
+
+  const weeklyData = adminStats?.weeklyChipFlow?.map(d => ({
+    day: new Date(d.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }),
+    loaded: d.loaded,
+    withdrawn: d.withdrawn,
+  })) ?? dailyRevenue
 
   const userActivity = [
     { hour: "00", users: 12 },
@@ -256,25 +264,88 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* En línea ahora */}
+        <Card className="gap-2 py-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">En línea ahora</CardTitle>
+            <Wifi className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="px-5">
+            {loadingAdminStats ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ) : (
+              <>
+                <div className="text-4xl font-bold text-green-600">{adminStats?.onlineNow ?? 0}</div>
+                <Badge variant="outline" className="mt-2 text-green-600 border-green-300">En línea</Badge>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Nuevos hoy */}
+        <Card className="gap-2 py-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">Nuevos hoy</CardTitle>
+            <UserPlus className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="px-5">
+            {loadingAdminStats ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ) : (
+              <>
+                <div className="text-4xl font-bold text-blue-600">{adminStats?.newUsersToday ?? 0}</div>
+                <Badge variant="outline" className="mt-2 text-blue-600 border-blue-300">Registros hoy</Badge>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Activos hoy */}
+        <Card className="gap-2 py-4">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+            <CardTitle className="text-lg font-semibold">Activos hoy</CardTitle>
+            <Activity className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="px-5">
+            {loadingAdminStats ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-16" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ) : (
+              <>
+                <div className="text-4xl font-bold text-orange-600">{adminStats?.activeUsersToday ?? 0}</div>
+                <Badge variant="outline" className="mt-2 text-orange-600 border-orange-300">Activos hoy</Badge>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Ingresos Diarios</CardTitle>
-            <CardDescription>Ingresos y apuestas por día (Demo)</CardDescription>
+            <CardTitle className="text-base">Flujo de Fichas Semanal</CardTitle>
+            <CardDescription>Fichas cargadas y retiradas por día</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={dailyRevenue}>
+              <BarChart data={weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
                 <Tooltip />
-                <Bar yAxisId="left" dataKey="revenue" fill="#8884d8" name="Ingresos" />
-                <Bar yAxisId="right" dataKey="bets" fill="#82ca9d" name="Apuestas" />
+                <Bar yAxisId="left" dataKey="loaded" fill="#8884d8" name="Cargadas" />
+                <Bar yAxisId="right" dataKey="withdrawn" fill="#82ca9d" name="Retiradas" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -283,7 +354,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Actividad de Usuarios</CardTitle>
-            <CardDescription>Usuarios activos por hora (Demo)</CardDescription>
+            <CardDescription>Actividad por hora — próximamente</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>

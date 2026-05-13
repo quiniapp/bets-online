@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
   DndContext,
   DragEndEvent,
@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import {
-  GripVertical, Loader2, ImageIcon, X, Plus, Gamepad2, Search,
+  GripVertical, Loader2, ImageIcon, X, Plus, Gamepad2, Search, Upload,
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -40,14 +40,73 @@ import { useGameBanners } from "@/hooks/useGameBanners"
 import { useGames } from "@/hooks/useGames"
 import type { GameBannerWithGame, Game } from "helper"
 
+function BannerImageUpload({
+  bannerId,
+  onUploaded,
+}: {
+  bannerId: string
+  onUploaded: () => void
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+    setUploading(true)
+    try {
+      const res = await fetch(`/api/admin/banners/${bannerId}/image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const json = await res.json()
+      if (json.success) onUploaded()
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={uploading}
+        className="p-1.5 text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-50"
+        aria-label="Subir imagen del banner"
+        title="Subir imagen del banner"
+      >
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Upload className="h-4 w-4" />
+        )}
+      </button>
+    </>
+  )
+}
+
 function BannerRow({
   item,
   onToggleActive,
   onRemove,
+  onImageUploaded,
 }: {
   item: GameBannerWithGame
   onToggleActive: (id: string, isActive: boolean) => void
   onRemove: (id: string) => void
+  onImageUploaded: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -86,6 +145,7 @@ function BannerRow({
         onCheckedChange={checked => onToggleActive(item.id, checked)}
         className="shrink-0"
       />
+      <BannerImageUpload bannerId={item.id} onUploaded={onImageUploaded} />
       <button
         onClick={() => onRemove(item.id)}
         className="p-1.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
@@ -190,7 +250,7 @@ function AddGameDialog({
 }
 
 export default function AdminBanners() {
-  const { items, setItems, loading, saving, create, update, remove, saveOrder, maxSortOrder } = useGameBanners()
+  const { items, setItems, loading, saving, fetchAll, create, update, remove, saveOrder, maxSortOrder } = useGameBanners()
   const { toast } = useToast()
   const [activeItem, setActiveItem] = useState<GameBannerWithGame | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
@@ -296,6 +356,7 @@ export default function AdminBanners() {
                     item={item}
                     onToggleActive={handleToggleActive}
                     onRemove={handleRemove}
+                    onImageUploaded={fetchAll}
                   />
                 </div>
               ))}

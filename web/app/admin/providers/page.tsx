@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import {
   DndContext,
   DragEndEvent,
@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { GripVertical, Loader2, Building2 } from "lucide-react"
+import { GripVertical, Loader2, Building2, Upload } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +28,65 @@ import { useToast } from "@/hooks/use-toast"
 import { useProviders } from "@/hooks/useProviders"
 import type { Provider } from "helper"
 
-function ProviderRow({ provider }: { provider: Provider }) {
+function ProviderLogoUpload({
+  providerName,
+  onUploaded,
+}: {
+  providerName: string
+  onUploaded: () => void
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('image', file)
+    setUploading(true)
+    try {
+      const res = await fetch(`/api/admin/providers/${encodeURIComponent(providerName)}/logo`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      })
+      const json = await res.json()
+      if (json.success) onUploaded()
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+        disabled={uploading}
+        onClick={() => fileInputRef.current?.click()}
+        title="Subir logo"
+      >
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Upload className="h-4 w-4" />
+        )}
+      </Button>
+    </>
+  )
+}
+
+function ProviderRow({ provider, onLogoUploaded }: { provider: Provider; onLogoUploaded: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: provider.name,
   })
@@ -61,6 +119,7 @@ function ProviderRow({ provider }: { provider: Provider }) {
       <span className="flex-1 font-medium text-sm truncate">
         {provider.displayName ?? provider.name}
       </span>
+      <ProviderLogoUpload providerName={provider.name} onUploaded={onLogoUploaded} />
       <Badge variant={provider.isActive ? "default" : "secondary"} className="text-xs shrink-0">
         {provider.isActive ? "Activo" : "Inactivo"}
       </Badge>
@@ -92,7 +151,7 @@ function ProviderRowOverlay({ provider }: { provider: Provider }) {
 }
 
 export default function AdminProviders() {
-  const { providers, setProviders, loading, saving, saveOrder } = useProviders(true)
+  const { providers, setProviders, loading, saving, fetchProviders, saveOrder } = useProviders(true)
   const { toast } = useToast()
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
@@ -173,7 +232,7 @@ export default function AdminProviders() {
           <SortableContext items={providers.map(p => p.name)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {providers.map(provider => (
-                <ProviderRow key={provider.name} provider={provider} />
+                <ProviderRow key={provider.name} provider={provider} onLogoUploaded={fetchProviders} />
               ))}
             </div>
           </SortableContext>

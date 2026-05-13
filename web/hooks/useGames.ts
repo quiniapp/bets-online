@@ -7,6 +7,7 @@ interface UseGamesOptions {
   providerName?: string | null;
   search?: string;
   gameType?: string | null;
+  excludeGameTypes?: string | null;
   status?: 'all' | 'active' | 'inactive';
 }
 
@@ -19,6 +20,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
   const provider = options.providerName ?? null;
   const search = options.search ?? '';
   const gameType = options.gameType ?? null;
+  const excludeGameTypes = options.excludeGameTypes ?? null;
   const status = options.status ?? null;
 
   const [games, setGames] = useState<Game[]>([]);
@@ -44,6 +46,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
         if (provider) qs.set('providerName', provider);
         if (search) qs.set('search', search);
         if (gameType) qs.set('gameType', gameType);
+        if (excludeGameTypes) qs.set('excludeGameTypes', excludeGameTypes);
 
         const response = await apiService.get<Game[]>(`/games?${qs.toString()}`);
 
@@ -62,7 +65,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
         else setLoadingMore(false);
       }
     },
-    [activeOnly, provider, search, gameType, status]
+    [activeOnly, provider, search, gameType, excludeGameTypes, status]
   );
 
   useEffect(() => {
@@ -70,7 +73,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
     setPage(1);
     setTotalPages(1);
     fetchPage(1, true);
-  }, [activeOnly, provider, search, gameType, status, fetchPage]);
+  }, [activeOnly, provider, search, gameType, excludeGameTypes, status, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {

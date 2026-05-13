@@ -13,6 +13,7 @@ export class GameModel extends Model {
   declare providerGameId: string | null;
   declare providerName: string | null;
   declare defaultLogo: string | null;
+  declare customLogo: string | null;
   declare gameType: string | null;
   declare sortOrder: number | null;
   declare createdAt: Date;
@@ -89,6 +90,11 @@ GameModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'default_logo'
+    },
+    customLogo: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'custom_logo'
     },
     gameType: {
       type: DataTypes.STRING(50),

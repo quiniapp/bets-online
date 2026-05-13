@@ -45,7 +45,15 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
           onClick={() => onSelect(selected === provider.name ? null : provider.name)}
           className={pillClass(selected === provider.name)}
         >
-          {provider.displayName ?? provider.name}
+          {provider.logoUrl ? (
+            <img
+              src={provider.logoUrl}
+              alt={provider.displayName ?? provider.name}
+              className="h-5 object-contain max-w-[80px]"
+            />
+          ) : (
+            provider.displayName ?? provider.name
+          )}
         </button>
       ))}
     </>

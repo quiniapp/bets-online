@@ -10,12 +10,15 @@ import { Loader2, Gamepad2 } from "lucide-react"
 
 interface GamesListProps {
     providerName?: string | null;
+    gameType?: string | null;
+    search?: string;
+    excludeGameTypes?: string | null;
 }
 
 const GRID = "grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-1.5 sm:gap-2"
 
-const GamesList = ({ providerName = null }: GamesListProps) => {
-    const { games, loading, loadingMore, loadMore } = useGames(true, providerName)
+const GamesList = ({ providerName = null, gameType = null, search = '', excludeGameTypes = null }: GamesListProps) => {
+    const { games, loading, loadingMore, loadMore } = useGames({ activeOnly: true, providerName, gameType, search, excludeGameTypes })
     const { user } = useAuth()
     const router = useRouter()
     const sentinelRef = useRef<HTMLDivElement>(null)
