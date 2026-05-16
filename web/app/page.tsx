@@ -13,6 +13,7 @@ import ProvidersBar from "@/components/providers-bar";
 import CategoriesBar from "@/components/categories-bar";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
+import { HomeBottomNav } from "@/components/home-bottom-nav";
 
 const CATEGORY_SECTIONS = [
   { gameType: "videoSlots",   title: "Slots",            emoji: "🎰" },
@@ -38,7 +39,7 @@ export default function LandingPage() {
   };
 
   return (
-    <Box className="flex flex-col min-h-full overflow-x-hidden">
+    <Box className="flex flex-col min-h-full overflow-x-hidden pb-16 md:pb-0">
       <HeaderIndex />
       <FlexCol className="items-center w-full flex-1">
         <HeroBannerIndex />
@@ -80,6 +81,7 @@ export default function LandingPage() {
         )}
       </FlexCol>
       <Footer />
+      <HomeBottomNav selected={selectedCategory} onSelect={setSelectedCategory} />
     </Box>
   );
 }
