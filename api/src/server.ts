@@ -14,6 +14,7 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { globalLimiter } from './middleware/rateLimiter.middleware';
 import { startGameSyncJob } from './cron/gameSyncJob';
 import { startCacheSyncJob } from './cron/cacheSyncJob';
+import { warmupCache } from './utils/cache-warmup';
 
 const app = express();
 
@@ -124,6 +125,9 @@ const startServer = async () => {
     // Start scheduled jobs
     startGameSyncJob();
     startCacheSyncJob();
+
+    // Pre-warm cache so first users after deploy hit memory, not DB
+    warmupCache().catch(e => console.error('[CacheWarmup] failed:', e));
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
