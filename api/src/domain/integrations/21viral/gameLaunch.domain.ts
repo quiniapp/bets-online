@@ -10,7 +10,7 @@ import { usersRepository } from '../../../persistence/repositories/users.reposit
 import { sequelize } from '../../../config/sequelize';
 import { AppError } from '../../../middleware/error.middleware';
 import { ErrorCode } from 'helper';
-import { gamesCache, CACHE_PAGE, CACHE_LIMIT } from '../../../utils/games-cache';
+import { gamesCache, CACHE_PAGE } from '../../../utils/games-cache';
 
 export interface LaunchGameParams {
   userId: string;
@@ -41,7 +41,8 @@ class GameLaunchDomain {
         defaultLogo: g.defaultLogo
       });
     }
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
     return { synced: games.length };
   }
 

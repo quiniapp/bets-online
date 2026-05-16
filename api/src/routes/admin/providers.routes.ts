@@ -5,6 +5,7 @@ import { upload } from '../../middleware/upload.middleware';
 import { providersController } from '../../controllers/providers.controller';
 import { supabaseStorage } from '../../services/supabase-storage.service';
 import { ProviderModel } from '../../persistence/models/provider.model';
+import { providersMemCache } from '../../utils/games-cache';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.post(
         req.file.mimetype
       );
       await provider.update({ logoUrl });
+      providersMemCache.invalidate();
       return res.json(ApiResponseBuilder.success({ logoUrl }));
     } catch (error) {
       return next(error);
