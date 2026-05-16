@@ -3,7 +3,6 @@
 import {useRouter} from "next/navigation";
 import {Button} from "@/components/ui/button";
 import {UserIcon, LogOutIcon, LayoutDashboardIcon} from "lucide-react";
-import { ThemeToggle } from "../theme-toggle";
 import { useAuth } from "@/contexts/auth-context";
 import ROUTER from "@/routes";
 import { Flex } from "../flex";
@@ -19,8 +18,11 @@ const HeaderIndex = () => {
     }
 
     return (
-        <header className="flex justify-between p-4 border-b-1">
-            <Flex className="items-center justify-center"> logo </Flex>
+        <header className="flex justify-between px-4 py-3 border-b border-primary/20 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
+            <Flex className="items-center justify-center">
+                <img src="/logo-small.png" alt="Logo" className="h-8 w-auto" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <span className="font-black text-xl tracking-tight text-primary select-none hidden" id="logo-fallback">CASINO</span>
+            </Flex>
             <nav className="flex items-center gap-2">
                 {user ? (
                     <>
@@ -39,7 +41,6 @@ const HeaderIndex = () => {
                         <span className="hidden sm:inline">Ingresar</span>
                     </Button>
                 )}
-                <ThemeToggle />
             </nav>
         </header>
     )

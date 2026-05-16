@@ -18,7 +18,13 @@ const LoaderPage = ({size = 'md'}: LoaderPageProps) => {
     }, [showLoader])
     
     return (
-        <FlexCol className="h-screen items-center justify-center">
+        <FlexCol className="h-screen items-center justify-center gap-4">
+            <img
+                src="/logo.png"
+                alt="Logo"
+                className="h-16 w-auto opacity-90"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
             <Loader />
         </FlexCol>
     )

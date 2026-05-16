@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder } from 'helper';
 import { gameLaunchDomain } from '../../../domain/integrations/21viral/gameLaunch.domain';
+import { gameLaunchesRepository } from '../../../persistence/repositories/game-launches.repository';
 
 export class GameLaunchController {
   /**
@@ -102,6 +103,9 @@ export class GameLaunchController {
       });
 
       console.log('[21Viral][launchGame] RESPONSE 200', JSON.stringify({ gameStartUrl }));
+      gameLaunchesRepository.logLaunch(gameId, req.user.userId).catch(err => {
+        console.error('[GameLaunch] Failed to log launch:', err instanceof Error ? err.message : String(err));
+      });
       return res.json(ApiResponseBuilder.success({ gameStartUrl }));
     } catch (error) {
       console.log('[21Viral][launchGame] ERROR', error instanceof Error ? error.message : String(error));

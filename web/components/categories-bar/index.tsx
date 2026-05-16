@@ -59,7 +59,7 @@ const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
     const pillClass = (active: boolean) =>
         `shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
             active
-                ? 'bg-primary text-primary-foreground scale-105'
+                ? 'bg-primary text-primary-foreground scale-105 shadow-sm shadow-primary/40'
                 : 'bg-accent text-accent-foreground hover:bg-primary/80 hover:text-primary-foreground hover:scale-105'
         }`;
 

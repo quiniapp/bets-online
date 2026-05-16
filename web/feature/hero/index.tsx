@@ -1,18 +1,9 @@
 "use client"
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import Autoplay from "embla-carousel-autoplay"
 import { useState, useEffect, useCallback } from "react"
 import { apiService } from "@/services/api.service"
 import type { GameBannerWithGame } from "helper"
-
-import {
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    CarouselNext,
-    CarouselPrevious,
-} from "@/components/ui/carousel"
 import ROUTER from "@/routes"
 
 function usePublicBanners() {
@@ -34,9 +25,6 @@ function usePublicBanners() {
 }
 
 const HeroBannerIndex = () => {
-    const plugin = React.useRef(
-        Autoplay({ delay: 3000, stopOnInteraction: true })
-    )
     const router = useRouter();
     const { banners, loading } = usePublicBanners();
 
@@ -50,60 +38,50 @@ const HeroBannerIndex = () => {
 
     if (loading) {
         return (
-            <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
-                <div className="h-[120px] xs:h-[160px] sm:h-[280px] md:h-[400px] lg:h-[520px] w-full rounded-xl bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
-            </div>
-        );
-    }
-
-    if (banners.length === 0) {
-        return (
-            <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
-                <div className="h-[120px] xs:h-[160px] sm:h-[280px] md:h-[400px] lg:h-[520px] w-full rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center border border-border">
-                    <div className="text-center px-4">
-                        <p className="text-2xl font-bold text-foreground">Bienvenido</p>
-                        <p className="text-muted-foreground mt-1">Los mejores juegos de casino</p>
-                    </div>
+            <div className="w-full px-4 py-2">
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="h-32 xs:h-40 sm:h-52 md:h-64 w-full rounded-xl bg-accent animate-pulse" />
+                    <div className="h-32 xs:h-40 sm:h-52 md:h-64 w-full rounded-xl bg-accent animate-pulse" />
                 </div>
             </div>
         );
     }
 
+    if (banners.length === 0) return null;
+
+    const visible = banners.slice(0, 2);
+
     return (
-        <div className="w-full px-2 sm:px-4 py-2 sm:py-4">
-            <Carousel plugins={[plugin.current]} className="w-full">
-                <CarouselContent className="-ml-1">
-                    {banners.map((banner) => {
-                        const imgSrc = getBannerImage(banner);
-                        return (
-                            <CarouselItem key={banner.id} className="pl-1">
-                                <div
-                                    onClick={() => handleBannerClick(banner)}
-                                    className="relative h-[120px] xs:h-[160px] sm:h-[280px] md:h-[400px] lg:h-[520px] w-full rounded-xl overflow-hidden cursor-pointer bg-zinc-900"
-                                >
-                                    {imgSrc ? (
-                                        <img
-                                            src={imgSrc}
-                                            alt={banner.game?.name ?? 'Banner'}
-                                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-primary/30 via-primary/10 to-transparent flex items-center justify-center">
-                                            <span className="text-foreground font-semibold text-lg">
-                                                {banner.game?.name ?? 'Casino'}
-                                            </span>
-                                        </div>
-                                    )}
+        <div className="w-full px-4 py-2">
+            <div className={visible.length === 1 ? "flex justify-center" : "grid grid-cols-2 gap-3"}>
+                {visible.map((banner) => {
+                    const imgSrc = getBannerImage(banner);
+                    return (
+                        <div
+                            key={banner.id}
+                            onClick={() => handleBannerClick(banner)}
+                            className="relative h-32 xs:h-40 sm:h-52 md:h-64 w-full rounded-xl overflow-hidden cursor-pointer bg-zinc-900 ring-1 ring-primary/20 hover:ring-primary/50 transition-all duration-300"
+                        >
+                            {imgSrc ? (
+                                <img
+                                    src={imgSrc}
+                                    alt={banner.game?.name ?? 'Banner'}
+                                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-primary/30 via-primary/10 to-transparent flex items-center justify-center">
+                                    <span className="text-foreground font-semibold text-lg">
+                                        {banner.game?.name ?? 'Casino'}
+                                    </span>
                                 </div>
-                            </CarouselItem>
-                        );
-                    })}
-                </CarouselContent>
-                <CarouselPrevious className="hidden sm:flex" />
-                <CarouselNext className="hidden sm:flex" />
-            </Carousel>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+                        </div>
+                    );
+                })}
+            </div>
         </div>
-    )
+    );
 }
 
 export default HeroBannerIndex
