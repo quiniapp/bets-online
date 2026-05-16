@@ -54,7 +54,7 @@ const useLogin = () => {
               router.push("/cashier/dashboard");
               break;
             case UserRole.PLAYER:
-              router.push("/user/dashboard");
+              router.push("/");
               break;
             default:
               router.push("/");
