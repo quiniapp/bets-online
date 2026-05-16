@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { Sidebar } from "@/components/sidebar"
 import { MobileSidebar } from "@/components/mobile-sidebar"
 import { MobileBottomNav } from "@/components/mobile-bottom-nav"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
 import { UserRole } from "helper"
@@ -51,7 +50,6 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             )}
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <ThemeToggle />
             <div className="hidden sm:block text-sm text-muted-foreground">
               {getRoleDisplay()}: {user?.username}
             </div>

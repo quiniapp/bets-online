@@ -3,7 +3,7 @@ import { useState } from "react";
 import Box from "@/components/box";
 import { Flex, FlexCol } from "@/components/flex";
 import { Input } from "@/components/ui/input";
-import { EyeClosed, Eye, ArrowRight, MailIcon, UsersIcon } from "lucide-react";
+import { EyeClosed, Eye, ArrowRight, MailIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
@@ -35,9 +35,12 @@ const LoginForm = () => {
       >
         <FlexCol className="w-full gap-4 sm:gap-6">
           <FlexCol className="gap-1 w-full justify-center items-center text-center">
-            <Flex className="text-blue-600 bg-blue-100 p-2 sm:p-3 rounded-full">
-              <UsersIcon color="currentColor" size={24} />
-            </Flex>
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="h-14 w-auto mx-auto mb-1"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
             <CardTitle>
               <h1 className="text-xl sm:text-2xl font-medium">Ingresar</h1>
             </CardTitle>

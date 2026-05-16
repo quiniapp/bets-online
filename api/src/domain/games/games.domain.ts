@@ -8,7 +8,7 @@ import {
 import { gamesRepository } from '../../persistence/repositories/games.repository';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { AppError } from '../../middleware/error.middleware';
-import { gamesCache, CACHE_PAGE, CACHE_LIMIT } from '../../utils/games-cache';
+import { gamesCache, gameTypesMemCache, CACHE_PAGE } from '../../utils/games-cache';
 
 export class GamesDomain {
   /**
@@ -72,12 +72,14 @@ export class GamesDomain {
 
     // Create game
     const game = await gamesRepository.create(gameData);
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
     return game;
   }
 
   /**
-   * Get paginated games. Page 1 / default limit is served from cache for both activeOnly variants.
+   * Get paginated games. Page 1 with no providerName/search/excludeGameTypes/inactive-status
+   * is served from cache regardless of gameType or limit.
    */
   async getPaginatedGames(
     page: number,
@@ -90,14 +92,23 @@ export class GamesDomain {
     excludeGameTypes?: string[]
   ): Promise<{ games: Game[]; total: number }> {
     const resolvedActiveOnly = status === 'active' ? true : activeOnly;
-    if (!providerName && !search && !gameType && !status && !excludeGameTypes?.length && page === CACHE_PAGE && limit === CACHE_LIMIT) {
-      const cached = gamesCache.get(resolvedActiveOnly);
-      if (cached) return cached;
+    const isCacheable =
+      page === CACHE_PAGE &&
+      !providerName &&
+      !search &&
+      !excludeGameTypes?.length &&
+      status !== 'inactive' &&
+      status !== 'all';
 
-      const result = await gamesRepository.findPaginated(page, limit, resolvedActiveOnly);
-      gamesCache.set(result, resolvedActiveOnly);
-      return result;
+    if (isCacheable) {
+      return gamesCache.getOrFetch(
+        resolvedActiveOnly,
+        gameType ?? undefined,
+        limit,
+        () => gamesRepository.findPaginated(page, limit, resolvedActiveOnly, undefined, undefined, gameType)
+      );
     }
+
     return gamesRepository.findPaginated(page, limit, resolvedActiveOnly, providerName, search, gameType, status, excludeGameTypes);
   }
 
@@ -114,7 +125,7 @@ export class GamesDomain {
   }
 
   async getDistinctGameTypes(): Promise<string[]> {
-    return gamesRepository.findDistinctGameTypes();
+    return gameTypesMemCache.getOrFetch(() => gamesRepository.findDistinctGameTypes());
   }
 
   /**
@@ -204,7 +215,8 @@ export class GamesDomain {
 
     // Update game
     const updated = await gamesRepository.update(gameId, updateData);
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
     return updated;
   }
 
@@ -223,7 +235,8 @@ export class GamesDomain {
     await this.requireAdminOrOwner(requesterId);
     if (!ids.length) return 0;
     const affected = await gamesRepository.bulkSetStatus(ids, isActive);
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
     return affected;
   }
 
@@ -239,7 +252,8 @@ export class GamesDomain {
   ): Promise<number> {
     await this.requireAdminOrOwner(requesterId);
     const affected = await gamesRepository.bulkSetStatusByFilter(isActive, providerName, gameType, currentStatus);
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
     return affected;
   }
 
@@ -269,7 +283,8 @@ export class GamesDomain {
 
     // Toggle status
     const toggled = await gamesRepository.update(gameId, { isActive: !game.isActive });
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
     return toggled;
   }
 
@@ -299,7 +314,8 @@ export class GamesDomain {
 
     // Delete game
     await gamesRepository.delete(gameId);
-    gamesCache.invalidateAndRefresh((activeOnly) => gamesRepository.findPaginated(CACHE_PAGE, CACHE_LIMIT, activeOnly));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
   }
 }
 
