@@ -9,9 +9,9 @@ export const CACHE_PAGE = 1;
 export const CACHE_LIMIT = 50;
 
 // Key: `${activeOnly ? '1' : '0'}:${gameType ?? ''}:${limit}`
-const store = new Map<string, CachedPage>();
-let _providers: Provider[] | null = null;
-let _gameTypes: string[] | null = null;
+const store = new Map<string, CachedPage | Promise<CachedPage>>();
+let _providers: Provider[] | Promise<Provider[]> | null = null;
+let _gameTypes: string[] | Promise<string[]> | null = null;
 
 function pageKey(activeOnly: boolean, gameType: string | undefined, limit: number): string {
   return `${activeOnly ? '1' : '0'}:${gameType ?? ''}:${limit}`;
@@ -20,12 +20,26 @@ function pageKey(activeOnly: boolean, gameType: string | undefined, limit: numbe
 type PageRefreshFn = (activeOnly: boolean, gameType: string | undefined, limit: number) => Promise<CachedPage>;
 
 export const gamesCache = {
-  getPage(activeOnly: boolean, gameType: string | undefined, limit: number): CachedPage | null {
-    return store.get(pageKey(activeOnly, gameType, limit)) ?? null;
-  },
-
-  setPage(data: CachedPage, activeOnly: boolean, gameType: string | undefined, limit: number): void {
-    store.set(pageKey(activeOnly, gameType, limit), data);
+  /**
+   * Returns cached result or coalesces concurrent fetches into one DB query.
+   * Concurrent requests for the same key share the in-flight Promise.
+   */
+  getOrFetch(
+    activeOnly: boolean,
+    gameType: string | undefined,
+    limit: number,
+    fetch: () => Promise<CachedPage>
+  ): Promise<CachedPage> {
+    const key = pageKey(activeOnly, gameType, limit);
+    const existing = store.get(key);
+    if (existing !== undefined) {
+      return existing instanceof Promise ? existing : Promise.resolve(existing);
+    }
+    const promise = fetch()
+      .then(data => { store.set(key, data); return data; })
+      .catch(e => { store.delete(key); throw e; });
+    store.set(key, promise);
+    return promise;
   },
 
   invalidateAndRefresh(refresh: PageRefreshFn): void {
@@ -33,26 +47,44 @@ export const gamesCache = {
     store.clear();
     _providers = null;
     _gameTypes = null;
+    // Set in-flight promises immediately so requests arriving during re-warm coalesce
     for (const key of prevKeys) {
       const parts = key.split(':');
       const activeOnly = parts[0] === '1';
       const gameType = parts[1] || undefined;
       const limit = parseInt(parts[2], 10);
-      refresh(activeOnly, gameType, limit)
-        .then(d => store.set(key, d))
-        .catch(e => console.error(`[GamesCache] refresh ${key} failed:`, e));
+      const promise = refresh(activeOnly, gameType, limit)
+        .then(d => { store.set(key, d); return d; })
+        .catch(e => { store.delete(key); console.error(`[GamesCache] refresh ${key} failed:`, e); throw e; });
+      store.set(key, promise);
     }
   },
 };
 
 export const providersMemCache = {
-  get(): Provider[] | null { return _providers; },
-  set(data: Provider[]): void { _providers = data; },
+  getOrFetch(fetch: () => Promise<Provider[]>): Promise<Provider[]> {
+    if (_providers !== null) {
+      return _providers instanceof Promise ? _providers : Promise.resolve(_providers);
+    }
+    const promise = fetch()
+      .then(data => { _providers = data; return data; })
+      .catch(e => { _providers = null; throw e; });
+    _providers = promise;
+    return promise;
+  },
   invalidate(): void { _providers = null; },
 };
 
 export const gameTypesMemCache = {
-  get(): string[] | null { return _gameTypes; },
-  set(data: string[]): void { _gameTypes = data; },
+  getOrFetch(fetch: () => Promise<string[]>): Promise<string[]> {
+    if (_gameTypes !== null) {
+      return _gameTypes instanceof Promise ? _gameTypes : Promise.resolve(_gameTypes);
+    }
+    const promise = fetch()
+      .then(data => { _gameTypes = data; return data; })
+      .catch(e => { _gameTypes = null; throw e; });
+    _gameTypes = promise;
+    return promise;
+  },
   invalidate(): void { _gameTypes = null; },
 };

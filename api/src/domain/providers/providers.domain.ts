@@ -4,11 +4,7 @@ import { providersMemCache } from '../../utils/games-cache';
 
 export class ProvidersDomain {
   async getAll(): Promise<Provider[]> {
-    const cached = providersMemCache.get();
-    if (cached) return cached;
-    const data = await providersRepository.findAll();
-    providersMemCache.set(data);
-    return data;
+    return providersMemCache.getOrFetch(() => providersRepository.findAll());
   }
 
   async getAllForAdmin(): Promise<Provider[]> {

@@ -101,12 +101,12 @@ export class GamesDomain {
       status !== 'all';
 
     if (isCacheable) {
-      const gt = gameType ?? undefined;
-      const cached = gamesCache.getPage(resolvedActiveOnly, gt, limit);
-      if (cached) return cached;
-      const result = await gamesRepository.findPaginated(page, limit, resolvedActiveOnly, undefined, undefined, gameType);
-      gamesCache.setPage(result, resolvedActiveOnly, gt, limit);
-      return result;
+      return gamesCache.getOrFetch(
+        resolvedActiveOnly,
+        gameType ?? undefined,
+        limit,
+        () => gamesRepository.findPaginated(page, limit, resolvedActiveOnly, undefined, undefined, gameType)
+      );
     }
 
     return gamesRepository.findPaginated(page, limit, resolvedActiveOnly, providerName, search, gameType, status, excludeGameTypes);
@@ -125,11 +125,7 @@ export class GamesDomain {
   }
 
   async getDistinctGameTypes(): Promise<string[]> {
-    const cached = gameTypesMemCache.get();
-    if (cached) return cached;
-    const data = await gamesRepository.findDistinctGameTypes();
-    gameTypesMemCache.set(data);
-    return data;
+    return gameTypesMemCache.getOrFetch(() => gamesRepository.findDistinctGameTypes());
   }
 
   /**
