@@ -20,7 +20,7 @@ const HeaderIndex = () => {
     return (
         <header className="flex justify-between px-4 py-3 border-b border-primary/20 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
             <Flex className="items-center justify-center">
-                <img src="/logo-small.png" alt="Logo" className="h-8 w-auto" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[160px]" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 <span className="font-black text-xl tracking-tight text-primary select-none hidden" id="logo-fallback">CASINO</span>
             </Flex>
             <nav className="flex items-center gap-2">
