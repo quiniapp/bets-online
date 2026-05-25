@@ -103,7 +103,6 @@ const envSchema = z.object({
 
   // Supabase (opcional si usas Supabase directamente)
   SUPABASE_URL: z.string().url().optional(),
-  SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_KEY: z.string().optional(),
 
   // 21Viral provider integration
@@ -209,7 +208,6 @@ export const envs = {
   // Supabase
   supabase: {
     url: envVars.SUPABASE_URL,
-    anonKey: envVars.SUPABASE_ANON_KEY,
     serviceKey: envVars.SUPABASE_SERVICE_KEY
   },
 
