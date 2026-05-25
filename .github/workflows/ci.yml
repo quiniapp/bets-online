@@ -85,6 +85,8 @@ jobs:
           SESSION_SECRET: test-session-secret-min-32-chars-for-build
           ALLOWED_ORIGINS: http://localhost:3000
           API_URL: http://localhost:3001
+          VIRAL_USERNAME: test-integrator
+          VIRAL_SECRET_KEY: test-viral-secret-key-min-32-chars-for-build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -137,16 +139,26 @@ jobs:
       - name: Build helper package
         run: pnpm --filter helper build
 
+      - name: Run database migrations
+        run: pnpm --filter api db:migrate
+        env:
+          NODE_ENV: local
+          APP_ENV: local
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+
       - name: Run API tests
         run: pnpm --filter api test
         env:
           NODE_ENV: test
+          APP_ENV: local
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           JWT_SECRET: test-secret-min-32-characters-long-for-tests
           JWT_REFRESH_SECRET: test-refresh-secret-min-32-chars-for-tests
           SESSION_SECRET: test-session-secret-min-32-chars-for-tests
           ALLOWED_ORIGINS: http://localhost:3000
           API_URL: http://localhost:3001
+          VIRAL_USERNAME: test-integrator
+          VIRAL_SECRET_KEY: test-viral-secret-key-min-32-chars-for-tests
 
   # Job 4: Tests (Web)
   test-web:

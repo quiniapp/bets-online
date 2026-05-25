@@ -10,8 +10,10 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { useUsers } from "@/hooks/useUsers"
 import { useDebounce } from "@/hooks/useDebounce"
 import { apiService } from "@/services/api.service"
-import { Plus, Minus, Search, DollarSign, ChevronLeft, ChevronRight } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Plus, Minus, Search, DollarSign, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { UserStatus, type User, type Balance } from "helper"
+import { formatChips } from "@/lib/utils"
 
 const ITEMS_PER_PAGE = 10
 
@@ -23,7 +25,7 @@ export default function AdminBalances() {
   // Only search when 3+ characters or empty
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
 
-  const { users, loading: usersLoading, pagination, reload } = useUsers({
+  const { users, loading: usersLoading, pagination } = useUsers({
     page: currentPage,
     limit: ITEMS_PER_PAGE,
     search: searchQuery
@@ -34,6 +36,8 @@ export default function AdminBalances() {
   const [adjustmentReason, setAdjustmentReason] = useState("")
   const [userBalances, setUserBalances] = useState<Record<string, number>>({})
   const [loadingBalances, setLoadingBalances] = useState(false)
+  const { toast } = useToast()
+  const [adjusting, setAdjusting] = useState(false)
 
   // Reset page when search changes
   useEffect(() => {
@@ -70,31 +74,50 @@ export default function AdminBalances() {
   // Users are now filtered by the API based on searchQuery
 
   const handleBalanceAdjustment = async (type: "add" | "subtract") => {
-    if (!selectedUser || !adjustmentAmount || !adjustmentReason) return
+    if (!selectedUser || !adjustmentAmount || !adjustmentReason || adjusting) return
 
-    const amount = Number.parseFloat(adjustmentAmount)
+    const amount = parseFloat(adjustmentAmount)
     if (isNaN(amount) || amount <= 0) return
 
+    setAdjusting(true)
     try {
-      // Note: You'll need to implement an adjustment endpoint in the API
-      // For now, this is a placeholder
-      console.log('Balance adjustment:', { type, amount, reason: adjustmentReason })
+      const endpoint = type === "add" ? "/chips/sell" : "/chips/withdraw"
+      const response = await apiService.post(endpoint, {
+        playerId: selectedUser.id,
+        amount,
+        description: adjustmentReason
+      })
 
-      // Reset form
-      setAdjustmentAmount("")
-      setAdjustmentReason("")
-      setSelectedUser(null)
+      if (response.success) {
+        toast({ title: "Balance actualizado correctamente" })
 
-      // Reload balance for the selected user
-      const response = await apiService.get<Balance>(`/chips/balance/${selectedUser.id}`)
-      if (response.success && response.data) {
-        setUserBalances(prev => ({
-          ...prev,
-          [selectedUser.id]: response.data!.chipBalance
-        }))
+        const balanceResponse = await apiService.get<Balance>(`/chips/balance/${selectedUser.id}`)
+        if (balanceResponse.success && balanceResponse.data) {
+          setUserBalances(prev => ({
+            ...prev,
+            [selectedUser.id]: (balanceResponse.data as Balance).chipBalance
+          }))
+        }
+
+        setAdjustmentAmount("")
+        setAdjustmentReason("")
+        setSelectedUser(null)
+      } else {
+        toast({
+          title: "Error al ajustar balance",
+          description: response.error?.message ?? "Error desconocido",
+          variant: "destructive"
+        })
       }
-    } catch (error) {
-      console.error('Failed to adjust balance:', error)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error de conexión"
+      toast({
+        title: "Error al ajustar balance",
+        description: message,
+        variant: "destructive"
+      })
+    } finally {
+      setAdjusting(false)
     }
   }
 
@@ -117,7 +140,7 @@ export default function AdminBalances() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalSystemBalance.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${formatChips(totalSystemBalance)}</div>
             <p className="text-xs text-muted-foreground">en {users.length} cuentas</p>
           </CardContent>
         </Card>
@@ -152,7 +175,7 @@ export default function AdminBalances() {
                       </div>
                       <p className="text-gray-600 mb-2">{user.email || '-'}</p>
                       <p className="text-2xl font-bold text-green-600 mb-3">
-                        ${(userBalances[user.id] || 0).toFixed(2)}
+                        ${formatChips(userBalances[user.id] || 0)}
                       </p>
                     </div>
                     <Button
@@ -213,7 +236,7 @@ export default function AdminBalances() {
                     <Label className="text-sm font-medium">Usuario seleccionado:</Label>
                     <p className="text-lg font-semibold">{selectedUser.username}</p>
                     <p className="text-sm text-gray-600">
-                      Balance actual: ${(userBalances[selectedUser.id] || 0).toFixed(2)}
+                      Balance actual: ${formatChips(userBalances[selectedUser.id] || 0)}
                     </p>
                   </div>
 
@@ -242,19 +265,19 @@ export default function AdminBalances() {
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleBalanceAdjustment("add")}
-                      disabled={!adjustmentAmount || !adjustmentReason}
+                      disabled={!adjustmentAmount || !adjustmentReason || adjusting}
                       className="flex-1"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
+                      {adjusting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                       Agregar
                     </Button>
                     <Button
                       onClick={() => handleBalanceAdjustment("subtract")}
-                      disabled={!adjustmentAmount || !adjustmentReason}
+                      disabled={!adjustmentAmount || !adjustmentReason || adjusting}
                       variant="destructive"
                       className="flex-1"
                     >
-                      <Minus className="h-4 w-4 mr-2" />
+                      {adjusting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Minus className="h-4 w-4 mr-2" />}
                       Restar
                     </Button>
                   </div>

@@ -50,6 +50,30 @@ export class SessionsRepository {
     return sessions.map(this.mapToSession);
   }
 
+  // Rota tokens en una sola query UPDATE (valida expiresAt y actualiza en el mismo op).
+  // Reemplaza DELETE + INSERT del ciclo de refresh → 1 DB op en vez de 2.
+  // Retorna null si la sesión no existe o ya expiró.
+  async rotateTokens(
+    oldRefreshToken: string,
+    newToken: string,
+    newRefreshToken: string,
+    expiresAt: Date
+  ): Promise<Session | null> {
+    const [count, rows] = await SessionModel.update(
+      { token: newToken, refreshToken: newRefreshToken, expiresAt },
+      {
+        where: {
+          refreshToken: oldRefreshToken,
+          expiresAt: { [Op.gt]: new Date() }
+        },
+        returning: true
+      }
+    );
+
+    if (count === 0 || !rows[0]) return null;
+    return this.mapToSession(rows[0]);
+  }
+
   async deleteByToken(token: string): Promise<void> {
     await SessionModel.destroy({
       where: { token }

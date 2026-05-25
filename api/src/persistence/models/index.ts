@@ -10,6 +10,14 @@ import UserGameProviderBlocklistModel from './user-game-provider-blocklist.model
 import AuditLogModel from './audit-log.model';
 import GameModel from './game.model';
 import BetModel from './bet.model';
+import UserProviderProfileModel from './UserProviderProfile.model';
+import ProviderTransactionModel from './ProviderTransaction.model';
+import ProviderModel from './provider.model';
+import GameTypeModel from './game-type.model';
+import UserFavoriteGameModel from './UserFavoriteGame.model';
+import FeaturedGameModel from './featured-game.model';
+import GameBannerModel from './game-banner.model';
+import GameImageModel from './game-image.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -167,6 +175,30 @@ ChipMovementModel.hasMany(RecoveryModel, {
 });
 
 // ===================================
+// FAVORITE GAMES ASSOCIATIONS
+// ===================================
+
+UserModel.hasMany(UserFavoriteGameModel, {
+  foreignKey: 'userId',
+  as: 'favoriteGames'
+});
+
+UserFavoriteGameModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+GameModel.hasMany(UserFavoriteGameModel, {
+  foreignKey: 'gameId',
+  as: 'favoritedBy'
+});
+
+UserFavoriteGameModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// ===================================
 // GAME AND BET ASSOCIATIONS
 // ===================================
 
@@ -192,6 +224,62 @@ BetModel.belongsTo(UserModel, {
   as: 'user'
 });
 
+// GameModel -> FeaturedGameModel (1:N)
+GameModel.hasMany(FeaturedGameModel, {
+  foreignKey: 'gameId',
+  as: 'featuredEntries'
+});
+FeaturedGameModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// GameModel -> GameBannerModel (1:N)
+GameModel.hasMany(GameBannerModel, {
+  foreignKey: 'gameId',
+  as: 'bannerEntries'
+});
+GameBannerModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// GameModel -> GameImageModel (1:N)
+GameModel.hasMany(GameImageModel, {
+  foreignKey: 'gameId',
+  as: 'gameImages'
+});
+GameImageModel.belongsTo(GameModel, {
+  foreignKey: 'gameId',
+  as: 'game'
+});
+
+// ===================================
+// PROVIDER ASSOCIATIONS
+// ===================================
+
+// User -> UserProviderProfiles (1:N)
+UserModel.hasMany(UserProviderProfileModel, {
+  foreignKey: 'userId',
+  as: 'providerProfiles'
+});
+
+UserProviderProfileModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
+// User -> ProviderTransactions (1:N)
+UserModel.hasMany(ProviderTransactionModel, {
+  foreignKey: 'userId',
+  as: 'providerTransactions'
+});
+
+ProviderTransactionModel.belongsTo(UserModel, {
+  foreignKey: 'userId',
+  as: 'user'
+});
+
 // ===================================
 // EXPORTS
 // ===================================
@@ -208,7 +296,15 @@ export {
   UserGameProviderBlocklistModel,
   AuditLogModel,
   GameModel,
-  BetModel
+  BetModel,
+  UserProviderProfileModel,
+  ProviderTransactionModel,
+  ProviderModel,
+  GameTypeModel,
+  UserFavoriteGameModel,
+  FeaturedGameModel,
+  GameBannerModel,
+  GameImageModel
 };
 
 export default {
@@ -223,5 +319,13 @@ export default {
   UserGameProviderBlocklistModel,
   AuditLogModel,
   GameModel,
-  BetModel
+  BetModel,
+  UserProviderProfileModel,
+  ProviderTransactionModel,
+  ProviderModel,
+  GameTypeModel,
+  UserFavoriteGameModel,
+  FeaturedGameModel,
+  GameBannerModel,
+  GameImageModel
 };

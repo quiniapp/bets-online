@@ -23,6 +23,7 @@ export interface User {
   passwordHash?: string;
   status: UserStatus;
   lastConnection: Date | null;
+  lastActivity: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +39,7 @@ export interface CreateUserDto {
   firstName?: string;
   lastName?: string;
   password: string;
+  initialBalance?: number;
 }
 
 /**
@@ -73,6 +75,7 @@ export interface ChipMovement {
   description?: string;
   previousBalance: number;
   newBalance: number;
+  idempotencyKey?: string | null;
   createdAt: Date;
 }
 
@@ -85,6 +88,7 @@ export interface CreateChipMovementDto {
   type: ChipMovementType;
   amount: number;
   description?: string;
+  idempotencyKey?: string;
 }
 
 /**
@@ -250,6 +254,12 @@ export interface Game {
   maxBet: number;
   houseEdge: number;
   providerId?: string | null;
+  providerGameId?: string | null;   // e.g. "vs25wolfgold"
+  providerName?: string | null;     // e.g. "pragmatic"
+  defaultLogo?: string | null;      // thumbnail URL from Provider
+  customLogo?: string | null;       // custom uploaded image, overrides defaultLogo in UI
+  gameType?: string | null;         // e.g. "slot"
+  sortOrder?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -296,12 +306,147 @@ export interface CreateGameDto {
  * Update Game DTO
  */
 export interface UpdateGameDto {
-  name?: string;
   description?: string;
   isActive?: boolean;
   minBet?: number;
   maxBet?: number;
   houseEdge?: number;
+  sortOrder?: number | null;
+}
+
+/**
+ * Provider Model
+ */
+export interface Provider {
+  id: string;
+  name: string;
+  displayName: string | null;
+  isActive: boolean;
+  logoUrl: string | null;
+  sortOrder: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Game Type Model
+ */
+export interface GameType {
+  id: string;
+  name: string;
+  displayName: string | null;
+  sortOrder: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Update Provider DTO
+ */
+export interface UpdateProviderDto {
+  displayName?: string | null;
+  isActive?: boolean;
+  logoUrl?: string | null;
+  sortOrder?: number | null;
+}
+
+/**
+ * Update GameType DTO
+ */
+export interface UpdateGameTypeDto {
+  displayName?: string | null;
+  sortOrder?: number | null;
+}
+
+/**
+ * Featured Game Model
+ */
+export interface FeaturedGame {
+  id: string;
+  gameId: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Featured Game with embedded game data (for public reads)
+ */
+export interface FeaturedGameWithGame extends FeaturedGame {
+  game: Game;
+}
+
+/**
+ * Create Featured Game DTO
+ */
+export interface CreateFeaturedGameDto {
+  gameId: string;
+  sortOrder: number;
+}
+
+/**
+ * Update Featured Game DTO
+ */
+export interface UpdateFeaturedGameDto {
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+/**
+ * Game Banner Model
+ */
+export interface GameBanner {
+  id: string;
+  gameId: string;
+  sortOrder: number;
+  isActive: boolean;
+  imageUrl?: string | null;   // custom banner image (overrides game thumbnail in hero)
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Game Banner with embedded game data (for public reads)
+ */
+export interface GameBannerWithGame extends GameBanner {
+  game: Game;
+}
+
+/**
+ * Create Game Banner DTO
+ */
+export interface CreateGameBannerDto {
+  gameId: string;
+  sortOrder: number;
+}
+
+/**
+ * Update Game Banner DTO
+ */
+export interface UpdateGameBannerDto {
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+/**
+ * Game Image Model (custom uploaded image for a game)
+ */
+export interface GameImage {
+  id: string;
+  gameId: string;
+  url: string;
+  label?: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Create Game Image DTO
+ */
+export interface CreateGameImageDto {
+  gameId: string;
+  url: string;
+  label?: string;
 }
 
 /**

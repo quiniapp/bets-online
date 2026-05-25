@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Search, TrendingUp, TrendingDown, DollarSign, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Search, TrendingUp, TrendingDown, DollarSign } from "lucide-react"
 import Box from "@/components/box"
 import type { User } from "helper"
+import { formatChips } from "@/lib/utils"
 
 // Demo data - In production, this would come from API endpoints
 const mockUsers: User[] = []
@@ -77,7 +77,7 @@ export default function EarningsReport() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalStats.totalPlayed.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${formatChips(totalStats.totalPlayed)}</div>
             <p className="text-xs text-muted-foreground">total apostado</p>
           </CardContent>
         </Card>
@@ -88,7 +88,7 @@ export default function EarningsReport() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">${totalStats.netLoss.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-green-600">${formatChips(totalStats.netLoss)}</div>
             <p className="text-xs text-muted-foreground">ganancia neta</p>
           </CardContent>
         </Card>
@@ -99,7 +99,7 @@ export default function EarningsReport() {
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${(totalStats.netLoss * 0.85).toFixed(2)}</div>
+            <div className="text-2xl font-bold">${formatChips(totalStats.netLoss * 0.85)}</div>
             <p className="text-xs text-muted-foreground">comparativo</p>
           </CardContent>
         </Card>
@@ -208,8 +208,8 @@ export default function EarningsReport() {
                       <div key={user.id} className="grid grid-cols-4 gap-4 p-4 hover:bg-gray-50">
                         <div className="font-medium">{user.username}</div>
                         <div className="text-gray-600">Admin</div>
-                        <div className="font-semibold">${stats.totalPlayed.toFixed(2)}</div>
-                        <div className="font-semibold text-green-600">${stats.totalWon.toFixed(2)}</div>
+                        <div className="font-semibold">${formatChips(stats.totalPlayed)}</div>
+                        <div className="font-semibold text-green-600">${formatChips(stats.totalWon)}</div>
                       </div>
                     )
                   })

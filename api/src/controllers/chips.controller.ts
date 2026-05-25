@@ -40,13 +40,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.sellChips(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -97,13 +98,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.payPrize(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -154,13 +156,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.registerLoss(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -211,13 +214,14 @@ export class ChipsController {
         );
       }
 
-      const { playerId, amount, description } = req.body;
+      const { playerId, amount, description, idempotencyKey } = req.body;
 
       const movement = await chipsDomain.withdraw(
         req.user.userId,
         playerId,
         amount,
-        description
+        description,
+        idempotencyKey
       );
 
       return res.json(
@@ -266,29 +270,27 @@ export class ChipsController {
         );
       }
 
-      const { userId } = req.params;
-      const { page, limit, startDate, endDate, type } = req.query;
+      const { id } = req.params;
+      const { page, limit, startDate, endDate, type, compact } = req.query;
 
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
-        userId,
+        id,
         {
           page: page ? parseInt(page as string) : undefined,
           limit: limit ? parseInt(limit as string) : undefined,
           startDate: startDate ? new Date(startDate as string) : undefined,
           endDate: endDate ? new Date(endDate as string) : undefined,
-          type: type as ChipMovementType | undefined
+          type: type as ChipMovementType | undefined,
+          compact: compact === 'true',
         }
       );
 
-      return res.json(
-        ApiResponseBuilder.paginated(
-          result.movements,
-          result.page,
-          result.limit,
-          result.total
-        )
-      );
+      const data = compact === 'true'
+        ? result.movements.map(({ type, amount, createdAt }) => ({ type, amount, createdAt }))
+        : result.movements;
+
+      return res.json(ApiResponseBuilder.paginated(data, result.page, result.limit, result.total));
     } catch (error) {
       return next(error);
     }
@@ -320,11 +322,12 @@ export class ChipsController {
         );
       }
 
-      const { userId } = req.params;
+      const { id } = req.params;
 
-      const balance = await chipsDomain.getBalance(req.user.userId, userId);
+      const balance = await chipsDomain.getBalance(req.user.userId, id);
+      const { chipBalance, lastUpdatedAt } = balance;
 
-      return res.json(ApiResponseBuilder.success({ balance }));
+      return res.json(ApiResponseBuilder.success({ balance: { chipBalance, lastUpdatedAt } }));
     } catch (error) {
       return next(error);
     }
@@ -402,13 +405,13 @@ export class ChipsController {
         );
       }
 
-      const { userId } = req.params;
+      const { id } = req.params;
       const { startDate, endDate, type } = req.query;
 
       // Get all movements without pagination for export
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
-        userId,
+        id,
         {
           startDate: startDate ? new Date(startDate as string) : undefined,
           endDate: endDate ? new Date(endDate as string) : undefined,
@@ -420,7 +423,7 @@ export class ChipsController {
       const csv = generateMovementsCsv(result.movements);
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader('Content-Disposition', `attachment; filename=movimientos-${userId}-${new Date().toISOString().split('T')[0]}.csv`);
+      res.setHeader('Content-Disposition', `attachment; filename=movimientos-${id}-${new Date().toISOString().split('T')[0]}.csv`);
       res.send('\ufeff' + csv); // UTF-8 BOM for Excel compatibility
     } catch (error) {
       return next(error);

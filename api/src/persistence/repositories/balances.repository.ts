@@ -1,6 +1,6 @@
 import { BalanceModel } from '../models';
 import { Balance } from 'helper';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 
 export class BalancesRepository {
   async findByUserId(userId: string): Promise<Balance | null> {
@@ -9,6 +9,18 @@ export class BalancesRepository {
     });
     if (!balance) return null;
     return this.mapToBalance(balance);
+  }
+
+  async findBalanceSummary(userId: string): Promise<Pick<Balance, 'chipBalance' | 'lastUpdatedAt'> | null> {
+    const balance = await BalanceModel.findOne({
+      where: { userId },
+      attributes: ['chipBalance', 'lastUpdatedAt']
+    });
+    if (!balance) return null;
+    return {
+      chipBalance: parseFloat(String(balance.chipBalance)),
+      lastUpdatedAt: new Date(balance.lastUpdatedAt)
+    };
   }
 
   async findByUserIds(userIds: string[]): Promise<Balance[]> {
@@ -65,6 +77,51 @@ export class BalancesRepository {
 
   async decrementBalance(userId: string, amount: number): Promise<Balance> {
     return this.incrementBalance(userId, -amount);
+  }
+
+  async updateChipBalance(
+    userId: string,
+    newBalance: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    const balance = await BalanceModel.findOne({
+      where: { userId },
+      transaction,
+      lock: transaction ? true : undefined
+    });
+
+    if (!balance) {
+      throw new Error('Balance not found');
+    }
+
+    await balance.update(
+      {
+        chipBalance: String(newBalance),
+        lastUpdatedAt: new Date()
+      },
+      { transaction }
+    );
+  }
+
+  async atomicIncrement(userId: string, amount: number, transaction: Transaction): Promise<void> {
+    await BalanceModel.increment('chipBalance', {
+      by: amount,
+      where: { userId },
+      transaction
+    });
+  }
+
+  async findByUserIdWithLock(
+    userId: string,
+    transaction: Transaction
+  ): Promise<Balance | null> {
+    const balance = await BalanceModel.findOne({
+      where: { userId },
+      transaction,
+      lock: true
+    });
+    if (!balance) return null;
+    return this.mapToBalance(balance);
   }
 
   private mapToBalance(data: BalanceModel | Record<string, unknown>): Balance {

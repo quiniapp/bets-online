@@ -10,7 +10,10 @@ import {
 } from 'helper';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { balancesRepository } from '../../persistence/repositories/balances.repository';
+import { sessionsRepository } from '../../persistence/repositories/sessions.repository';
+import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
+import { chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
 
 export class UsersDomain {
@@ -33,6 +36,14 @@ export class UsersDomain {
       );
     }
 
+    // Validate initial balance against creator's available balance before creating user
+    if (userData.initialBalance && userData.initialBalance > 0 && creator.role !== UserRole.OWNER) {
+      const creatorBalance = await balancesRepository.findByUserId(creatorId);
+      if (!creatorBalance || creatorBalance.chipBalance < userData.initialBalance) {
+        throw new AppError(400, ErrorCode.INSUFFICIENT_BALANCE, 'Saldo insuficiente para asignar el balance inicial');
+      }
+    }
+
     // Set parent as creator
     userData.parentUserId = creatorId;
 
@@ -47,7 +58,38 @@ export class UsersDomain {
       userData.lastName
     );
 
+    if (userData.initialBalance && userData.initialBalance > 0) {
+      await chipsDomain.sellChips(creatorId, user.id, userData.initialBalance, 'Balance inicial');
+    }
+
     return user;
+  }
+
+  async getUserStats(requesterId: string) {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+    return usersRepository.getDescendantsStats(requesterId);
+  }
+
+  async searchDescendants(
+    requesterId: string,
+    search: string,
+    roles: UserRole[],
+    limit = 10
+  ): Promise<Pick<User, 'id' | 'role' | 'username'>[]> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+
+    const allowedByRole: Record<string, UserRole[]> = {
+      [UserRole.OWNER]: [UserRole.ADMIN, UserRole.CASHIER, UserRole.PLAYER],
+      [UserRole.ADMIN]: [UserRole.CASHIER, UserRole.PLAYER],
+      [UserRole.CASHIER]: [UserRole.PLAYER],
+    };
+    const allowed = allowedByRole[requester.role] ?? [];
+    const filteredRoles = roles.length > 0 ? roles.filter(r => allowed.includes(r)) : allowed;
+    if (filteredRoles.length === 0) return [];
+
+    return usersRepository.searchDescendants(requesterId, search, filteredRoles, limit);
   }
 
   async getUserById(requesterId: string, userId: string): Promise<User> {
@@ -194,8 +236,17 @@ export class UsersDomain {
     // Update user
     const updatedUser = await usersRepository.update(userId, updateData);
 
+    // Si cambió el status: invalidar caché siempre (datos desactualizados)
+    // y terminar todas las sesiones activas si fue bloqueado
+    if ('status' in updateData) {
+      userCache.invalidate(userId);
+      if (updateData.status === UserStatus.BLOCKED) {
+        await sessionsRepository.deleteByUserId(userId);
+      }
+    }
+
     // Remove password hash
-     
+
     const { passwordHash: _passwordHash2, ...userWithoutPassword } = updatedUser;
 
     return userWithoutPassword as User;

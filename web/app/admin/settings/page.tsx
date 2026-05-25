@@ -9,14 +9,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Globe, Palette, Bell, Save } from "lucide-react"
+import { Globe, Palette, Bell, Save, RefreshCw, Loader2 } from "lucide-react"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { apiService } from "@/services/api.service"
 
 export default function AdminSettingsPage() {
   const { language, setLanguage, t } = useLanguage()
   const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
   const [notifications, setNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const response = await apiService.post<{ synced: number }>('/integrations/21viral/games/sync')
+      if (response.success) {
+        toast({ title: "Sincronización completa", description: `${response.data?.synced ?? 0} juegos sincronizados` })
+      } else {
+        toast({ title: "Error", description: response.error?.message || "No se pudo sincronizar", variant: "destructive" })
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleSave = () => {
     // Here you would typically save settings to a backend
@@ -108,6 +128,23 @@ export default function AdminSettingsPage() {
                 </div>
                 <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Game Sync */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5" />
+                Sincronización de Juegos
+              </CardTitle>
+              <CardDescription>Sincroniza el catálogo de juegos con el proveedor</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={handleSync} disabled={syncing} className="gap-2">
+                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+              </Button>
             </CardContent>
           </Card>
 

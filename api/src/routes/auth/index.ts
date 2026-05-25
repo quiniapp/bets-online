@@ -2,22 +2,19 @@ import { Router } from 'express';
 import { authController } from '../../controllers/auth.controller';
 import { validate } from '../../middleware/validation.middleware';
 import { authMiddleware } from '../../middleware/auth.middleware';
+import { authLimiter, refreshLimiter } from '../../middleware/rateLimiter.middleware';
 import {
   loginSchema,
-  refreshTokenSchema,
   changePasswordSchema
 } from 'helper';
 
 const router = Router();
 
 // Public routes
-router.post('/login', validate(loginSchema), authController.login.bind(authController));
+router.post('/login', authLimiter, validate(loginSchema), authController.login.bind(authController));
 
-router.post(
-  '/refresh',
-  validate(refreshTokenSchema),
-  authController.refresh.bind(authController)
-);
+// refreshToken viene por cookie httpOnly; no requiere validación de body
+router.post('/refresh', refreshLimiter, authController.refresh.bind(authController));
 
 // Protected routes
 router.post('/logout', authController.logout.bind(authController));

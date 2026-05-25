@@ -8,6 +8,7 @@ import {
 import { gamesRepository } from '../../persistence/repositories/games.repository';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { AppError } from '../../middleware/error.middleware';
+import { gamesCache, gameTypesMemCache, CACHE_PAGE } from '../../utils/games-cache';
 
 export class GamesDomain {
   /**
@@ -70,14 +71,61 @@ export class GamesDomain {
     }
 
     // Create game
-    return await gamesRepository.create(gameData);
+    const game = await gamesRepository.create(gameData);
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    return game;
   }
 
   /**
-   * Get all games (optionally filter by active status)
+   * Get paginated games. Page 1 with no providerName/search/excludeGameTypes/inactive-status
+   * is served from cache regardless of gameType or limit.
    */
-  async getAllGames(activeOnly: boolean = false): Promise<Game[]> {
-    return await gamesRepository.findAll(activeOnly);
+  async getPaginatedGames(
+    page: number,
+    limit: number,
+    activeOnly: boolean = false,
+    providerName?: string,
+    search?: string,
+    gameType?: string,
+    status?: 'active' | 'inactive' | 'all',
+    excludeGameTypes?: string[]
+  ): Promise<{ games: Game[]; total: number }> {
+    const resolvedActiveOnly = status === 'active' ? true : activeOnly;
+    const isCacheable =
+      page === CACHE_PAGE &&
+      !providerName &&
+      !search &&
+      !excludeGameTypes?.length &&
+      status !== 'inactive' &&
+      status !== 'all';
+
+    if (isCacheable) {
+      return gamesCache.getOrFetch(
+        resolvedActiveOnly,
+        gameType ?? undefined,
+        limit,
+        () => gamesRepository.findPaginated(page, limit, resolvedActiveOnly, undefined, undefined, gameType)
+      );
+    }
+
+    return gamesRepository.findPaginated(page, limit, resolvedActiveOnly, providerName, search, gameType, status, excludeGameTypes);
+  }
+
+  async getDistinctProviders(): Promise<string[]> {
+    return gamesRepository.findDistinctProviders();
+  }
+
+  async getStats(): Promise<{ total: number; active: number }> {
+    return gamesRepository.getStats();
+  }
+
+  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
+    return gamesRepository.getTopPlayed(limit);
+  }
+
+  async getDistinctGameTypes(): Promise<string[]> {
+    return gameTypesMemCache.getOrFetch(() => gamesRepository.findDistinctGameTypes());
   }
 
   /**
@@ -117,18 +165,6 @@ export class GamesDomain {
     const game = await gamesRepository.findById(gameId);
     if (!game) {
       throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
-    }
-
-    // If updating name, check it doesn't conflict with another game
-    if (updateData.name && updateData.name !== game.name) {
-      const existingGame = await gamesRepository.findByName(updateData.name);
-      if (existingGame) {
-        throw new AppError(
-          409,
-          ErrorCode.GAME_ALREADY_EXISTS,
-          'Game with this name already exists'
-        );
-      }
     }
 
     // Validate bet limits if provided
@@ -178,7 +214,47 @@ export class GamesDomain {
     }
 
     // Update game
-    return await gamesRepository.update(gameId, updateData);
+    const updated = await gamesRepository.update(gameId, updateData);
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    return updated;
+  }
+
+  private async requireAdminOrOwner(requesterId: string): Promise<void> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    if (![UserRole.OWNER, UserRole.ADMIN].includes(requester.role)) {
+      throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Only OWNER or ADMIN can bulk update games');
+    }
+  }
+
+  /**
+   * Bulk set status by explicit IDs (OWNER/ADMIN only)
+   */
+  async bulkSetStatus(requesterId: string, ids: string[], isActive: boolean): Promise<number> {
+    await this.requireAdminOrOwner(requesterId);
+    if (!ids.length) return 0;
+    const affected = await gamesRepository.bulkSetStatus(ids, isActive);
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    return affected;
+  }
+
+  /**
+   * Bulk set status by filter (OWNER/ADMIN only) — applies to ALL matching games
+   */
+  async bulkSetStatusByFilter(
+    requesterId: string,
+    isActive: boolean,
+    providerName?: string,
+    gameType?: string,
+    currentStatus?: 'active' | 'inactive' | 'all'
+  ): Promise<number> {
+    await this.requireAdminOrOwner(requesterId);
+    const affected = await gamesRepository.bulkSetStatusByFilter(isActive, providerName, gameType, currentStatus);
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    return affected;
   }
 
   /**
@@ -206,9 +282,10 @@ export class GamesDomain {
     }
 
     // Toggle status
-    return await gamesRepository.update(gameId, {
-      isActive: !game.isActive,
-    });
+    const toggled = await gamesRepository.update(gameId, { isActive: !game.isActive });
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    return toggled;
   }
 
   /**
@@ -237,6 +314,8 @@ export class GamesDomain {
 
     // Delete game
     await gamesRepository.delete(gameId);
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
   }
 }
 

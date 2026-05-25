@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronRight, ChevronDown, User, Users, Ban, CheckCircle, Edit } from "lucide-react"
+import { ChevronRight, ChevronDown, User, Users, Edit, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, formatChips } from "@/lib/utils"
 import type { UserTreeNode } from "helper"
 import { UserStatus } from "helper"
 
@@ -12,10 +12,10 @@ interface UserTreeProps {
   node: UserTreeNode
   level?: number
   onEditUser?: (userId: string) => void
-  onToggleStatus?: (userId: string, currentStatus: UserStatus) => void
+  onViewProfile?: (userId: string) => void
 }
 
-function UserTreeItem({ node, level = 0, onEditUser, onToggleStatus }: UserTreeProps) {
+function UserTreeItem({ node, level = 0, onEditUser, onViewProfile }: UserTreeProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
   const hasChildren = node.children && node.children.length > 0
 
@@ -98,7 +98,7 @@ function UserTreeItem({ node, level = 0, onEditUser, onToggleStatus }: UserTreeP
 
         {/* Balance */}
         <span className="text-sm text-muted-foreground ml-auto mr-4">
-          ${node.balance?.chipBalance?.toFixed(2) || '0.00'}
+          ${node.balance?.chipBalance != null ? formatChips(node.balance.chipBalance) : '0,00'}
         </span>
 
         {/* Last connection */}
@@ -109,21 +109,13 @@ function UserTreeItem({ node, level = 0, onEditUser, onToggleStatus }: UserTreeP
         {/* Actions */}
         <div className="flex gap-1">
           {onEditUser && (
-            <Button variant="ghost" size="sm" onClick={() => onEditUser(node.user.id)}>
+            <Button variant="ghost" size="sm" onClick={() => onEditUser(node.user.id)} title="Editar">
               <Edit className="h-3 w-3" />
             </Button>
           )}
-          {onToggleStatus && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onToggleStatus(node.user.id, node.user.status)}
-            >
-              {node.user.status === UserStatus.ACTIVE ? (
-                <Ban className="h-3 w-3 text-red-500" />
-              ) : (
-                <CheckCircle className="h-3 w-3 text-green-500" />
-              )}
+          {onViewProfile && (
+            <Button variant="ghost" size="sm" onClick={() => onViewProfile(node.user.id)} title="Ver perfil">
+              <ExternalLink className="h-3 w-3" />
             </Button>
           )}
         </div>
@@ -138,7 +130,7 @@ function UserTreeItem({ node, level = 0, onEditUser, onToggleStatus }: UserTreeP
               node={child}
               level={level + 1}
               onEditUser={onEditUser}
-              onToggleStatus={onToggleStatus}
+              onViewProfile={onViewProfile}
             />
           ))}
         </div>
@@ -150,10 +142,10 @@ function UserTreeItem({ node, level = 0, onEditUser, onToggleStatus }: UserTreeP
 interface UserTreeViewProps {
   tree: UserTreeNode | null
   onEditUser?: (userId: string) => void
-  onToggleStatus?: (userId: string, currentStatus: UserStatus) => void
+  onViewProfile?: (userId: string) => void
 }
 
-export function UserTreeView({ tree, onEditUser, onToggleStatus }: UserTreeViewProps) {
+export function UserTreeView({ tree, onEditUser, onViewProfile }: UserTreeViewProps) {
   if (!tree) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -180,7 +172,7 @@ export function UserTreeView({ tree, onEditUser, onToggleStatus }: UserTreeViewP
       <UserTreeItem
         node={tree}
         onEditUser={onEditUser}
-        onToggleStatus={onToggleStatus}
+        onViewProfile={onViewProfile}
       />
     </div>
   )

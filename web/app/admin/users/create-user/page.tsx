@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ValidatedInput } from "@/components/ui/validated-input"
 import { PasswordInput } from "@/components/ui/password-input"
-import { useGames } from "@/hooks/useGames"
 import { Save, User } from "lucide-react"
 import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
@@ -19,7 +18,6 @@ import { useToast } from "@/hooks/use-toast"
 export default function CreateUserPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { games } = useGames()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
@@ -30,7 +28,6 @@ export default function CreateUserPage() {
     confirmPassword: "",
     initialBalance: "0",
     isActive: true,
-    enabledGames: [] as string[],
   })
 
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -66,12 +63,22 @@ export default function CreateUserPage() {
     setPasswordValid(isValid)
   }, [])
 
+  const validateInitialBalance = (value: string) => {
+    if (!value || value === '0') return { state: 'neutral' as const, message: '' }
+    const n = parseFloat(value.replace(',', '.'))
+    if (isNaN(n) || n < 0) return { state: 'invalid' as const, message: 'Debe ser un número mayor o igual a 0' }
+    return { state: 'valid' as const, message: '' }
+  }
+
+  const initialBalanceValidation = validateInitialBalance(formData.initialBalance)
+
   const isFormValid = () => {
     return (
       usernameValidation.state === 'valid' &&
       (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
       passwordValid &&
-      confirmPasswordValidation.state === 'valid'
+      confirmPasswordValidation.state === 'valid' &&
+      initialBalanceValidation.state !== 'invalid'
     )
   }
 
@@ -114,6 +121,10 @@ export default function CreateUserPage() {
       if (formData.lastName.trim()) {
         payload.lastName = formData.lastName
       }
+      const initialBalance = parseFloat(formData.initialBalance.replace(',', '.'))
+      if (!isNaN(initialBalance) && initialBalance > 0) {
+        payload.initialBalance = initialBalance
+      }
 
       const response = await apiService.post('/users', payload)
 
@@ -142,13 +153,6 @@ export default function CreateUserPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleGameToggle = (gameId: string, checked: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      enabledGames: checked ? [...prev.enabledGames, gameId] : prev.enabledGames.filter((id) => id !== gameId),
-    }))
   }
 
   return (
@@ -267,12 +271,13 @@ export default function CreateUserPage() {
                   <Label htmlFor="initialBalance">Balance Inicial ($)</Label>
                   <ValidatedInput
                     id="initialBalance"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.initialBalance}
                     onChange={(e) => setFormData((prev) => ({ ...prev, initialBalance: e.target.value }))}
                     placeholder="0.00"
+                    validationState={initialBalanceValidation.state}
+                    errorMessage={initialBalanceValidation.message}
                     showValidationIcon={false}
                   />
                 </div>
@@ -286,26 +291,6 @@ export default function CreateUserPage() {
                   <Label htmlFor="isActive">Usuario activo</Label>
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Juegos Habilitados</Label>
-                  <div className="space-y-2">
-                    {games.map((game) => (
-                      <div key={game.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`game-${game.id}`}
-                          checked={formData.enabledGames.includes(game.id)}
-                          onCheckedChange={(checked) => handleGameToggle(game.id, checked as boolean)}
-                        />
-                        <Label htmlFor={`game-${game.id}`} className="flex-1">
-                          <div>
-                            <div className="font-medium">{game.name}</div>
-                            <div className="text-sm text-muted-foreground">{game.description}</div>
-                          </div>
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>

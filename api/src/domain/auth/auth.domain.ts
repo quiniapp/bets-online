@@ -12,43 +12,42 @@ import {
 import { config } from '../../config';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { sessionsRepository } from '../../persistence/repositories/sessions.repository';
+import { userCache } from '../../persistence/cache/user.cache';
 import { AppError } from '../../middleware/error.middleware';
 
 export class AuthDomain {
   async login(username: string, password: string): Promise<{ user: User; tokens: AuthTokens }> {
     // Find user
-    const user = await usersRepository.findByUsername(username);
+    const user = await usersRepository.findByUsernameForAuth(username);
 
     if (!user) {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
-    // Check if user is blocked
     if (user.status === 'BLOCKED') {
       throw new AppError(403, ErrorCode.USER_BLOCKED, 'User is blocked');
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash!);
 
     if (!isPasswordValid) {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
-    // Update last connection
+    // Update last connection and last activity
     await usersRepository.updateLastConnection(user.id);
+    await usersRepository.updateLastActivity(user.id);
 
     // Generate tokens
     const tokens = await this.createSession(user);
 
-    // Remove password hash from response
-     
     const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
+    const loggedInUser = { ...userWithoutPassword, lastConnection: new Date() } as User;
 
-    return {
-      user: { ...userWithoutPassword, lastConnection: new Date() } as User,
-      tokens
-    };
+    // Poblar caché para que el primer refresh no vaya a DB
+    userCache.set(loggedInUser);
+
+    return { user: loggedInUser, tokens };
   }
 
   async register(
@@ -105,7 +104,7 @@ export class AuthDomain {
   }
 
   async refreshToken(refreshToken: string): Promise<AuthTokens> {
-    // Verify refresh token
+    // Verify refresh token JWT
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(refreshToken, config.jwt.refreshSecret) as JwtPayload;
@@ -113,22 +112,14 @@ export class AuthDomain {
       throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Invalid refresh token');
     }
 
-    // Find session
-    const session = await sessionsRepository.findByRefreshToken(refreshToken);
-    if (!session) {
-      throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found');
-    }
-
-    // Check if session expired
-    if (session.expiresAt < new Date()) {
-      await sessionsRepository.deleteByToken(session.token);
-      throw new AppError(401, ErrorCode.TOKEN_EXPIRED, 'Session expired');
-    }
-
-    // Get user
-    const user = await usersRepository.findById(decoded.userId);
+    // Get user — cache first para evitar DB en cada renovación de token
+    let user = userCache.get(decoded.userId);
     if (!user) {
-      throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+      user = await usersRepository.findById(decoded.userId);
+      if (!user) {
+        throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+      }
+      userCache.set(user);
     }
 
     // Check if user is blocked
@@ -137,13 +128,43 @@ export class AuthDomain {
       throw new AppError(403, ErrorCode.USER_BLOCKED, 'User is blocked');
     }
 
-    // Delete old session
-    await sessionsRepository.deleteByToken(session.token);
+    // Generar nuevos tokens
+    const sessionId = uuidv4();
+    const payload: JwtPayload = { userId: user.id, role: user.role, sessionId };
+    const newAccessToken = jwt.sign(
+      payload,
+      config.jwt.secret as jwt.Secret,
+      { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
+    );
+    const newRefreshToken = jwt.sign(
+      payload,
+      config.jwt.refreshSecret as jwt.Secret,
+      { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
+    );
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    // Create new session
-    const tokens = await this.createSession(user);
+    // Rotar sesión: 1 DB op (UPDATE con validación de expiresAt incluida)
+    const session = await sessionsRepository.rotateTokens(
+      refreshToken,
+      newAccessToken,
+      newRefreshToken,
+      expiresAt
+    );
 
-    return tokens;
+    if (!session) {
+      // JWT valid but token not in DB → already rotated by someone else → possible theft.
+      // Revoke all sessions for this user as a precaution.
+      await sessionsRepository.deleteByUserId(decoded.userId);
+      userCache.invalidate(decoded.userId);
+      throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found or expired');
+    }
+
+    // Actualizar lastActivity en DB y en caché (cada ~15 min por usuario activo)
+    const now = new Date();
+    await usersRepository.updateLastActivity(user.id);
+    userCache.set({ ...user, lastActivity: now });
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
   async logout(token: string): Promise<void> {
@@ -160,12 +181,11 @@ export class AuthDomain {
     newPassword: string
   ): Promise<void> {
     // Get user
-    const user = await usersRepository.findById(userId);
+    const user = await usersRepository.findByIdForAuth(userId);
     if (!user) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    // Verify current password
     const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash!);
     if (!isPasswordValid) {
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Current password is incorrect');
@@ -177,7 +197,8 @@ export class AuthDomain {
     // Update password
     await usersRepository.updatePassword(userId, passwordHash);
 
-    // Invalidate all sessions
+    // Invalidate user cache and all sessions
+    userCache.invalidate(userId);
     await sessionsRepository.deleteByUserId(userId);
   }
 
@@ -194,7 +215,8 @@ export class AuthDomain {
     // Update password
     await usersRepository.updatePassword(userId, passwordHash);
 
-    // Invalidate all sessions
+    // Invalidate user cache and all sessions
+    userCache.invalidate(userId);
     await sessionsRepository.deleteByUserId(userId);
   }
 
@@ -222,9 +244,7 @@ export class AuthDomain {
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
 
-    // Calculate expiration date (7 days for refresh token)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     // Save session
     await sessionsRepository.create(user.id, accessToken, refreshToken, expiresAt);

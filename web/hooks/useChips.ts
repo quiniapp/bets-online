@@ -8,16 +8,16 @@ export function useChips(userId?: string) {
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const loadBalance = async () => {
+  const loadBalance = useCallback(async () => {
     try {
       const endpoint = userId
         ? `/chips/balance/${userId}`
         : '/chips/my-balance';
 
-      const response = await apiService.get<Balance>(endpoint);
+      const response = await apiService.get<{ balance: Balance }>(endpoint);
 
       if (response.success && response.data) {
-        setBalance(response.data);
+        setBalance(response.data.balance);
       }
 
       return response;
@@ -25,9 +25,9 @@ export function useChips(userId?: string) {
       console.error('Failed to load balance:', error);
       throw error;
     }
-  };
+  }, [userId]);
 
-  const loadMovements = async (page = 1, limit = 10) => {
+  const loadMovements = useCallback(async (page = 1, limit = 10) => {
     if (!userId) return;
 
     setLoading(true);
@@ -46,7 +46,7 @@ export function useChips(userId?: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   const sellChips = async (playerId: string, amount: number, description?: string) => {
     try {
@@ -136,6 +136,7 @@ export function useChips(userId?: string) {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      compact?: boolean;
     }
   ) => {
     const queryParams = new URLSearchParams();
@@ -144,6 +145,7 @@ export function useChips(userId?: string) {
     if (options?.startDate) queryParams.append('startDate', options.startDate.toISOString());
     if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
     if (options?.type) queryParams.append('type', options.type);
+    if (options?.compact) queryParams.append('compact', 'true');
 
     return await apiService.get<ChipMovement[]>(
       `/chips/movements/${targetUserId}?${queryParams.toString()}`
@@ -163,11 +165,12 @@ export function useChips(userId?: string) {
     if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
     if (options?.type) queryParams.append('type', options.type);
 
-    const token = localStorage.getItem('accessToken');
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/api/chips/movements/${targetUserId}/export?${queryParams.toString()}`;
+    // Token via cookie httpOnly (enviada automáticamente por el browser).
+    // URL relativa para pasar por el proxy de Next.js.
+    const url = `/api/chips/movements/${targetUserId}/export?${queryParams.toString()}`;
 
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     });
 
     if (!response.ok) {

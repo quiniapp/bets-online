@@ -11,8 +11,6 @@ import {
   ArrowUpDown,
   Gamepad2,
   User,
-  History,
-  CreditCard,
   Settings,
 } from "lucide-react";
 
@@ -34,6 +32,8 @@ export const useSidebarNavigation = () => {
   
   const [usersOpen, setUsersOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [gamesOpen, setGamesOpen] = useState(false);
+  const [casinoOpen, setCasinoOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(pathname);
 
   // Actualizar el item activo cuando cambia la ruta
@@ -46,6 +46,12 @@ export const useSidebarNavigation = () => {
     }
     if (pathname.startsWith('/admin/reports')) {
       setReportsOpen(true);
+    }
+    if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners')) {
+      setGamesOpen(true);
+    }
+    if (pathname.startsWith('/user/games')) {
+      setCasinoOpen(true);
     }
   }, [pathname]);
 
@@ -84,8 +90,16 @@ export const useSidebarNavigation = () => {
     },
     {
       title: t("nav.games"),
-      href: "/admin/games",
       icon: Gamepad2,
+      collapsible: true,
+      isOpen: gamesOpen,
+      setOpen: setGamesOpen,
+      items: [
+        { title: "Catálogo", href: "/admin/games" },
+        { title: "Proveedores", href: "/admin/providers" },
+        { title: "Destacados", href: "/admin/featured-games" },
+        { title: "Banners", href: "/admin/banners" },
+      ],
     },
     {
       title: t("nav.reports"),
@@ -136,8 +150,42 @@ export const useSidebarNavigation = () => {
     },
     {
       title: t("nav.games"),
-      href: "/admin/games",
       icon: Gamepad2,
+      collapsible: true,
+      isOpen: gamesOpen,
+      setOpen: setGamesOpen,
+      items: [
+        { title: "Catálogo", href: "/admin/games" },
+        { title: "Proveedores", href: "/admin/providers" },
+        { title: "Destacados", href: "/admin/featured-games" },
+        { title: "Banners", href: "/admin/banners" },
+      ],
+    },
+    {
+      title: t("nav.transactions"),
+      href: "/admin/transactions",
+      icon: ArrowUpDown,
+    },
+  ];
+
+  // Menu para CASHIER (Cajero) - Gestión de usuarios y balance
+  const cashierMenuItems: MenuItem[] = [
+    {
+      title: t("nav.statistics"),
+      href: "/cashier/dashboard",
+      icon: BarChart3,
+    },
+    {
+      title: t("nav.users"),
+      icon: Users,
+      collapsible: true,
+      isOpen: usersOpen,
+      setOpen: setUsersOpen,
+      items: [
+        { title: t("users.list"), href: "/admin/users" },
+        { title: "Crear Cajero", href: "/admin/users/create-manager" },
+        { title: "Crear Jugador", href: "/admin/users/create-user" },
+      ],
     },
     {
       title: t("nav.transactions"),
@@ -154,25 +202,23 @@ export const useSidebarNavigation = () => {
       icon: BarChart3,
     },
     {
+      title: "Casino",
+      icon: Gamepad2,
+      collapsible: true,
+      isOpen: casinoOpen,
+      setOpen: setCasinoOpen,
+      items: [
+        { title: "Todos los juegos", href: "/user/games" },
+        { title: "Slots", href: "/user/games?type=VideoSlot" },
+        { title: "Casino en Vivo", href: "/user/games?type=LiveGames" },
+        { title: "Ruletas", href: "/user/games?type=Roulette" },
+        { title: "Otros", href: "/user/games?type=__otros__" },
+      ],
+    },
+    {
       title: t("nav.profile"),
       href: "/user/profile",
       icon: User,
-    },
-    {
-      title: t("nav.games"),
-      href: "/user/games",
-      icon: Gamepad2,
-    },
-    {
-      title: t("nav.myBets"),
-      href: "/user/bets",
-      icon: History,
-    },
-
-    {
-      title: t("nav.settings"),
-      href: "/user/settings",
-      icon: Settings,
     },
   ];
 
@@ -183,6 +229,8 @@ export const useSidebarNavigation = () => {
         return superAdminMenuItems;
       case UserRole.ADMIN:
         return adminMenuItems;
+      case UserRole.CASHIER:
+        return cashierMenuItems;
       case UserRole.PLAYER:
         return userMenuItems;
       default:

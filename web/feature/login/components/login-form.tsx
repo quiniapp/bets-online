@@ -3,7 +3,7 @@ import { useState } from "react";
 import Box from "@/components/box";
 import { Flex, FlexCol } from "@/components/flex";
 import { Input } from "@/components/ui/input";
-import { EyeClosed, Eye, ArrowRight, MailIcon, UsersIcon } from "lucide-react";
+import { EyeClosed, Eye, ArrowRight, MailIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
@@ -28,110 +28,101 @@ const LoginForm = () => {
   };
 
   return (
-    <Card >
+    <Card className="w-full sm:w-[420px] border-0 sm:border shadow-none sm:shadow-sm rounded-none sm:rounded-xl">
+      <form
+        className="w-full flex flex-col gap-4 items-start p-4 sm:p-8"
+        onSubmit={handleSubmit}
+      >
+        <FlexCol className="w-full gap-4 sm:gap-6">
+          <FlexCol className="gap-1 w-full justify-center items-center text-center">
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="h-14 w-auto mx-auto mb-1"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            <CardTitle>
+              <h1 className="text-xl sm:text-2xl font-medium">Ingresar</h1>
+            </CardTitle>
+            <CardContent className="p-0 hidden sm:block">
+              <p className="text-sm text-zinc-500">
+                Ingresa con tu email y contraseña para poder administrar tu cuenta.
+              </p>
+            </CardContent>
+          </FlexCol>
 
-   
-    <form
-      className="w-full flex flex-col gap-lg items-start  p-6 rounded-sm xs:mpx-4" 
-      onSubmit={handleSubmit}
-    >
-      <FlexCol className="w-full gap-8">
-        <FlexCol className="gap-2 w-full justify-center items-center text-center">
-          <Flex className="text-blue-600 bg-blue-100 p-4 rounded-full"  aria-setsize={24}   >
-            <UsersIcon color="currentColor" size={32} />
-          </Flex>
-          <CardTitle>
-            <h1 className="text-2xl font-medium">Ingresar</h1>
-          </CardTitle>
-          <CardContent>
-            <p className="text-sm text-zinc-500">
-            Ingresa con tu email y contraseña para poder administrar tu cuenta.
-          </p>
-          </CardContent>
-        </FlexCol>
-        
-        <FlexCol className="w-full gap-10">
-          <FlexCol className="space-y-4">
+          <FlexCol className="w-full gap-4 sm:gap-5">
+            <FlexCol className="space-y-3">
+              <FlexCol className="space-y-1.5">
+                <Label htmlFor="email">Usuario</Label>
+                <Box className="w-full">
+                  <Flex className="absolute items-center justify-end right-0 h-full pr-2 text-zinc-400">
+                    <MailIcon size={16} className="text-current" />
+                  </Flex>
+                  <Input
+                    id="email"
+                    type="text"
+                    placeholder="usuario@mail.com o admin"
+                    {...register("email", validationRules.email)}
+                    className={errors.email ? "border-red-500" : ""}
+                  />
+                </Box>
+                {errors.email && (
+                  <p className="text-red-500 text-sm">{errors.email.message}</p>
+                )}
+              </FlexCol>
 
-            <FlexCol className="space-y-2">
-              <Label htmlFor="email">Usuario</Label>
-              <Box className="w-full">
-                <Flex className="absolute items-center justify-end right-0 h-full pr-2 text-zinc-400">
-                  <MailIcon size={16} className="text-current" />
-                </Flex>
-                <Input
-                  id="email"
-                  type="text"
-                  placeholder="usuario@mail.com o admin"
-                  {...register("email", validationRules.email)}
-                  className={errors.email ? "border-red-500" : ""}
-                />
-              </Box>
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email.message}</p>
+              <FlexCol className="space-y-1.5">
+                <Label htmlFor="password">Contraseña</Label>
+                <Box className="w-full">
+                  <Flex
+                    className="absolute items-center justify-end right-0 h-full pr-2 text-zinc-400 cursor-pointer"
+                    onClick={handleShowPassword}
+                  >
+                    {!showPassword ? (
+                      <EyeClosed size={16} className="text-current" />
+                    ) : (
+                      <Eye size={16} className="text-current" />
+                    )}
+                  </Flex>
+                  <Input
+                    id="password"
+                    type={!showPassword ? "password" : "text"}
+                    placeholder="Contraseña"
+                    {...register("password", validationRules.password)}
+                    className={errors.password ? "border-red-500" : ""}
+                  />
+                </Box>
+                {errors.password && (
+                  <p className="text-red-500 text-sm">{errors.password.message}</p>
+                )}
+                <p className="text-xs cursor-pointer hover:underline">recuperar contraseña</p>
+              </FlexCol>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
             </FlexCol>
 
-            <FlexCol className="space-y-2">
-                <FlexCol className="space-y-2">
-                    <Label htmlFor="password">Contraseña</Label>
-                    <Box className="w-full">
-                        <Flex
-                        className="absolute items-center justify-end right-0 h-full pr-2 text-zinc-400 cursor-pointer"
-                        onClick={handleShowPassword}
-                        >
-                        {!showPassword ? (
-                            <EyeClosed size={16} className="text-current" />
-                        ) : (
-                            <Eye size={16} className="text-current" />
-                        )}
-                        </Flex>
-                        <Input
-                        id="password"
-                        type={!showPassword ? "password" : "text"}
-                        placeholder="Contraseña"
-                        {...register("password", validationRules.password)}
-                        className={errors.password ? "border-red-500" : ""}
-                        />
-                    </Box>
-                    {errors.password && (
-                        <p className="text-red-500 text-sm">{errors.password.message}</p>
-                    )}
-                    </FlexCol>
-                    <p className="text-xs"> recuperar contraseña</p>
-            </FlexCol>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+            <Button
+              className="w-full bg-blue-600"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                "Ingresando..."
+              ) : (
+                <>
+                  Ingresar a la cuenta <ArrowRight />
+                </>
+              )}
+            </Button>
           </FlexCol>
-
-          {/* Botón Submit */}
-          <Flex className="w-full">
-            <Flex className="flex-1">
-              <Button
-                
-                className="w-full bg-blue-600"
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  "Ingresando..."
-                ) : (
-                  <>
-                    Ingresar a la cuenta <ArrowRight />
-                  </>
-                )}
-              </Button>
-            </Flex>
-            
-          </Flex>
         </FlexCol>
-      </FlexCol>
-    </form>
-     </Card>
+      </form>
+    </Card>
   );
 };
 

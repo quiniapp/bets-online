@@ -1,4 +1,4 @@
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import { UserModel } from '../models';
 import { User, CreateUserDto, UpdateUserDto, UserStatus } from 'helper';
 import { sequelize } from '../../config/sequelize';
@@ -11,19 +11,27 @@ export class UsersRepository {
   }
 
   async findByUsername(username: string): Promise<User | null> {
-    const user = await UserModel.findOne({
-      where: { username }
-    });
+    const user = await UserModel.findOne({ where: { username } });
     if (!user) return null;
     return this.mapToUser(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const user = await UserModel.findOne({
-      where: { email }
-    });
+    const user = await UserModel.findOne({ where: { email } });
     if (!user) return null;
     return this.mapToUser(user);
+  }
+
+  async findByUsernameForAuth(username: string): Promise<User | null> {
+    const user = await UserModel.findOne({ where: { username } });
+    if (!user) return null;
+    return this.mapToUserWithPassword(user);
+  }
+
+  async findByIdForAuth(id: string): Promise<User | null> {
+    const user = await UserModel.findByPk(id);
+    if (!user) return null;
+    return this.mapToUserWithPassword(user);
   }
 
   async findByParentId(
@@ -126,6 +134,13 @@ export class UsersRepository {
     await user.update({ lastConnection: new Date() });
   }
 
+  async updateLastActivity(id: string): Promise<void> {
+    await UserModel.update(
+      { lastActivity: new Date() },
+      { where: { id } }
+    );
+  }
+
   async updatePassword(id: string, passwordHash: string): Promise<void> {
     const user = await UserModel.findByPk(id);
     if (!user) {
@@ -151,13 +166,88 @@ export class UsersRepository {
     await user.destroy();
   }
 
-  async findDescendants(userId: string): Promise<User[]> {
-    // Use recursive CTE to get all descendants
+  async getDescendantsStats(userId: string): Promise<{
+    total: number; active: number; blocked: number;
+    admins: number; cashiers: number; players: number;
+  }> {
     const query = `
       WITH RECURSIVE descendants AS (
-        SELECT * FROM users WHERE id = :userId
+        SELECT id, role, status, last_activity FROM users WHERE id = :userId
         UNION ALL
-        SELECT u.* FROM users u
+        SELECT u.id, u.role, u.status, u.last_activity FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT
+        COUNT(*) - 1 AS total,
+        SUM(CASE WHEN last_activity >= NOW() - INTERVAL '7 days' AND id != :userId THEN 1 ELSE 0 END) AS active,
+        SUM(CASE WHEN status != 'ACTIVE' AND id != :userId THEN 1 ELSE 0 END) AS blocked,
+        SUM(CASE WHEN role = 'ADMIN' AND id != :userId THEN 1 ELSE 0 END) AS admins,
+        SUM(CASE WHEN role = 'CASHIER' AND id != :userId THEN 1 ELSE 0 END) AS cashiers,
+        SUM(CASE WHEN role = 'PLAYER' AND id != :userId THEN 1 ELSE 0 END) AS players
+      FROM descendants
+    `;
+    const rows = await sequelize.query<Record<string, string>>(query, {
+      replacements: { userId },
+      type: QueryTypes.SELECT
+    });
+    const r = rows[0] ?? {};
+    return {
+      total: parseInt(r['total'], 10) || 0,
+      active: parseInt(r['active'], 10) || 0,
+      blocked: parseInt(r['blocked'], 10) || 0,
+      admins: parseInt(r['admins'], 10) || 0,
+      cashiers: parseInt(r['cashiers'], 10) || 0,
+      players: parseInt(r['players'], 10) || 0,
+    };
+  }
+
+  async searchDescendants(
+    userId: string,
+    search: string,
+    roles: string[],
+    limit = 10
+  ): Promise<Pick<User, 'id' | 'role' | 'username'>[]> {
+    if (typeof search !== 'string' || search.length < 2) return [];
+
+    const allowedRoles = new Set(Object.values({ ADMIN: 'ADMIN', CASHIER: 'CASHIER', PLAYER: 'PLAYER', OWNER: 'OWNER' }));
+    const safeRoles = roles.filter(r => allowedRoles.has(r));
+    if (safeRoles.length === 0) return [];
+
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id, parent_user_id, role, username FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.id, u.parent_user_id, u.role, u.username FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT id, role, username FROM descendants
+      WHERE id != :userId
+      AND LOWER(username) LIKE LOWER('%' || :search || '%')
+      ORDER BY username ASC
+      LIMIT :fetchLimit
+    `;
+    const fetchLimit = Math.min(200, limit * 10);
+    const results = await sequelize.query<{ id: string; role: string; username: string }>(query, {
+      replacements: { userId, search, fetchLimit },
+      type: QueryTypes.SELECT
+    });
+
+    return results
+      .filter(r => safeRoles.includes(r.role))
+      .slice(0, limit)
+      .map(r => ({ id: r.id, role: r.role as User['role'], username: r.username }));
+  }
+
+  async findDescendants(userId: string): Promise<User[]> {
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id, parent_user_id, role, username, email, first_name, last_name,
+               status, last_connection, last_activity, created_at, updated_at
+        FROM users WHERE id = :userId
+        UNION ALL
+        SELECT u.id, u.parent_user_id, u.role, u.username, u.email, u.first_name, u.last_name,
+               u.status, u.last_connection, u.last_activity, u.created_at, u.updated_at
+        FROM users u
         INNER JOIN descendants d ON u.parent_user_id = d.id
       )
       SELECT * FROM descendants WHERE id != :userId
@@ -168,7 +258,7 @@ export class UsersRepository {
       type: 'SELECT'
     });
 
-    return (results as Record<string, unknown>[]).map(this.mapToUser);
+    return (results as Record<string, unknown>[]).map(r => this.mapToUser(r));
   }
 
   // Fallback method for getting descendants without recursive CTE
@@ -189,11 +279,9 @@ export class UsersRepository {
   */
 
   private mapToUser(data: UserModel | Record<string, unknown>): User {
-    // Convert Sequelize model to plain object if needed
     const plain = data instanceof UserModel ? data.get({ plain: true }) : data;
-
     const lastConn = plain.lastConnection || plain.last_connection;
-
+    const lastActivity = plain.lastActivity || plain.last_activity;
     return {
       id: plain.id as string,
       parentUserId: (plain.parentUserId || plain.parent_user_id) as string | null,
@@ -202,11 +290,19 @@ export class UsersRepository {
       email: (plain.email as string) || null,
       firstName: (plain.firstName || plain.first_name) as string | null,
       lastName: (plain.lastName || plain.last_name) as string | null,
-      passwordHash: (plain.passwordHash || plain.password_hash) as string,
       status: plain.status as UserStatus,
       lastConnection: lastConn ? new Date(lastConn as string | Date) : null,
+      lastActivity: lastActivity ? new Date(lastActivity as string | Date) : null,
       createdAt: new Date(plain.createdAt || plain.created_at),
       updatedAt: new Date(plain.updatedAt || plain.updated_at)
+    };
+  }
+
+  private mapToUserWithPassword(data: UserModel | Record<string, unknown>): User {
+    const plain = data instanceof UserModel ? data.get({ plain: true }) : data;
+    return {
+      ...this.mapToUser(data),
+      passwordHash: (plain.passwordHash || plain.password_hash) as string
     };
   }
 }

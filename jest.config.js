@@ -1,11 +1,21 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/api/tests', '<rootDir>/web/tests'],
+  roots: ['<rootDir>/api/tests'],
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: '<rootDir>/api/tsconfig.json',
+      diagnostics: false
+    }]
   },
+  moduleNameMapper: {
+    '^helper$': '<rootDir>/helper/dist/index.js'
+  },
+  testPathIgnorePatterns: ['/node_modules/'],
+  testTimeout: 30000,
+  forceExit: true,
+  setupFiles: ['<rootDir>/api/tests/setup.ts'],
   collectCoverageFrom: [
     '**/*.{ts,tsx}',
     '!**/*.d.ts',

@@ -1,22 +1,37 @@
 import { ChipMovementModel } from '../models';
 import { ChipMovement, CreateChipMovementDto, ChipMovementType } from 'helper';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 
 export class ChipMovementsRepository {
-  async create(movementData: CreateChipMovementDto & {
-    previousBalance: number;
-    newBalance: number;
-  }): Promise<ChipMovement> {
-    const movement = await ChipMovementModel.create({
-      userId: movementData.userId,
-      relatedUserId: movementData.relatedUserId || null,
-      type: movementData.type,
-      amount: movementData.amount,
-      description: movementData.description || null,
-      previousBalance: movementData.previousBalance,
-      newBalance: movementData.newBalance
-    });
+  async create(
+    movementData: CreateChipMovementDto & {
+      previousBalance: number;
+      newBalance: number;
+    },
+    transaction?: Transaction
+  ): Promise<ChipMovement> {
+    const movement = await ChipMovementModel.create(
+      {
+        userId: movementData.userId,
+        relatedUserId: movementData.relatedUserId || null,
+        type: movementData.type,
+        amount: movementData.amount,
+        description: movementData.description || null,
+        previousBalance: movementData.previousBalance,
+        newBalance: movementData.newBalance,
+        idempotencyKey: movementData.idempotencyKey || null
+      },
+      { transaction }
+    );
 
+    return this.mapToMovement(movement);
+  }
+
+  async findByIdempotencyKey(key: string): Promise<ChipMovement | null> {
+    const movement = await ChipMovementModel.findOne({
+      where: { idempotencyKey: key }
+    });
+    if (!movement) return null;
     return this.mapToMovement(movement);
   }
 
@@ -34,6 +49,7 @@ export class ChipMovementsRepository {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      compact?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number }> {
     const where: Record<string, unknown> = { userId };
@@ -53,15 +69,26 @@ export class ChipMovementsRepository {
       where.createdAt = createdAtFilter;
     }
 
+    // Exclude GAME_WIN rows with amount <= 0: NOT(type=GAME_WIN AND amount<=0) = (type!=GAME_WIN OR amount>0)
+    (where as Record<string | symbol, unknown>)[Op.or] = [
+      { type: { [Op.ne]: ChipMovementType.GAME_WIN } },
+      { amount: { [Op.gt]: 0 } }
+    ];
+
+    const attributes = options?.compact
+      ? ['id', 'type', 'amount', 'createdAt']
+      : undefined;
+
     const { count, rows } = await ChipMovementModel.findAndCountAll({
       where,
+      attributes,
       limit: options?.limit,
       offset: options?.offset,
       order: [['createdAt', 'DESC']]
     });
 
     return {
-      movements: rows.map(this.mapToMovement),
+      movements: rows.map(m => options?.compact ? this.mapToCompact(m) : this.mapToMovement(m)),
       total: count
     };
   }
@@ -143,6 +170,21 @@ export class ChipMovementsRepository {
     return { totalSales, totalPrizes };
   }
 
+  private mapToCompact(data: ChipMovementModel): ChipMovement {
+    const plain = data.get({ plain: true });
+    return {
+      id: plain.id as string,
+      type: plain.type as ChipMovementType,
+      amount: parseFloat(String(plain.amount)),
+      createdAt: new Date(plain.createdAt || plain.created_at),
+      userId: '',
+      relatedUserId: null,
+      previousBalance: 0,
+      newBalance: 0,
+      idempotencyKey: null,
+    };
+  }
+
   private mapToMovement(data: ChipMovementModel | Record<string, unknown>): ChipMovement {
     // Convert Sequelize model to plain object if needed
     const plain = data instanceof ChipMovementModel ? data.get({ plain: true }) : data;
@@ -156,6 +198,7 @@ export class ChipMovementsRepository {
       description: (plain.description || undefined) as string | undefined,
       previousBalance: parseFloat(String(plain.previousBalance || plain.previous_balance)),
       newBalance: parseFloat(String(plain.newBalance || plain.new_balance)),
+      idempotencyKey: (plain.idempotencyKey || plain.idempotency_key || null) as string | null,
       createdAt: new Date(plain.createdAt || plain.created_at)
     };
   }

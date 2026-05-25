@@ -1,6 +1,6 @@
 import { GameModel } from '../models';
 import { Game, CreateGameDto, UpdateGameDto } from 'helper';
-import { Transaction } from 'sequelize';
+import { Transaction, Op, QueryTypes, literal } from 'sequelize';
 
 export class GamesRepository {
   async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
@@ -14,13 +14,139 @@ export class GamesRepository {
     return this.mapToGame(game);
   }
 
+  async getStats(): Promise<{ total: number; active: number }> {
+    const [total, active] = await Promise.all([
+      GameModel.count(),
+      GameModel.count({ where: { isActive: true } })
+    ]);
+    return { total, active };
+  }
+
+  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
+    const db = GameModel.sequelize!;
+    const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string; totalWagered: string }>(
+      `SELECT g.id, g.name, g.is_active AS "isActive",
+        (
+          COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id), 0) +
+          COALESCE((SELECT COUNT(*) FROM provider_transactions pt
+                    WHERE pt.transaction_type = 'Debit'
+                      AND g.provider_game_id IS NOT NULL
+                      AND pt.provider_game_id = g.provider_game_id
+                      AND pt.provider_name = g.provider_name), 0)
+        ) AS "betCount",
+        (
+          COALESCE((SELECT SUM(b.amount) FROM bets b WHERE b.game_id = g.id), 0) +
+          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
+                    WHERE pt.transaction_type = 'Debit'
+                      AND g.provider_game_id IS NOT NULL
+                      AND pt.provider_game_id = g.provider_game_id
+                      AND pt.provider_name = g.provider_name), 0)
+        ) AS "totalWagered"
+      FROM games g
+      ORDER BY "betCount" DESC
+      LIMIT :limit`,
+      { replacements: { limit }, type: QueryTypes.SELECT }
+    );
+    return results.map(r => ({
+      id: r.id,
+      name: r.name,
+      isActive: r.isActive,
+      betCount: parseInt(String(r.betCount), 10) || 0,
+      totalWagered: parseFloat(String(r.totalWagered)) || 0
+    }));
+  }
+
   async findAll(activeOnly: boolean = false): Promise<Game[]> {
     const where = activeOnly ? { isActive: true } : {};
     const games = await GameModel.findAll({
       where,
-      order: [['name', 'ASC']]
+      order: [
+        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
     });
     return games.map(g => this.mapToGame(g));
+  }
+
+  async findPaginated(
+    page: number,
+    limit: number,
+    activeOnly: boolean = false,
+    providerName?: string,
+    search?: string,
+    gameType?: string,
+    status?: 'active' | 'inactive' | 'all',
+    excludeGameTypes?: string[]
+  ): Promise<{ games: Game[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (status === 'active' || (!status && activeOnly)) where['isActive'] = true;
+    else if (status === 'inactive') where['isActive'] = false;
+    if (providerName) where['providerName'] = providerName;
+    if (gameType) where['gameType'] = gameType;
+    else if (excludeGameTypes && excludeGameTypes.length > 0) where['gameType'] = { [Op.notIn]: excludeGameTypes };
+    if (search) where['name'] = { [Op.iLike]: `%${search}%` };
+    const { rows, count } = await GameModel.findAndCountAll({
+      where,
+      order: [
+        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ],
+      limit,
+      offset
+    });
+    return { games: rows.map(g => this.mapToGame(g)), total: count };
+  }
+
+  async bulkSetStatus(ids: string[], isActive: boolean): Promise<number> {
+    const [affectedCount] = await GameModel.update(
+      { isActive },
+      { where: { id: { [Op.in]: ids } } }
+    );
+    return affectedCount;
+  }
+
+  async bulkSetStatusByFilter(
+    isActive: boolean,
+    providerName?: string,
+    gameType?: string,
+    currentStatus?: 'active' | 'inactive' | 'all'
+  ): Promise<number> {
+    const where: Record<string, unknown> = {};
+    if (currentStatus === 'active') where['isActive'] = true;
+    else if (currentStatus === 'inactive') where['isActive'] = false;
+    if (providerName) where['providerName'] = providerName;
+    if (gameType) where['gameType'] = gameType;
+    const [affectedCount] = await GameModel.update({ isActive }, { where });
+    return affectedCount;
+  }
+
+  async findDistinctProviders(): Promise<string[]> {
+    const rows = await GameModel.findAll({
+      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('provider_name')), 'providerName']],
+      where: { providerName: { [Op.ne]: null } },
+      raw: true
+    });
+    return (rows as unknown as Array<{ providerName: string }>)
+      .map(r => r.providerName)
+      .filter(Boolean)
+      .sort();
+  }
+
+  async findDistinctGameTypes(): Promise<string[]> {
+    const rows = await GameModel.findAll({
+      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('game_type')), 'gameType']],
+      where: { gameType: { [Op.ne]: null } },
+      raw: true
+    });
+    return (rows as unknown as Array<{ gameType: string }>)
+      .map(r => r.gameType)
+      .filter(Boolean)
+      .sort();
   }
 
   async findById(gameId: string): Promise<Game | null> {
@@ -62,21 +188,70 @@ export class GamesRepository {
     });
   }
 
-  private mapToGame(data: GameModel | Record<string, unknown>): Game {
-    // Convert Sequelize model to plain object if needed
-    const plain = data instanceof GameModel ? data.get({ plain: true }) : data;
+  async findByProviderGame(
+    providerName: string,
+    providerGameId: string
+  ): Promise<Game | null> {
+    const game = await GameModel.findOne({
+      where: { providerName, providerGameId }
+    });
+    if (!game) return null;
+    return this.mapToGame(game);
+  }
 
+  async upsertFromProvider(data: {
+    providerName: string;
+    providerGameId: string;
+    name: string;
+    gameType: string;
+    defaultLogo: string;
+  }): Promise<Game> {
+    const existing = await GameModel.findOne({
+      where: { providerName: data.providerName, providerGameId: data.providerGameId }
+    });
+
+    if (existing) {
+      await existing.update({
+        name: data.name,
+        gameType: data.gameType,
+        defaultLogo: data.defaultLogo
+      });
+      return this.mapToGame(existing);
+    }
+
+    const created = await GameModel.create({
+      name: data.name,
+      description: `${data.name} — synced from ${data.providerName}`,
+      isActive: true,
+      minBet: 1,
+      maxBet: 10000,
+      houseEdge: 0,
+      providerName: data.providerName,
+      providerGameId: data.providerGameId,
+      defaultLogo: data.defaultLogo,
+      gameType: data.gameType
+    });
+    return this.mapToGame(created);
+  }
+
+  private mapToGame(model: GameModel): Game {
+    const plain = model.get({ plain: true });
     return {
-      id: plain.id as string,
-      name: plain.name as string,
-      description: plain.description as string,
-      isActive: Boolean(plain.isActive || plain.is_active),
-      minBet: parseFloat(String(plain.minBet || plain.min_bet)),
-      maxBet: parseFloat(String(plain.maxBet || plain.max_bet)),
-      houseEdge: parseFloat(String(plain.houseEdge || plain.house_edge)),
-      providerId: (plain.providerId || plain.provider_id || null) as string | null,
-      createdAt: new Date(plain.createdAt || plain.created_at),
-      updatedAt: new Date(plain.updatedAt || plain.updated_at)
+      id: plain.id,
+      name: plain.name,
+      description: plain.description,
+      isActive: plain.isActive,
+      minBet: Number(plain.minBet),
+      maxBet: Number(plain.maxBet),
+      houseEdge: Number(plain.houseEdge),
+      providerId: plain.providerId ?? null,
+      providerGameId: plain.providerGameId ?? null,
+      providerName: plain.providerName ?? null,
+      defaultLogo: plain.defaultLogo ?? null,
+      gameType: plain.gameType ?? null,
+      sortOrder: plain.sortOrder ?? null,
+      createdAt: new Date(plain.createdAt),
+      updatedAt: new Date(plain.updatedAt)
     };
   }
 }
