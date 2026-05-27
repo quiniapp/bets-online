@@ -3,7 +3,7 @@ import { useState } from "react";
 import Box from "@/components/box";
 import { Flex, FlexCol } from "@/components/flex";
 import { Input } from "@/components/ui/input";
-import { EyeClosed, Eye, ArrowRight, MailIcon } from "lucide-react";
+import { EyeClosed, Eye, ArrowRight, UserIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
@@ -38,7 +38,7 @@ const LoginForm = () => {
             <img
               src="/logo.png"
               alt="Logo"
-              className="h-14 w-auto mx-auto mb-1"
+              className="h-20 w-auto mx-auto mb-1"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
             <CardTitle>
@@ -46,7 +46,7 @@ const LoginForm = () => {
             </CardTitle>
             <CardContent className="p-0 hidden sm:block">
               <p className="text-sm text-zinc-500">
-                Ingresa con tu email y contraseña para poder administrar tu cuenta.
+                Ingresa con tu nombre de usuario y contraseña para poder administrar tu cuenta.
               </p>
             </CardContent>
           </FlexCol>
@@ -57,12 +57,12 @@ const LoginForm = () => {
                 <Label htmlFor="email">Usuario</Label>
                 <Box className="w-full">
                   <Flex className="absolute items-center justify-end right-0 h-full pr-2 text-zinc-400">
-                    <MailIcon size={16} className="text-current" />
+                    <UserIcon size={16} className="text-current" />
                   </Flex>
                   <Input
                     id="email"
                     type="text"
-                    placeholder="usuario@mail.com o admin"
+                    placeholder="Nombre de usuario"
                     {...register("email", validationRules.email)}
                     className={errors.email ? "border-red-500" : ""}
                   />
