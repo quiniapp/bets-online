@@ -23,6 +23,7 @@ import { GripVertical, Loader2, Building2, Upload } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useProviders } from "@/hooks/useProviders"
@@ -86,10 +87,28 @@ function ProviderLogoUpload({
   )
 }
 
-function ProviderRow({ provider, onLogoUploaded }: { provider: Provider; onLogoUploaded: () => void }) {
+function ProviderRow({
+  provider,
+  onLogoUploaded,
+  onToggleActive,
+}: {
+  provider: Provider
+  onLogoUploaded: () => void
+  onToggleActive: (name: string, isActive: boolean) => Promise<void>
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: provider.name,
   })
+  const [toggling, setToggling] = useState(false)
+
+  const handleToggle = async (checked: boolean) => {
+    setToggling(true)
+    try {
+      await onToggleActive(provider.name, checked)
+    } finally {
+      setToggling(false)
+    }
+  }
 
   return (
     <div
@@ -120,6 +139,15 @@ function ProviderRow({ provider, onLogoUploaded }: { provider: Provider; onLogoU
         {provider.displayName ?? provider.name}
       </span>
       <ProviderLogoUpload providerName={provider.name} onUploaded={onLogoUploaded} />
+      {toggling ? (
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+      ) : (
+        <Switch
+          checked={provider.isActive}
+          onCheckedChange={handleToggle}
+          className="shrink-0"
+        />
+      )}
       <Badge variant={provider.isActive ? "default" : "secondary"} className="text-xs shrink-0">
         {provider.isActive ? "Activo" : "Inactivo"}
       </Badge>
@@ -151,7 +179,7 @@ function ProviderRowOverlay({ provider }: { provider: Provider }) {
 }
 
 export default function AdminProviders() {
-  const { providers, setProviders, loading, saving, fetchProviders, saveOrder } = useProviders(true)
+  const { providers, setProviders, loading, saving, fetchProviders, updateProvider, saveOrder } = useProviders(true)
   const { toast } = useToast()
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
@@ -198,6 +226,15 @@ export default function AdminProviders() {
     setOriginalOrder([])
   }
 
+  const handleToggleActive = async (name: string, isActive: boolean) => {
+    const result = await updateProvider(name, { isActive })
+    if (result.success) {
+      setProviders(prev => prev.map(p => p.name === name ? { ...p, isActive } : p))
+    } else {
+      toast({ title: "Error", description: "No se pudo cambiar el estado del proveedor", variant: "destructive" })
+    }
+  }
+
   return (
     <DashboardLayout title="Proveedores">
       <div className="flex items-center justify-between mb-4">
@@ -232,7 +269,7 @@ export default function AdminProviders() {
           <SortableContext items={providers.map(p => p.name)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {providers.map(provider => (
-                <ProviderRow key={provider.name} provider={provider} onLogoUploaded={fetchProviders} />
+                <ProviderRow key={provider.name} provider={provider} onLogoUploaded={fetchProviders} onToggleActive={handleToggleActive} />
               ))}
             </div>
           </SortableContext>
