@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ValidatedInput } from "@/components/ui/validated-input"
 import { PasswordInput } from "@/components/ui/password-input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Save, User } from "lucide-react"
 import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
@@ -28,6 +29,7 @@ export default function CreateUserPage() {
     confirmPassword: "",
     initialBalance: "0",
     isActive: true,
+    role: "PLAYER",
   })
 
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -108,7 +110,7 @@ export default function CreateUserPage() {
       const payload: Record<string, unknown> = {
         username: formData.username,
         password: formData.password,
-        role: 'PLAYER'
+        role: formData.role
       }
 
       // Only include optional fields if they have values
@@ -280,6 +282,20 @@ export default function CreateUserPage() {
                     errorMessage={initialBalanceValidation.message}
                     showValidationIcon={false}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Rol</Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData((prev) => ({ ...prev, role: value }))}>
+                    <SelectTrigger id="role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PLAYER">Jugador</SelectItem>
+                      <SelectItem value="CASHIER">Cajero</SelectItem>
+                      <SelectItem value="ADMIN">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-center space-x-2">

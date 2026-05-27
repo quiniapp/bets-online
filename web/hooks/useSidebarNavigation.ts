@@ -183,8 +183,7 @@ export const useSidebarNavigation = () => {
       setOpen: setUsersOpen,
       items: [
         { title: t("users.list"), href: "/admin/users" },
-        { title: "Crear Cajero", href: "/admin/users/create-manager" },
-        { title: "Crear Jugador", href: "/admin/users/create-user" },
+        { title: "Crear Usuario", href: "/cashier/users/create-user" },
       ],
     },
     {

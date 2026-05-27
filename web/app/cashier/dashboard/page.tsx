@@ -166,13 +166,10 @@ export default function CashierDashboard() {
             <p className="text-sm text-muted-foreground mb-3">
               Registrar nuevos cajeros y jugadores
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button size="sm" variant="outline" onClick={() => router.push(ROUTER.CREATE_MANAGER)}>
-                Crear Cajero
-              </Button>
-              <Button size="sm" onClick={() => router.push(ROUTER.CREATE_USER)}>
+            <div className="flex">
+              <Button size="sm" className="w-full" onClick={() => router.push(ROUTER.CASHIER_CREATE_USER)}>
                 <UserPlus className="h-3 w-3 mr-1" />
-                Crear Jugador
+                Crear Usuario
               </Button>
             </div>
           </CardContent>

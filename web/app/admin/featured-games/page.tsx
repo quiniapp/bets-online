@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   DndContext,
   DragEndEvent,
@@ -130,7 +130,19 @@ function AddGameDialog({
   existingGameIds: Set<string>
 }) {
   const [search, setSearch] = useState("")
-  const { games, loading } = useGames({ activeOnly: true, search })
+  const { games, loading, loadMore, hasMore, loadingMore } = useGames({ activeOnly: true, search })
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && hasMore && !loadingMore) loadMore() },
+      { threshold: 0.1 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [loadMore, hasMore, loadingMore])
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -179,6 +191,12 @@ function AddGameDialog({
                 </button>
               )
             })
+          )}
+          <div ref={sentinelRef} />
+          {loadingMore && (
+            <div className="flex justify-center py-3">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
           )}
         </div>
         <DialogFooter>
