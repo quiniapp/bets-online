@@ -291,7 +291,7 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
                         setAmount(String(current + preset));
                       }}
                     >
-                      +{preset >= 1000 ? `${preset / 1000}k` : preset}
+                      +{preset.toLocaleString('es-AR')}
                     </Button>
                   ))}
                 </div>
