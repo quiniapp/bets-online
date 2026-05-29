@@ -138,9 +138,8 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
         <div className="mb-3 text-sm font-medium">{user?.username}</div>
         <Button
-          variant="outline"
           size="sm"
-          className="w-full bg-transparent"
+          className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold"
           onClick={logout}
         >
           <LogOut className="mr-2 h-4 w-4" />
