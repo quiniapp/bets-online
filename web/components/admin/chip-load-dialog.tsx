@@ -37,6 +37,8 @@ const ROLE_OPTIONS: { role: UserRole; label: string; color: string }[] = [
   { role: UserRole.PLAYER, label: 'Jugador', color: 'text-green-500' },
 ];
 
+const PRESET_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
+
 export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialogProps) {
   const { role: myRole } = useAuth();
   const { sellChips, withdraw } = useChips();
@@ -276,6 +278,23 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
               {/* Amount input + action buttons */}
               <div className="space-y-2">
                 <Label>Monto</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_AMOUNTS.map(preset => (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 min-w-[60px] text-xs font-semibold"
+                      onClick={() => {
+                        const current = parseFloat(amount.replace(',', '.')) || 0;
+                        setAmount(String(current + preset));
+                      }}
+                    >
+                      +{preset >= 1000 ? `${preset / 1000}k` : preset}
+                    </Button>
+                  ))}
+                </div>
                 <Input
                   type="text"
                   inputMode="numeric"

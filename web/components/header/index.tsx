@@ -40,9 +40,9 @@ const HeaderIndex = () => {
                             <LayoutDashboardIcon />
                             <span className="hidden sm:inline">{user.username ?? 'Panel'}</span>
                         </Button>
-                        <Button variant='ghost' onClick={() => setLogoutOpen(true)} role='button' aria-label='cerrar sesion'>
+                        <Button onClick={() => setLogoutOpen(true)} role='button' aria-label='cerrar sesion' className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold">
                             <LogOutIcon />
-                            <span className="hidden sm:inline">Salir</span>
+                            Salir
                         </Button>
                     </>
                 ) : (
