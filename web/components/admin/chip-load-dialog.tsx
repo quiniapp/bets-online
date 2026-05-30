@@ -9,7 +9,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Search, ArrowLeft } from 'lucide-react';
@@ -177,14 +176,14 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Cargar / Debitar Fichas</DialogTitle>
+        <DialogContent className="w-[95vw] max-w-xl max-h-[95dvh] flex flex-col overflow-hidden p-3 sm:p-6">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="text-base">Cargar / Debitar Fichas</DialogTitle>
           </DialogHeader>
 
           {/* Search section */}
           {!selectedUser ? (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3 overflow-y-auto flex-1">
               {/* Role filters — hidden for CASHIER */}
               {visibleRoleOptions.length > 0 && (
                 <div className="flex flex-wrap justify-around">
@@ -247,9 +246,9 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
               )}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-2 sm:gap-4 flex-1 overflow-hidden min-h-0">
               {/* Selected user header */}
-              <div className="flex items-center gap-3 p-3 border rounded-lg">
+              <div className="flex items-center gap-2 p-2 sm:p-3 border rounded-lg shrink-0">
                 <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleClearUser}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
@@ -262,30 +261,29 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
                 ) : userBalance ? (
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Balance</p>
-                    <p className="font-bold text-green-600">${formatChips(userBalance.chipBalance)}</p>
+                    <p className="font-bold text-green-600 text-sm">${formatChips(userBalance.chipBalance)}</p>
                   </div>
                 ) : null}
               </div>
 
-              {/* Movements history */}
-              <div>
-                <p className="text-sm font-medium mb-2">Historial de movimientos</p>
-                <ChipMovementsTable userId={selectedUser.id} limit={20} onRefresh={refreshMovements} compact infiniteScroll />
+              {/* Movements history — fixed height, internal scroll */}
+              <div className="shrink-0">
+                <p className="text-xs font-medium mb-1 text-muted-foreground">Historial de movimientos</p>
+                <ChipMovementsTable userId={selectedUser.id} limit={10} onRefresh={refreshMovements} compact infiniteScroll compactMaxHeight="5.5rem" />
               </div>
 
-              <Separator />
+              <Separator className="shrink-0" />
 
               {/* Amount input + action buttons */}
-              <div className="space-y-2">
-                <Label>Monto</Label>
-                <div className="flex flex-wrap gap-1.5">
+              <div className="space-y-2 shrink-0">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
                   {PRESET_AMOUNTS.map(preset => (
                     <Button
                       key={preset}
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="flex-1 min-w-[60px] text-xs font-semibold"
+                      className="text-xs font-semibold px-1"
                       onClick={() => {
                         const current = parseFloat(amount.replace(',', '.')) || 0;
                         setAmount(String(current + preset));
@@ -301,21 +299,24 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
                   placeholder="0.00"
                   value={amount}
                   onChange={e => setAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                  className="h-9 text-sm"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 shrink-0">
                 <Button
                   variant="outline"
+                  size="sm"
                   disabled={!amountValid}
                   onClick={() => setConfirmAction('withdraw')}
-                  className="w-full"
+                  className="w-full text-sm"
                 >
                   Debitar Fichas
                 </Button>
                 <Button
+                  size="sm"
                   disabled={!amountValid}
                   onClick={() => setConfirmAction('sell')}
-                  className="w-full"
+                  className="w-full text-sm"
                 >
                   Cargar Fichas
                 </Button>

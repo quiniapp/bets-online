@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserTreeView } from "@/components/admin/user-tree"
 import { useUsers } from "@/hooks/useUsers"
@@ -14,13 +18,16 @@ import { useDebounce } from "@/hooks/useDebounce"
 import {
   Search, Edit, TreePine, Table,
   ChevronDown, ChevronRight, ChevronLeft,
-  Lock, Wallet, User as UserIcon
+  Lock, Unlock, DollarSign, Key, UserPlus
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { UserStatus } from "helper"
+import { UserStatus, UserRole } from "helper"
 import type { User, UserTreeNode } from "helper"
 import ROUTER from "@/routes"
 import { cn } from "@/lib/utils"
+import { apiService } from "@/services/api.service"
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog"
 import { UserDetailDialog } from "@/components/admin/user-detail-dialog"
 import { UserWalletDialog } from "@/components/admin/user-wallet-dialog"
@@ -42,23 +49,34 @@ interface ActionButtonsProps {
   onEdit: (id: string) => void
   onWallet: (user: User) => void
   onResetPassword: (user: User) => void
-  onViewProfile: (id: string) => void
+  onToggleBlock: (user: User) => void
 }
 
-function ActionButtons({ user, onEdit, onWallet, onResetPassword, onViewProfile }: ActionButtonsProps) {
+function ActionButtons({ user, onEdit, onWallet, onResetPassword, onToggleBlock }: ActionButtonsProps) {
+  const isBlocked = user.status === UserStatus.BLOCKED
   return (
     <div className="flex items-center gap-1">
-      <Button variant="outline" size="sm" onClick={() => onWallet(user)} title="Gestionar saldo e historial">
-        <Wallet className="h-3.5 w-3.5" />
+      <Button
+        variant="outline" size="sm"
+        onClick={() => onWallet(user)}
+        title="Gestionar saldo"
+        className="text-yellow-600 border-yellow-300 hover:bg-yellow-50 hover:text-yellow-700"
+      >
+        <DollarSign className="h-3.5 w-3.5" />
       </Button>
       <Button variant="outline" size="sm" onClick={() => onResetPassword(user)} title="Cambiar contraseña">
-        <Lock className="h-3.5 w-3.5" />
+        <Key className="h-3.5 w-3.5" />
       </Button>
-      <Button variant="outline" size="sm" onClick={() => onEdit(user.id)} title="Editar">
+      <Button variant="outline" size="sm" onClick={() => onEdit(user.id)} title="Editar usuario">
         <Edit className="h-3.5 w-3.5" />
       </Button>
-      <Button variant="outline" size="sm" onClick={() => onViewProfile(user.id)} title="Ver perfil / Gestionar acceso">
-        <UserIcon className="h-3.5 w-3.5" />
+      <Button
+        variant="outline" size="sm"
+        onClick={() => onToggleBlock(user)}
+        title={isBlocked ? "Desbloquear usuario" : "Bloquear usuario"}
+        className={isBlocked ? "text-green-600 border-green-300 hover:bg-green-50" : "text-red-600 border-red-300 hover:bg-red-50"}
+      >
+        {isBlocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
       </Button>
     </div>
   )
@@ -72,10 +90,10 @@ interface UserRowProps {
   onWallet: (user: User) => void
   onResetPassword: (user: User) => void
   onViewDetail: (user: User) => void
-  onViewProfile: (id: string) => void
+  onToggleBlock: (user: User) => void
 }
 
-function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onResetPassword, onViewDetail, onViewProfile }: UserRowProps) {
+function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onResetPassword, onViewDetail, onToggleBlock }: UserRowProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
   const directChildren = allUsers.filter(u => u.parentUserId === user.id)
   const hasChildren = directChildren.length > 0
@@ -110,7 +128,7 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
             onEdit={onEdit}
             onWallet={onWallet}
             onResetPassword={onResetPassword}
-            onViewProfile={onViewProfile}
+            onToggleBlock={onToggleBlock}
           />
         </div>
       </div>
@@ -171,7 +189,7 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
             onEdit={onEdit}
             onWallet={onWallet}
             onResetPassword={onResetPassword}
-            onViewProfile={onViewProfile}
+            onToggleBlock={onToggleBlock}
           />
         </div>
       </div>
@@ -186,7 +204,7 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
           onWallet={onWallet}
           onResetPassword={onResetPassword}
           onViewDetail={onViewDetail}
-          onViewProfile={onViewProfile}
+          onToggleBlock={onToggleBlock}
         />
       ))}
     </>
@@ -196,12 +214,16 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
 function UsersPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { role } = useAuth()
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [showAllDescendants, setShowAllDescendants] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogType, setDialogType] = useState<'wallet' | 'reset-password' | 'detail' | null>(null)
+  const [blockConfirmUser, setBlockConfirmUser] = useState<User | null>(null)
+  const [blockLoading, setBlockLoading] = useState(false)
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
@@ -242,23 +264,49 @@ function UsersPageContent() {
     }
   }
 
+  const handleConfirmBlock = async () => {
+    if (!blockConfirmUser) return
+    const isBlocked = blockConfirmUser.status === UserStatus.BLOCKED
+    setBlockLoading(true)
+    try {
+      const endpoint = isBlocked ? `/users/${blockConfirmUser.id}/unblock` : `/users/${blockConfirmUser.id}/block`
+      const response = await apiService.patch(endpoint, {})
+      if (response.success) {
+        toast({ title: isBlocked ? "Usuario desbloqueado" : "Usuario bloqueado", description: `${blockConfirmUser.username} fue ${isBlocked ? 'desbloqueado' : 'bloqueado'} correctamente` })
+        reload()
+      } else {
+        toast({ variant: "destructive", title: "Error", description: response.error?.message || "No se pudo cambiar el estado" })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Error inesperado" })
+    } finally {
+      setBlockLoading(false)
+      setBlockConfirmUser(null)
+    }
+  }
+
+  const getCreateUserHref = () => {
+    if (role === UserRole.CASHIER) return ROUTER.CASHIER_CREATE_USER
+    return ROUTER.CREATE_USER
+  }
+
   const rootUsers = showAllDescendants
     ? users.filter(u => !users.some(p => p.id === u.parentUserId))
     : users.filter(u => !u.parentUserId || !users.some(p => p.id === u.parentUserId))
 
   const handleEditUser = (userId: string) => router.push(`${ROUTER.EDIT_USER}?id=${userId}`)
-  const handleViewProfile = (userId: string) => router.push(`${ROUTER.ADMIN_USERS}/${userId}`)
   const handleWallet = (user: User) => { setSelectedUser(user); setDialogType('wallet') }
   const handleResetPassword = (user: User) => { setSelectedUser(user); setDialogType('reset-password') }
   const handleViewDetail = (user: User) => { setSelectedUser(user); setDialogType('detail') }
   const handleCloseDialog = () => { setSelectedUser(null); setDialogType(null) }
+  const handleToggleBlock = (user: User) => setBlockConfirmUser(user)
 
   const sharedRowProps = {
     onEdit: handleEditUser,
     onWallet: handleWallet,
     onResetPassword: handleResetPassword,
     onViewDetail: handleViewDetail,
-    onViewProfile: handleViewProfile,
+    onToggleBlock: handleToggleBlock,
   }
 
   if (loading) {
@@ -274,7 +322,7 @@ function UsersPageContent() {
       {/* Controls */}
       <div className="mb-6 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Buscar usuarios (min. 3 caracteres)..."
@@ -299,6 +347,10 @@ function UsersPageContent() {
               <Label htmlFor="show-all" className="text-sm cursor-pointer">Mostrar jerarquía</Label>
             </div>
           )}
+
+          <Button onClick={() => router.push(getCreateUserHref())} className="ml-auto">
+            <UserPlus className="h-4 w-4 mr-2" />Nuevo Usuario
+          </Button>
         </div>
       </div>
 
@@ -331,7 +383,7 @@ function UsersPageContent() {
             {loadingTree ? (
               <div className="text-center py-8 text-muted-foreground">Cargando árbol de usuarios...</div>
             ) : (
-              <UserTreeView tree={userTree} onEditUser={handleEditUser} onViewProfile={handleViewProfile} />
+              <UserTreeView tree={userTree} onEditUser={handleEditUser} onViewProfile={(id) => router.push(`${ROUTER.ADMIN_USERS}/${id}`)} />
             )}
           </CardContent>
         </Card>
@@ -377,6 +429,31 @@ function UsersPageContent() {
         <UserDetailDialog user={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onOperationSuccess={() => reload()} />
       )}
+
+      <AlertDialog open={!!blockConfirmUser} onOpenChange={open => { if (!open) setBlockConfirmUser(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {blockConfirmUser?.status === UserStatus.BLOCKED ? "¿Desbloquear usuario?" : "¿Bloquear usuario?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {blockConfirmUser?.status === UserStatus.BLOCKED
+                ? `"${blockConfirmUser?.username}" podrá volver a iniciar sesión.`
+                : `"${blockConfirmUser?.username}" no podrá iniciar sesión hasta ser desbloqueado.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={blockLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmBlock}
+              disabled={blockLoading}
+              className={blockConfirmUser?.status === UserStatus.BLOCKED ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {blockLoading ? "Procesando..." : blockConfirmUser?.status === UserStatus.BLOCKED ? "Desbloquear" : "Bloquear"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }

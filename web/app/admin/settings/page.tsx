@@ -13,11 +13,15 @@ import { Globe, Palette, Bell, Save, RefreshCw, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api.service"
+import { useAuth } from "@/contexts/auth-context"
+import { UserRole } from "helper"
 
 export default function AdminSettingsPage() {
   const { language, setLanguage, t } = useLanguage()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
+  const { role } = useAuth()
+  const isOwner = role === UserRole.OWNER
   const [notifications, setNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -131,22 +135,24 @@ export default function AdminSettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Game Sync */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <RefreshCw className="h-5 w-5" />
-                Sincronización de Juegos
-              </CardTitle>
-              <CardDescription>Sincroniza el catálogo de juegos con el proveedor</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onClick={handleSync} disabled={syncing} className="gap-2">
-                {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Game Sync — Owner only */}
+          {isOwner && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  Sincronización de Juegos
+                </CardTitle>
+                <CardDescription>Sincroniza el catálogo de juegos con el proveedor</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" onClick={handleSync} disabled={syncing} className="gap-2">
+                  {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {syncing ? 'Sincronizando...' : 'Sincronizar ahora'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Save Button */}
           <div className="flex justify-end">

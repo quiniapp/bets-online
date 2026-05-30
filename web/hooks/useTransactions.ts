@@ -8,6 +8,7 @@ interface TransactionOptions {
   startDate?: Date;
   endDate?: Date;
   type?: ChipMovementType;
+  includeDescendants?: boolean;
 }
 
 export function useTransactions(userId?: string) {
@@ -34,6 +35,7 @@ export function useTransactions(userId?: string) {
       if (options?.endDate)
         params.append('endDate', options.endDate.toISOString());
       if (options?.type) params.append('type', options.type);
+      if (options?.includeDescendants) params.append('includeDescendants', 'true');
 
       const endpoint = userId
         ? `/chips/movements/${userId}${params.toString() ? '?' + params.toString() : ''}`

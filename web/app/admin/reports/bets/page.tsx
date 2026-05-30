@@ -1,150 +1,134 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Download, TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { TrendingUp, TrendingDown, Clock, ChevronLeft, ChevronRight } from "lucide-react"
 import type { Bet } from "helper"
 import { BetStatus } from "helper"
 import { formatChips } from "@/lib/utils"
+import { apiService } from "@/services/api.service"
 
-// Demo data - In production, this would come from API endpoints
-const mockBets: Bet[] = []
-const mockGames = [
-  { id: "1", name: "Roulette" },
-  { id: "2", name: "Blackjack" }
-]
-const mockUsers = [
-  { id: "1", username: "user1" },
-  { id: "2", username: "user2" }
-]
+interface BetStats {
+  totalBets: number
+  wonBets: number
+  lostBets: number
+  pendingBets: number
+  totalWagered: number
+  totalWon: number
+  winRate: number
+}
+
+const PAGE_SIZE = 20
 
 export default function BetsReportPage() {
-  const [bets] = useState<Bet[]>(mockBets)
-  const [filterGame, setFilterGame] = useState<string>("all")
+  const [bets, setBets] = useState<Bet[]>([])
+  const [stats, setStats] = useState<BetStats | null>(null)
+  const [loading, setLoading] = useState(true)
   const [filterOutcome, setFilterOutcome] = useState<string>("all")
+  const [page, setPage] = useState(0)
+  const [total, setTotal] = useState(0)
 
-  const filteredBets = bets.filter((bet) => {
-    const matchesGame = filterGame === "all" || bet.gameId === filterGame
-    const matchesOutcome = filterOutcome === "all" || bet.status === filterOutcome
-    return matchesGame && matchesOutcome
-  })
-
-  const totalBets = bets.length
-  const wonBets = bets.filter((b) => b.status === BetStatus.WON).length
-  const lostBets = bets.filter((b) => b.status === BetStatus.LOST).length
-  const pendingBets = bets.filter((b) => b.status === BetStatus.PENDING).length
-
-  const totalBetAmount = bets.reduce((sum, bet) => sum + bet.amount, 0)
-  const totalWinAmount = bets
-    .filter((b) => b.status === BetStatus.WON)
-    .reduce((sum, bet) => sum + bet.amount * (bet.multiplier || 1), 0)
-  const houseEdge = totalBetAmount > 0 ? ((totalBetAmount - totalWinAmount) / totalBetAmount) * 100 : 0
-
-  const getBadgeColor = (outcome: string) => {
-    switch (outcome) {
-      case BetStatus.WON:
-        return "bg-green-500"
-      case BetStatus.LOST:
-        return "bg-red-500"
-      case BetStatus.PENDING:
-        return "bg-yellow-500"
-      default:
-        return "bg-gray-500"
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        const [histRes, statsRes] = await Promise.all([
+          apiService.get<{ bets: Bet[]; total: number; limit: number; offset: number }>(
+            `/bets/my-history?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}${filterOutcome !== 'all' ? `&status=${filterOutcome}` : ''}`
+          ),
+          page === 0 ? apiService.get<BetStats>('/bets/my-statistics') : Promise.resolve(null),
+        ])
+        if (histRes.success && histRes.data) {
+          setBets(histRes.data.bets)
+          setTotal(histRes.data.total)
+        }
+        if (statsRes && statsRes.success && statsRes.data) {
+          setStats(statsRes.data)
+        }
+      } finally {
+        setLoading(false)
+      }
     }
+    loadData()
+  }, [page, filterOutcome])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const getBadgeVariant = (status: string) => {
+    if (status === BetStatus.WON) return "default"
+    if (status === BetStatus.LOST) return "destructive"
+    return "secondary"
   }
 
+  const houseEdge = stats && stats.totalWagered > 0
+    ? ((stats.totalWagered - stats.totalWon) / stats.totalWagered * 100)
+    : 0
+
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Reporte de Apuestas">
       <div className="space-y-6">
-        <Alert className="bg-yellow-50 border-yellow-200">
-          <AlertCircle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            Esta página usa datos de demostración. En producción, integrar con endpoints de API para estadísticas agregadas de apuestas.
-          </AlertDescription>
-        </Alert>
-
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Reporte de Apuestas</h1>
-            <p className="text-muted-foreground">Análisis detallado de todas las apuestas</p>
-          </div>
-          <Button>
-            <Download className="mr-2 h-4 w-4" />
-            Exportar Reporte
-          </Button>
-        </div>
-
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <TrendingUp className="mr-2 h-4 w-4" />
-                Total Apuestas
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4" />Total
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalBets}</div>
-              <p className="text-xs text-muted-foreground">Todas las apuestas</p>
+              <div className="text-2xl font-bold">{stats?.totalBets ?? '—'}</div>
+              <p className="text-xs text-muted-foreground">apuestas</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <TrendingUp className="mr-2 h-4 w-4 text-green-500" />
-                Apuestas Ganadas
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4 text-green-500" />Ganadas
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{wonBets}</div>
+              <div className="text-2xl font-bold text-green-600">{stats?.wonBets ?? '—'}</div>
               <p className="text-xs text-muted-foreground">
-                {totalBets > 0 ? ((wonBets / totalBets) * 100).toFixed(1) : 0}% del total
+                {stats ? `${stats.winRate.toFixed(1)}% win rate` : ''}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <TrendingDown className="mr-2 h-4 w-4 text-red-500" />
-                Apuestas Perdidas
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <TrendingDown className="h-4 w-4 text-red-500" />Perdidas
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{lostBets}</div>
+              <div className="text-2xl font-bold text-red-600">{stats?.lostBets ?? '—'}</div>
               <p className="text-xs text-muted-foreground">
-                {totalBets > 0 ? ((lostBets / totalBets) * 100).toFixed(1) : 0}% del total
+                {stats && stats.totalBets > 0 ? `${((stats.lostBets / stats.totalBets) * 100).toFixed(1)}% del total` : ''}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center">
-                <Clock className="mr-2 h-4 w-4 text-yellow-500" />
-                Apuestas Pendientes
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-yellow-500" />Pendientes
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{pendingBets}</div>
-              <p className="text-xs text-muted-foreground">
-                {totalBets > 0 ? ((pendingBets / totalBets) * 100).toFixed(1) : 0}% del total
-              </p>
+              <div className="text-2xl font-bold text-yellow-600">{stats?.pendingBets ?? '—'}</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Financial Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Monto Total Apostado</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${formatChips(totalBetAmount)}</div>
+              <div className="text-2xl font-bold">${formatChips(stats?.totalWagered ?? 0)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -152,7 +136,7 @@ export default function BetsReportPage() {
               <CardTitle className="text-sm font-medium">Total Pagado en Ganancias</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${formatChips(totalWinAmount)}</div>
+              <div className="text-2xl font-bold text-green-600">${formatChips(stats?.totalWon ?? 0)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -165,96 +149,88 @@ export default function BetsReportPage() {
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Filter */}
+        <div className="flex items-center gap-3">
+          <Select value={filterOutcome} onValueChange={v => { setFilterOutcome(v); setPage(0) }}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los resultados</SelectItem>
+              <SelectItem value={BetStatus.WON}>Ganadas</SelectItem>
+              <SelectItem value={BetStatus.LOST}>Perdidas</SelectItem>
+              <SelectItem value={BetStatus.PENDING}>Pendientes</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">{total} apuestas</span>
+        </div>
+
+        {/* Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Filtros</CardTitle>
+            <CardTitle>Historial de Apuestas</CardTitle>
+            <CardDescription>Apuestas del usuario actual</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
-              <Select value={filterGame} onValueChange={setFilterGame}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filtrar por juego" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los juegos</SelectItem>
-                  {mockGames.map((game) => (
-                    <SelectItem key={game.id} value={game.id}>
-                      {game.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterOutcome} onValueChange={setFilterOutcome}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filtrar por resultado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los resultados</SelectItem>
-                  <SelectItem value={BetStatus.WON}>Ganadas</SelectItem>
-                  <SelectItem value={BetStatus.LOST}>Perdidas</SelectItem>
-                  <SelectItem value={BetStatus.PENDING}>Pendientes</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="text-center py-8 text-muted-foreground">Cargando...</div>
+            ) : bets.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No hay apuestas registradas</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-4 py-3 font-medium">Juego</th>
+                      <th className="text-left px-4 py-3 font-medium">Monto</th>
+                      <th className="text-left px-4 py-3 font-medium">Resultado</th>
+                      <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">Ganancia</th>
+                      <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Fecha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bets.map(bet => {
+                      const winAmount = bet.status === BetStatus.WON ? bet.amount * (bet.multiplier || 1) : 0
+                      return (
+                        <tr key={bet.id} className="border-b hover:bg-muted/40">
+                          <td className="px-4 py-3 font-mono text-xs truncate max-w-[120px]">{bet.gameId}</td>
+                          <td className="px-4 py-3">${formatChips(bet.amount)}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant={getBadgeVariant(bet.status)}>{bet.status}</Badge>
+                          </td>
+                          <td className="px-4 py-3 hidden sm:table-cell">
+                            {bet.status === BetStatus.WON
+                              ? <span className="text-green-600">${formatChips(winAmount)}</span>
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                            {new Date(bet.createdAt).toLocaleDateString('es-AR')}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Bets Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalle de Apuestas</CardTitle>
-            <CardDescription>{filteredBets.length} apuestas encontradas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">ID</th>
-                    <th className="text-left p-2">Usuario</th>
-                    <th className="text-left p-2">Juego</th>
-                    <th className="text-left p-2">Monto</th>
-                    <th className="text-left p-2">Multiplicador</th>
-                    <th className="text-left p-2">Resultado</th>
-                    <th className="text-left p-2">Ganancia</th>
-                    <th className="text-left p-2">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredBets.map((bet) => {
-                    const user = mockUsers.find((u) => u.id === bet.userId)
-                    const game = mockGames.find((g) => g.id === bet.gameId)
-                    const winAmount = bet.status === BetStatus.WON ? bet.amount * (bet.multiplier || 1) : 0
-
-                    return (
-                      <tr key={bet.id} className="border-b hover:bg-muted/50">
-                        <td className="p-2 font-mono text-sm">{bet.id}</td>
-                        <td className="p-2">{user?.username || "Usuario desconocido"}</td>
-                        <td className="p-2">{game?.name || "Juego desconocido"}</td>
-                        <td className="p-2">${formatChips(bet.amount)}</td>
-                        <td className="p-2">{bet.multiplier ? `${bet.multiplier}x` : "-"}</td>
-                        <td className="p-2">
-                          <Badge className={getBadgeColor(bet.status)}>{bet.status}</Badge>
-                        </td>
-                        <td className="p-2">
-                          {bet.status === BetStatus.WON ? (
-                            <span className="text-green-600">${formatChips(winAmount)}</span>
-                          ) : bet.status === BetStatus.LOST ? (
-                            <span className="text-red-600">$0.00</span>
-                          ) : (
-                            <span className="text-yellow-600">Pendiente</span>
-                          )}
-                        </td>
-                        <td className="p-2">{bet.createdAt.toLocaleDateString()}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} de {total}</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">{page + 1} / {totalPages}</span>
+              <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

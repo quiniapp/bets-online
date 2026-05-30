@@ -14,7 +14,6 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
-  Gamepad2,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,12 +45,7 @@ export function Sidebar({ className }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
-        <div className="flex items-center gap-2 font-semibold">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Gamepad2 className="h-4 w-4" />
-          </div>
-          <span>BetPlatform</span>
-        </div>
+        <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
       </div>
 
    

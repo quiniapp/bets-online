@@ -18,6 +18,7 @@ interface ChipMovementsTableProps {
   onRefresh?: number;
   compact?: boolean;
   infiniteScroll?: boolean;
+  compactMaxHeight?: string;
 }
 
 const getMovementBadgeColor = (type: ChipMovementType): string => {
@@ -25,10 +26,13 @@ const getMovementBadgeColor = (type: ChipMovementType): string => {
     case ChipMovementType.SELL_TO_PLAYER:
     case ChipMovementType.PRIZE:
     case ChipMovementType.DEPOSIT:
+    case ChipMovementType.GAME_WIN:
+    case ChipMovementType.GAME_REFUND:
       return 'bg-green-100 text-green-800';
     case ChipMovementType.WITHDRAWAL:
     case ChipMovementType.LOSS:
     case ChipMovementType.BUY_FROM_ADMIN:
+    case ChipMovementType.GAME_BET:
       return 'bg-red-100 text-red-800';
     case ChipMovementType.RECOVERY:
     case ChipMovementType.ADJUSTMENT:
@@ -41,27 +45,24 @@ const getMovementBadgeColor = (type: ChipMovementType): string => {
   }
 };
 
-const formatAmount = (amount: number, type: ChipMovementType): string => {
-  const isPositive = [
-    ChipMovementType.SELL_TO_PLAYER,
-    ChipMovementType.PRIZE,
-    ChipMovementType.DEPOSIT,
-    ChipMovementType.RECOVERY,
-  ].includes(type);
+const POSITIVE_TYPES: ChipMovementType[] = [
+  ChipMovementType.SELL_TO_PLAYER,
+  ChipMovementType.PRIZE,
+  ChipMovementType.DEPOSIT,
+  ChipMovementType.RECOVERY,
+  ChipMovementType.GAME_WIN,
+  ChipMovementType.GAME_REFUND,
+  ChipMovementType.PANEL_ASSIGNMENT,
+];
 
+const formatAmount = (amount: number, type: ChipMovementType): string => {
+  const isPositive = POSITIVE_TYPES.includes(type);
   const sign = isPositive ? '+' : '-';
   return `${sign}$${formatChips(Math.abs(amount))}`;
 };
 
 const getAmountColor = (type: ChipMovementType): string => {
-  const isPositive = [
-    ChipMovementType.SELL_TO_PLAYER,
-    ChipMovementType.PRIZE,
-    ChipMovementType.DEPOSIT,
-    ChipMovementType.RECOVERY,
-  ].includes(type);
-
-  return isPositive ? 'text-green-600' : 'text-red-600';
+  return POSITIVE_TYPES.includes(type) ? 'text-green-600' : 'text-red-600';
 };
 
 export function ChipMovementsTable({
@@ -73,6 +74,7 @@ export function ChipMovementsTable({
   onRefresh,
   compact = false,
   infiniteScroll = false,
+  compactMaxHeight = '9rem',
 }: ChipMovementsTableProps) {
   const { getMovements } = useChips();
   const [movements, setMovements] = useState<ChipMovement[]>([]);
@@ -145,7 +147,7 @@ export function ChipMovementsTable({
   /* Compact list — used inside dialogs */
   if (compact) {
     return (
-      <div ref={scrollRef} className="rounded-md overflow-y-auto border" style={{ maxHeight: '9rem' }}>
+      <div ref={scrollRef} className="rounded-md overflow-y-auto border" style={{ maxHeight: compactMaxHeight }}>
         {movements.map((m, i) => (
           <div key={i} className={`grid items-center gap-2 px-2 py-2 text-sm ${i % 2 === 0 ? 'bg-muted/30' : 'bg-background'}`} style={{ gridTemplateColumns: '5rem 1fr auto' }}>
             <span className="text-muted-foreground text-xs tabular-nums">
