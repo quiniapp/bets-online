@@ -270,7 +270,7 @@ function UsersPageContent() {
     setBlockLoading(true)
     try {
       const endpoint = isBlocked ? `/users/${blockConfirmUser.id}/unblock` : `/users/${blockConfirmUser.id}/block`
-      const response = await apiService.patch(endpoint, {})
+      const response = await apiService.post(endpoint, {})
       if (response.success) {
         toast({ title: isBlocked ? "Usuario desbloqueado" : "Usuario bloqueado", description: `${blockConfirmUser.username} fue ${isBlocked ? 'desbloqueado' : 'bloqueado'} correctamente` })
         reload()
