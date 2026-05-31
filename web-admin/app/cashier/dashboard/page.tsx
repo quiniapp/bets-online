@@ -9,7 +9,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
 import { Users, DollarSign, Loader2, UserPlus } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
+import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts"
@@ -194,8 +194,7 @@ export default function CashierDashboard() {
         </CardContent>
       </Card>
 
-      <ChipOperationDialog
-        operationType="sell"
+      <ChipLoadDialog
         open={loadBalanceOpen}
         onOpenChange={setLoadBalanceOpen}
         onSuccess={loadBalance}

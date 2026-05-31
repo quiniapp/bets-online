@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ChipOperationDialog } from './chip-operation-dialog';
+import { ChipLoadDialog } from './chip-load-dialog';
 import { ChipMovementsTable } from './chip-movements-table';
 import { DollarSign, Minus, User, Mail, Calendar, Clock } from 'lucide-react';
 import type { User as UserType } from 'helper';
@@ -32,7 +32,6 @@ export function UserDetailDialog({
 }: UserDetailDialogProps) {
   const { balance, loadBalance } = useChips(user?.id);
   const [chipDialogOpen, setChipDialogOpen] = useState(false);
-  const [operationType, setOperationType] = useState<'sell' | 'withdraw'>('sell');
   const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
 
   useEffect(() => {
@@ -54,8 +53,7 @@ export function UserDetailDialog({
     });
   };
 
-  const handleOpenChipDialog = (type: 'sell' | 'withdraw') => {
-    setOperationType(type);
+  const handleOpenChipDialog = () => {
     setChipDialogOpen(true);
   };
 
@@ -143,7 +141,7 @@ export function UserDetailDialog({
             <Separator />
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
-                onClick={() => handleOpenChipDialog('sell')}
+                onClick={() => handleOpenChipDialog()}
                 className="flex-1"
                 size="lg"
               >
@@ -151,7 +149,7 @@ export function UserDetailDialog({
                 Cargar Fichas
               </Button>
               <Button
-                onClick={() => handleOpenChipDialog('withdraw')}
+                onClick={() => handleOpenChipDialog()}
                 variant="outline"
                 className="flex-1"
                 size="lg"
@@ -175,11 +173,9 @@ export function UserDetailDialog({
         </DialogContent>
       </Dialog>
 
-      {/* Chip Operation Dialog */}
       {chipDialogOpen && (
-        <ChipOperationDialog
-          user={user}
-          operationType={operationType}
+        <ChipLoadDialog
+          preselectedUser={user ?? undefined}
           open={chipDialogOpen}
           onOpenChange={setChipDialogOpen}
           onSuccess={handleChipOperationSuccess}

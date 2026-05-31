@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog"
 import { UserDetailDialog } from "@/components/admin/user-detail-dialog"
-import { UserWalletDialog } from "@/components/admin/user-wallet-dialog"
+import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 
 const ITEMS_PER_PAGE = 10
 type ViewMode = 'table' | 'tree'
@@ -418,7 +418,7 @@ function UsersPageContent() {
       )}
 
       {selectedUser && dialogType === 'wallet' && (
-        <UserWalletDialog user={selectedUser} open={true}
+        <ChipLoadDialog preselectedUser={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => reload()} />
       )}
       {selectedUser && dialogType === 'reset-password' && (
