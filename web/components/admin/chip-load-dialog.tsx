@@ -26,6 +26,7 @@ interface ChipLoadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  preselectedUser?: User;
 }
 
 type ConfirmAction = 'sell' | 'withdraw';
@@ -38,7 +39,7 @@ const ROLE_OPTIONS: { role: UserRole; label: string; color: string }[] = [
 
 const PRESET_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
-export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialogProps) {
+export function ChipLoadDialog({ open, onOpenChange, onSuccess, preselectedUser }: ChipLoadDialogProps) {
   const { role: myRole } = useAuth();
   const { sellChips, withdraw } = useChips();
   const { toast } = useToast();
@@ -118,6 +119,14 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
     }
   }, []);
 
+  // Sync preselected user and load their balance when dialog opens
+  useEffect(() => {
+    if (open && preselectedUser) {
+      setSelectedUser(preselectedUser);
+      loadUserBalance(preselectedUser.id);
+    }
+  }, [open, preselectedUser, loadUserBalance]);
+
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
     setSearchResults([]);
@@ -125,6 +134,10 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess }: ChipLoadDialog
   };
 
   const handleClearUser = () => {
+    if (preselectedUser) {
+      onOpenChange(false);
+      return;
+    }
     setSelectedUser(null);
     setUserBalance(null);
     setAmount('');

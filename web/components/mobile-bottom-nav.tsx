@@ -7,7 +7,7 @@ import { UserRole } from "helper"
 import { LayoutDashboard, Gamepad2, User, Users, BarChart3, Settings, DollarSign, Wallet, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
-import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
+import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 import { useChips } from "@/hooks/useChips"
 
 export function MobileBottomNav() {
@@ -107,8 +107,7 @@ export function MobileBottomNav() {
       </nav>
 
       {hasWallet && (
-        <ChipOperationDialog
-          operationType="sell"
+        <ChipLoadDialog
           open={walletOpen}
           onOpenChange={setWalletOpen}
           onSuccess={loadBalance}
