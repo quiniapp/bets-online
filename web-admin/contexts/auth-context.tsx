@@ -149,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession()
     setUser(null)
     setRole(null)
-    router.push(ROUTER.SITE)
+    router.push(ROUTER.LOGIN)
   }, [router, clearSession])
 
   const refreshUser = async () => {
@@ -241,7 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (e.key === 'session_active' && !e.newValue) {
         setUser(null)
         setRole(null)
-        router.push(ROUTER.SITE)
+        router.push(ROUTER.LOGIN)
       }
     }
 
