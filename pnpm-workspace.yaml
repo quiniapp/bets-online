@@ -1,6 +1,7 @@
 packages:
   - api
   - web
+  - web-admin
   - helper
 
 ignoredBuiltDependencies:
