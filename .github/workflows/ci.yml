@@ -11,10 +11,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Detect which packages changed
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      web-admin: ${{ steps.filter.outputs.web-admin }}
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - 'web/**'
+              - 'helper/**'
+            web-admin:
+              - 'web-admin/**'
+              - 'helper/**'
+            api:
+              - 'api/**'
+              - 'helper/**'
+
   # Job 1: Lint and Type Check
   lint-and-type-check:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    needs: changes
 
     steps:
       - name: Checkout code
@@ -38,24 +63,26 @@ jobs:
         run: pnpm --filter helper build
 
       - name: Lint API
+        if: needs.changes.outputs.api == 'true'
         run: pnpm --filter api lint
 
       - name: Type check API
+        if: needs.changes.outputs.api == 'true'
         run: pnpm --filter api type-check
 
-      # Lint Web is skipped due to Next.js CLI issue with pnpm on some environments
-      # Type checking is more comprehensive and catches the same issues
-      # - name: Lint Web
-      #   run: pnpm --filter web lint
-
       - name: Type check Web
+        if: needs.changes.outputs.web == 'true'
         run: pnpm --filter web type-check
+
+      - name: Type check Web Admin
+        if: needs.changes.outputs.web-admin == 'true'
+        run: pnpm --filter web-admin type-check
 
   # Job 2: Build
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: lint-and-type-check
+    needs: [changes, lint-and-type-check]
 
     steps:
       - name: Checkout code
@@ -75,10 +102,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build all packages
-        run: pnpm build
+      - name: Build helper package
+        run: pnpm --filter helper build
+
+      - name: Build API
+        if: needs.changes.outputs.api == 'true'
+        run: pnpm --filter api build
         env:
-          # Dummy env vars for build (not used in production)
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
           JWT_SECRET: test-secret-min-32-characters-long-for-build
           JWT_REFRESH_SECRET: test-refresh-secret-min-32-chars-for-build
@@ -88,6 +118,14 @@ jobs:
           VIRAL_USERNAME: test-integrator
           VIRAL_SECRET_KEY: test-viral-secret-key-min-32-chars-for-build
 
+      - name: Build Web
+        if: needs.changes.outputs.web == 'true'
+        run: pnpm --filter web build
+
+      - name: Build Web Admin
+        if: needs.changes.outputs.web-admin == 'true'
+        run: pnpm --filter web-admin build
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -95,13 +133,15 @@ jobs:
           path: |
             api/dist
             web/.next
+            web-admin/.next
           retention-days: 1
 
   # Job 3: Tests (API)
   test-api:
     name: Test API
     runs-on: ubuntu-latest
-    needs: lint-and-type-check
+    needs: [changes, lint-and-type-check]
+    if: needs.changes.outputs.api == 'true'
 
     services:
       postgres:
@@ -164,7 +204,8 @@ jobs:
   test-web:
     name: Test Web
     runs-on: ubuntu-latest
-    needs: lint-and-type-check
+    needs: [changes, lint-and-type-check]
+    if: needs.changes.outputs.web == 'true'
 
     steps:
       - name: Checkout code
@@ -201,10 +242,14 @@ jobs:
       - name: Check all jobs
         run: |
           if [ "${{ needs.lint-and-type-check.result }}" != "success" ] || \
-             [ "${{ needs.build.result }}" != "success" ] || \
-             [ "${{ needs.test-api.result }}" != "success" ] || \
-             [ "${{ needs.test-web.result }}" != "success" ]; then
+             [ "${{ needs.build.result }}" != "success" ]; then
             echo "One or more CI jobs failed"
             exit 1
           fi
-          echo "All CI checks passed! ✅"
+          # test-api and test-web may be skipped (not changed) — that's OK
+          if [ "${{ needs.test-api.result }}" == "failure" ] || \
+             [ "${{ needs.test-web.result }}" == "failure" ]; then
+            echo "Tests failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"

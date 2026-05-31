@@ -1,0 +1,33 @@
+import { useEffect } from "react"
+import { useLoader } from "@/hooks/use-loader"
+import { FlexCol } from "../flex"
+
+
+interface  LoaderPageProps {
+    size?: 'sm'| 'md'|'lg'|'xl'
+}
+
+const LoaderPage = ({size = 'md'}: LoaderPageProps) => {
+    const { showLoader, Loader } = useLoader({
+        text: "Cargando datos...",
+        size: size 
+    })
+
+    useEffect(() => {
+        showLoader() // Activar al montar el componente
+    }, [showLoader])
+    
+    return (
+        <FlexCol className="h-screen items-center justify-center gap-4">
+            <img
+                src="/logo.png"
+                alt="Logo"
+                className="h-16 w-auto opacity-90"
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            <Loader />
+        </FlexCol>
+    )
+}
+
+export default  LoaderPage
