@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ChipMovementsTable } from '@/components/admin/chip-movements-table'
-import { UserWalletDialog } from '@/components/admin/user-wallet-dialog'
+import { ChipLoadDialog } from '@/components/admin/chip-load-dialog'
 import { ResetPasswordDialog } from '@/components/admin/reset-password-dialog'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
@@ -300,8 +300,8 @@ export default function UserProfilePage() {
         </Card>
       </div>
 
-      <UserWalletDialog
-        user={user}
+      <ChipLoadDialog
+        preselectedUser={user}
         open={walletOpen}
         onOpenChange={setWalletOpen}
         onSuccess={() => {
