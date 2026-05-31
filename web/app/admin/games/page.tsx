@@ -13,7 +13,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select"
 import {
-  Edit, Loader2, Gamepad2, ImageIcon,
+  Edit, Loader2, Gamepad2, ImageIcon, Search,
 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useGames } from "@/hooks/useGames"
@@ -44,18 +44,33 @@ export default function AdminGames() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [providerFilter, setProviderFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [sortBy, setSortBy] = useState<'default' | 'az' | 'za'>('default')
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('')
 
   const [providers, setProviders] = useState<string[]>([])
   const [gameTypes, setGameTypes] = useState<string[]>([])
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 350)
+    return () => clearTimeout(t)
+  }, [searchTerm])
+
   const {
-    games, loading, loadingMore, hasMore, total,
+    games: rawGames, loading, loadingMore, hasMore, total,
     loadMore, updateGame, bulkSetStatus
   } = useGames({
     status: statusFilter,
     providerName: providerFilter === 'all' ? null : providerFilter,
     gameType: typeFilter === 'all' ? null : typeFilter,
+    search: debouncedSearch || undefined,
   })
+
+  const games = sortBy === 'az'
+    ? [...rawGames].sort((a, b) => a.name.localeCompare(b.name))
+    : sortBy === 'za'
+      ? [...rawGames].sort((a, b) => b.name.localeCompare(a.name))
+      : rawGames
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -167,6 +182,29 @@ export default function AdminGames() {
     <DashboardLayout title="Juegos">
       {/* Filter bar */}
       <div className="space-y-2 mb-3">
+        {/* Row 0: search + sort */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar juegos..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={v => setSortBy(v as 'default' | 'az' | 'za')}>
+            <SelectTrigger className="h-8 w-[120px] text-xs shrink-0">
+              <span>{sortBy === 'default' ? 'Ordenar' : sortBy === 'az' ? 'A → Z' : 'Z → A'}</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Por defecto</SelectItem>
+              <SelectItem value="az">A → Z</SelectItem>
+              <SelectItem value="za">Z → A</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Row 1: status tabs + switch */}
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-border overflow-hidden flex-1">
@@ -262,8 +300,8 @@ export default function AdminGames() {
         </Card>
       ) : (
         <>
-          {/* Mobile: 2-column on tiny screens, 3-column on wider mobile */}
-          <div className="grid grid-cols-2 min-[400px]:grid-cols-3 gap-2 md:hidden">
+          {/* Mobile: 3-column grid */}
+          <div className="grid grid-cols-3 gap-2 md:hidden">
             {games.map((game) => {
               const isSelected = selected.has(game.id)
               return (

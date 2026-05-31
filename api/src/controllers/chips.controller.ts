@@ -271,7 +271,7 @@ export class ChipsController {
       }
 
       const { id } = req.params;
-      const { page, limit, startDate, endDate, type, compact } = req.query;
+      const { page, limit, startDate, endDate, type, compact, includeDescendants } = req.query;
 
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
@@ -283,6 +283,7 @@ export class ChipsController {
           endDate: endDate ? new Date(endDate as string) : undefined,
           type: type as ChipMovementType | undefined,
           compact: compact === 'true',
+          includeDescendants: includeDescendants === 'true',
         }
       );
 

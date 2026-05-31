@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { chipsController } from '../../controllers/chips.controller';
-import { authMiddleware } from '../../middleware/auth.middleware';
+import { authMiddleware, requireRole } from '../../middleware/auth.middleware';
 import { validate, validateParams } from '../../middleware/validation.middleware';
 import {
   sellChipsSchema,
   payPrizeSchema,
-  idParamSchema
+  idParamSchema,
+  UserRole
 } from 'helper';
 
 const router = Router();
@@ -13,28 +14,34 @@ const router = Router();
 // All routes require authentication
 router.use(authMiddleware);
 
-// Chip operations
+// Chip operations — only OWNER, ADMIN, CASHIER can operate chips
+const chipOperatorRole = requireRole(UserRole.OWNER, UserRole.ADMIN, UserRole.CASHIER);
+
 router.post(
   '/sell',
+  chipOperatorRole,
   validate(sellChipsSchema),
   chipsController.sell.bind(chipsController)
 );
 
 router.post(
   '/prize',
+  chipOperatorRole,
   validate(payPrizeSchema),
   chipsController.payPrize.bind(chipsController)
 );
 
 router.post(
   '/loss',
-  validate(payPrizeSchema), // Same schema as prize
+  chipOperatorRole,
+  validate(payPrizeSchema),
   chipsController.registerLoss.bind(chipsController)
 );
 
 router.post(
   '/withdraw',
-  validate(payPrizeSchema), // Same schema structure
+  chipOperatorRole,
+  validate(payPrizeSchema),
   chipsController.withdraw.bind(chipsController)
 );
 

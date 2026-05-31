@@ -93,6 +93,47 @@ export class ChipMovementsRepository {
     };
   }
 
+  async findByUserIds(
+    userIds: string[],
+    options?: {
+      limit?: number;
+      offset?: number;
+      startDate?: Date;
+      endDate?: Date;
+      type?: ChipMovementType;
+    }
+  ): Promise<{ movements: ChipMovement[]; total: number }> {
+    const where: Record<string | symbol, unknown> = {
+      userId: { [Op.in]: userIds }
+    };
+
+    if (options?.type) where.type = options.type;
+
+    if (options?.startDate || options?.endDate) {
+      const createdAtFilter: Record<symbol, Date> = {};
+      if (options?.startDate) createdAtFilter[Op.gte] = options.startDate;
+      if (options?.endDate) createdAtFilter[Op.lte] = options.endDate;
+      where.createdAt = createdAtFilter;
+    }
+
+    where[Op.or] = [
+      { type: { [Op.ne]: ChipMovementType.GAME_WIN } },
+      { amount: { [Op.gt]: 0 } }
+    ];
+
+    const { count, rows } = await ChipMovementModel.findAndCountAll({
+      where,
+      limit: options?.limit,
+      offset: options?.offset,
+      order: [['createdAt', 'DESC']]
+    });
+
+    return {
+      movements: rows.map(m => this.mapToMovement(m)),
+      total: count
+    };
+  }
+
   async findByRelatedUserId(
     relatedUserId: string,
     options?: {

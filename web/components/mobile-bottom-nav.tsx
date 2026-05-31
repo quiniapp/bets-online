@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { UserRole } from "helper"
-import { LayoutDashboard, Gamepad2, User, Users, BarChart3, Settings, DollarSign, Wallet } from "lucide-react"
+import { LayoutDashboard, Gamepad2, User, Users, BarChart3, Settings, DollarSign, Wallet, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
@@ -25,15 +25,22 @@ export function MobileBottomNav() {
     { href: "/user/profile", icon: User, label: "Perfil" },
   ]
 
+  const dashboardHref = role === UserRole.CASHIER ? "/cashier/dashboard" : "/admin/dashboard"
+
   const adminItemsLeft = [
-    { href: "/admin/dashboard", icon: BarChart3, label: "Stats" },
+    { href: dashboardHref, icon: BarChart3, label: "Stats" },
     { href: "/admin/users", icon: Users, label: "Usuarios" },
   ]
 
-  const adminItemsRight = [
-    { href: "/admin/games", icon: Gamepad2, label: "Juegos" },
-    { href: "/admin/settings", icon: Settings, label: "Config" },
-  ]
+  const adminItemsRight = role === UserRole.CASHIER
+    ? [
+        { href: "/admin/users/create-user", icon: UserPlus, label: "Registrar" },
+        { href: "/admin/settings", icon: Settings, label: "Config" },
+      ]
+    : [
+        { href: "/admin/games", icon: Gamepad2, label: "Juegos" },
+        { href: "/admin/settings", icon: Settings, label: "Config" },
+      ]
 
   const adminItemsNoWallet = [
     { href: "/admin/dashboard", icon: BarChart3, label: "Stats" },

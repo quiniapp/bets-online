@@ -48,7 +48,7 @@ const HeaderIndex = () => {
                 ) : (
                     <Button variant='ghost' onClick={() => router.push(ROUTER.LOGIN)} role='button' aria-label='ingresar'>
                         <UserIcon />
-                        <span className="hidden sm:inline">Ingresar</span>
+                        <span>Ingresar</span>
                     </Button>
                 )}
             </nav>

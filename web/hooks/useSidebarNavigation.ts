@@ -62,7 +62,7 @@ export const useSidebarNavigation = () => {
     router.push(href);
   };
 
-  // Menu para SUPERADMIN (Administrador) - Máximos permisos
+  // Menu para SUPERADMIN (Owner) - Máximos permisos
   const superAdminMenuItems: MenuItem[] = [
     {
       title: t("nav.statistics"),
@@ -77,15 +77,9 @@ export const useSidebarNavigation = () => {
       setOpen: setUsersOpen,
       items: [
         { title: t("users.list"), href: "/admin/users" },
-        {
-          title: "Crear Administrador",
-          href: "/admin/users/create-admin",
-        },
-        {
-          title: "Crear Cajero",
-          href: "/admin/users/create-manager",
-        },
-        { title: "Crear Usuario", href: "/admin/users/create-user" },
+        { title: "Alta de Administrador", href: "/admin/users/create-manager" },
+        { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
+        { title: "Alta de Jugador", href: "/admin/users/create-user" },
       ],
     },
     {
@@ -130,7 +124,7 @@ export const useSidebarNavigation = () => {
     },
   ];
 
-  // Menu para ADMIN (Cajero) - Permisos limitados
+  // Menu para ADMIN - Permisos limitados (sin juegos/casino)
   const adminMenuItems: MenuItem[] = [
     {
       title: t("nav.statistics"),
@@ -145,20 +139,21 @@ export const useSidebarNavigation = () => {
       setOpen: setUsersOpen,
       items: [
         { title: t("users.list"), href: "/admin/users" },
-        { title: "Crear Usuario", href: "/admin/users/create-user" },
+        { title: "Alta de Administrador", href: "/admin/users/create-manager" },
+        { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
+        { title: "Alta de Jugador", href: "/admin/users/create-user" },
       ],
     },
     {
-      title: t("nav.games"),
-      icon: Gamepad2,
+      title: t("nav.reports"),
+      icon: FileText,
       collapsible: true,
-      isOpen: gamesOpen,
-      setOpen: setGamesOpen,
+      isOpen: reportsOpen,
+      setOpen: setReportsOpen,
       items: [
-        { title: "Catálogo", href: "/admin/games" },
-        { title: "Proveedores", href: "/admin/providers" },
-        { title: "Destacados", href: "/admin/featured-games" },
-        { title: "Banners", href: "/admin/banners" },
+        { title: t("reports.bets"), href: "/admin/reports/bets" },
+        { title: t("reports.users"), href: "/admin/reports/users" },
+        { title: t("reports.earnings"), href: "/admin/reports/earnings" },
       ],
     },
     {
@@ -166,12 +161,17 @@ export const useSidebarNavigation = () => {
       href: "/admin/transactions",
       icon: ArrowUpDown,
     },
+    {
+      title: t("nav.settings"),
+      href: "/admin/settings",
+      icon: Settings,
+    },
   ];
 
-  // Menu para CASHIER (Cajero) - Gestión de usuarios y balance
+  // Menu para CASHIER - Gestión de usuarios y balance (sin casino)
   const cashierMenuItems: MenuItem[] = [
     {
-      title: t("nav.statistics"),
+      title: "Inicio",
       href: "/cashier/dashboard",
       icon: BarChart3,
     },
@@ -183,7 +183,8 @@ export const useSidebarNavigation = () => {
       setOpen: setUsersOpen,
       items: [
         { title: t("users.list"), href: "/admin/users" },
-        { title: "Crear Usuario", href: "/cashier/users/create-user" },
+        { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
+        { title: "Alta de Jugador", href: "/admin/users/create-user" },
       ],
     },
     {

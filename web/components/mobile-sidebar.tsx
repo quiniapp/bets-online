@@ -39,90 +39,82 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
   const [reportsOpen, setReportsOpen] = useState(false)
   const [open, setOpen] = useState(false)
 
-  const adminMenuItems = [
+  const ownerMenuItems = [
+    { title: "Inicio", href: "/admin/dashboard", icon: BarChart3 },
     {
-      title: t("nav.statistics"),
-      href: "/admin/dashboard",
-      icon: BarChart3,
-    },
-    {
-      title: t("nav.users"),
-      icon: Users,
-      collapsible: true,
-      isOpen: usersOpen,
-      setOpen: setUsersOpen,
+      title: t("nav.users"), icon: Users, collapsible: true, isOpen: usersOpen, setOpen: setUsersOpen,
       items: [
         { title: t("users.list"), href: "/admin/users" },
-        { title: t("users.createManager"), href: "/admin/users/create-manager" },
-        { title: t("users.createUser"), href: "/admin/users/create-user" },
+        { title: "Alta de Administrador", href: "/admin/users/create-manager" },
+        { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
+        { title: "Alta de Jugador", href: "/admin/users/create-user" },
       ],
     },
+    { title: t("nav.games"), href: "/admin/games", icon: Gamepad2 },
     {
-      title: t("nav.games"),
-      href: "/admin/games",
-      icon: Gamepad2,
-    },
-    {
-      title: t("nav.reports"),
-      icon: FileText,
-      collapsible: true,
-      isOpen: reportsOpen,
-      setOpen: setReportsOpen,
+      title: t("nav.reports"), icon: FileText, collapsible: true, isOpen: reportsOpen, setOpen: setReportsOpen,
       items: [
         { title: t("reports.bets"), href: "/admin/reports/bets" },
         { title: t("reports.users"), href: "/admin/reports/users" },
         { title: t("reports.earnings"), href: "/admin/reports/earnings" },
       ],
     },
+    { title: t("nav.earnings"), icon: DollarSign, items: [{ title: t("earnings.calculate"), href: "/admin/balances" }] },
+    { title: t("nav.transactions"), href: "/admin/transactions", icon: ArrowUpDown },
+    { title: t("nav.settings"), href: "/admin/settings", icon: Settings },
+  ]
+
+  const adminMenuItems = [
+    { title: "Inicio", href: "/admin/dashboard", icon: BarChart3 },
     {
-      title: t("nav.earnings"),
-      icon: DollarSign,
-      items: [{ title: t("earnings.calculate"), href: "/admin/balances" }],
+      title: t("nav.users"), icon: Users, collapsible: true, isOpen: usersOpen, setOpen: setUsersOpen,
+      items: [
+        { title: t("users.list"), href: "/admin/users" },
+        { title: "Alta de Administrador", href: "/admin/users/create-manager" },
+        { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
+        { title: "Alta de Jugador", href: "/admin/users/create-user" },
+      ],
     },
     {
-      title: t("nav.transactions"),
-      href: "/admin/transactions",
-      icon: ArrowUpDown,
+      title: t("nav.reports"), icon: FileText, collapsible: true, isOpen: reportsOpen, setOpen: setReportsOpen,
+      items: [
+        { title: t("reports.bets"), href: "/admin/reports/bets" },
+        { title: t("reports.users"), href: "/admin/reports/users" },
+        { title: t("reports.earnings"), href: "/admin/reports/earnings" },
+      ],
     },
+    { title: t("nav.transactions"), href: "/admin/transactions", icon: ArrowUpDown },
+    { title: t("nav.settings"), href: "/admin/settings", icon: Settings },
+  ]
+
+  const cashierMenuItems = [
+    { title: "Inicio", href: "/cashier/dashboard", icon: BarChart3 },
     {
-      title: t("nav.settings"),
-      href: "/admin/settings",
-      icon: Settings,
+      title: t("nav.users"), icon: Users, collapsible: true, isOpen: usersOpen, setOpen: setUsersOpen,
+      items: [
+        { title: t("users.list"), href: "/admin/users" },
+        { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
+        { title: "Alta de Jugador", href: "/admin/users/create-user" },
+      ],
     },
+    { title: t("nav.transactions"), href: "/admin/transactions", icon: ArrowUpDown },
   ]
 
   const userMenuItems = [
-    {
-      title: t("nav.dashboard"),
-      href: "/user/dashboard",
-      icon: BarChart3,
-    },
-    {
-      title: t("nav.profile"),
-      href: "/user/profile",
-      icon: User,
-    },
-    {
-      title: t("nav.games"),
-      href: "/user/games",
-      icon: Gamepad2,
-    },
-    {
-      title: t("nav.myBets"),
-      href: "/user/bets",
-      icon: History,
-    },
-
-    {
-      title: t("nav.settings"),
-      href: "/user/settings",
-      icon: Settings,
-    },
+    { title: t("nav.dashboard"), href: "/user/dashboard", icon: BarChart3 },
+    { title: t("nav.profile"), href: "/user/profile", icon: User },
+    { title: t("nav.games"), href: "/user/games", icon: Gamepad2 },
+    { title: t("nav.myBets"), href: "/user/bets", icon: History },
+    { title: t("nav.settings"), href: "/user/settings", icon: Settings },
   ]
 
-
-  const isAdminRole = role === UserRole.ADMIN || role === UserRole.OWNER;
-  const menuItems = isAdminRole ? adminMenuItems : userMenuItems;
+  const getMenuItems = () => {
+    if (role === UserRole.OWNER) return ownerMenuItems
+    if (role === UserRole.ADMIN) return adminMenuItems
+    if (role === UserRole.CASHIER) return cashierMenuItems
+    return userMenuItems
+  }
+  const menuItems = getMenuItems();
 
   const handleLinkClick = () => {
     setOpen(false)
@@ -140,12 +132,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
         <div className="flex h-full flex-col">
     
           <div className="flex h-16 items-center border-b px-6">
-            <div className="flex items-center gap-2 font-semibold">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Gamepad2 className="h-4 w-4" />
-              </div>
-              <span>BetPlatform</span>
-            </div>
+            <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
           </div>
 
           {/* Navigation */}
