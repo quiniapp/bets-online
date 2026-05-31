@@ -186,33 +186,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Juegos */}
-        <Card
-          className="cursor-pointer transition-shadow hover:shadow-md gap-2 py-4"
-          onClick={() => router.push(ROUTER.ADMIN_GAMES)}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
-            <CardTitle className="text-lg font-semibold">Juegos Activos</CardTitle>
-            <Gamepad2 className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-5">
-            {loadingStats ? (
-              <div className="space-y-2">
-                <Skeleton className="h-10 w-16" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-            ) : (
-              <>
-                <div className="text-4xl font-bold text-green-600">{gameStats?.active ?? 0}</div>
-
-                <p className="text-base text-muted-foreground mt-1">
-                  {gameStats?.total ?? 0} totales
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Gestión de Balances — solo OWNER */}
         {role === UserRole.OWNER && (
           <Card className="gap-2 py-4">
@@ -233,6 +206,34 @@ export default function AdminDashboard() {
                   Cargar Fichas
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Juegos Activos — solo OWNER */}
+        {role === UserRole.OWNER && (
+          <Card
+            className="cursor-pointer transition-shadow hover:shadow-md gap-2 py-4"
+            onClick={() => router.push(ROUTER.ADMIN_GAMES)}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
+              <CardTitle className="text-lg font-semibold">Juegos Activos</CardTitle>
+              <Gamepad2 className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-5">
+              {loadingStats ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-16" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ) : (
+                <>
+                  <div className="text-4xl font-bold text-green-600">{gameStats?.active ?? 0}</div>
+                  <p className="text-base text-muted-foreground mt-1">
+                    {gameStats?.total ?? 0} totales
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

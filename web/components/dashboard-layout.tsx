@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { useEffect } from "react"
 
 import { useAuth } from "@/contexts/auth-context"
 import { Sidebar } from "@/components/sidebar"
@@ -9,6 +10,8 @@ import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
 import { UserRole } from "helper"
+import { useChips } from "@/hooks/useChips"
+import { formatChips } from "@/lib/utils"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -17,6 +20,12 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const { user, role, logout } = useAuth()
+  const showBalance = role === UserRole.ADMIN || role === UserRole.CASHIER
+  const { balance, loadBalance } = useChips()
+
+  useEffect(() => {
+    if (showBalance) loadBalance()
+  }, [showBalance, user?.id])
 
   const getRoleDisplay = () => {
     switch (role) {
@@ -50,18 +59,27 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             )}
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="hidden sm:block text-sm text-muted-foreground">
-              {getRoleDisplay()}: {user?.username}
+            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+              <span>{getRoleDisplay()}: {user?.username}</span>
+              {showBalance && balance && (
+                <span className="font-semibold text-green-600">${formatChips(balance.chipBalance)}</span>
+              )}
             </div>
-            <div className="sm:hidden text-xs text-muted-foreground font-medium">{user?.username}</div>
+            <div className="sm:hidden flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground font-medium">{user?.username}</span>
+              {showBalance && balance && (
+                <span className="text-xs font-semibold text-green-600">${formatChips(balance.chipBalance)}</span>
+              )}
+            </div>
             <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden h-9 w-9 text-muted-foreground hover:text-foreground"
+              variant="default"
+              size="sm"
+              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold h-8 px-3"
               onClick={logout}
               aria-label="Cerrar sesión"
             >
               <LogOut className="h-4 w-4" />
+              <span>Salir</span>
             </Button>
           </div>
         </header>

@@ -6,7 +6,6 @@ import { DashboardLayout } from '@/components/dashboard-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { ChipMovementsTable } from '@/components/admin/chip-movements-table'
 import { UserWalletDialog } from '@/components/admin/user-wallet-dialog'
 import { ResetPasswordDialog } from '@/components/admin/reset-password-dialog'
@@ -219,86 +218,86 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* User info + movements */}
-        <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
+      <div className="space-y-6">
+        {/* Balance card — top priority */}
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                </div>
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <User className="h-5 w-5 shrink-0" />
-                    {user.username}
-                  </CardTitle>
-                  {fullName && <p className="mt-1 text-sm text-muted-foreground">{fullName}</p>}
-                </div>
-                <Badge variant={isBlocked ? 'secondary' : 'default'} className="shrink-0">
-                  {user.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {user.email && (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5" />Email
-                    </div>
-                    <p className="text-sm font-medium">{user.email}</p>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <User className="h-3.5 w-3.5" />Rol
-                  </div>
-                  <Badge variant="outline">{user.role}</Badge>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Calendar className="h-3.5 w-3.5" />Registro
-                  </div>
-                  <p className="text-sm font-medium">{formatDate(user.createdAt)}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />Última Conexión
-                  </div>
-                  <p className="text-sm font-medium">{formatDate(user.lastConnection, true)}</p>
+                  <p className="text-sm text-muted-foreground">Balance actual</p>
+                  <p className="text-3xl font-bold text-green-600 tabular-nums">
+                    ${balance?.chipBalance.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Últimos Movimientos</CardTitle>
-            </CardHeader>
-            <CardContent className="px-2 sm:px-6">
-              <ChipMovementsTable userId={userId} limit={10} onRefresh={refreshTimestamp} />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Balance sidebar */}
-        <div>
-          <Card>
-            <CardContent className="space-y-4 pt-6">
-              <div className="flex flex-col items-center gap-1 text-center">
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <DollarSign className="h-4 w-4" />Balance
-                </div>
-                <p className="text-4xl font-bold text-green-500">
-                  ${balance?.chipBalance.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '0.00'}
-                </p>
-              </div>
-              <Separator />
-              <Button onClick={() => setWalletOpen(true)} className="w-full" size="lg">
-                <Wallet className="mr-2 h-4 w-4" />
-                Gestionar Saldo
+              <Button onClick={() => setWalletOpen(true)} size="sm" className="shrink-0">
+                <Wallet className="mr-2 h-4 w-4" />Gestionar Saldo
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* User info */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <User className="h-5 w-5 shrink-0" />
+                  {user.username}
+                </CardTitle>
+                {fullName && <p className="mt-1 text-sm text-muted-foreground">{fullName}</p>}
+              </div>
+              <Badge variant={isBlocked ? 'secondary' : 'default'} className="shrink-0">
+                {user.status}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {user.email && (
+                <div className="space-y-1 col-span-2 sm:col-span-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Mail className="h-3.5 w-3.5" />Email
+                  </div>
+                  <p className="text-sm font-medium truncate">{user.email}</p>
+                </div>
+              )}
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <User className="h-3.5 w-3.5" />Rol
+                </div>
+                <Badge variant="outline">{user.role}</Badge>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />Registro
+                </div>
+                <p className="text-sm font-medium">{formatDate(user.createdAt)}</p>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />Última Conexión
+                </div>
+                <p className="text-sm font-medium">{formatDate(user.lastConnection, true)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Movements */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Historial de Movimientos</CardTitle>
+          </CardHeader>
+          <CardContent className="px-2 sm:px-6">
+            <ChipMovementsTable userId={userId} limit={20} onRefresh={refreshTimestamp} />
+          </CardContent>
+        </Card>
       </div>
 
       <UserWalletDialog

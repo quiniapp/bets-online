@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Save, User } from "lucide-react";
+import { Save, Briefcase } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiService } from "@/services/api.service";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +14,7 @@ import { ValidatedInput } from "@/components/ui/validated-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useChips } from "@/hooks/useChips";
 
-export default function CreateUserPage() {
+export default function CreateCashierPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { balance, loadBalance } = useChips();
@@ -81,7 +81,7 @@ export default function CreateUserPage() {
       const payload: Record<string, unknown> = {
         username: formData.username,
         password: formData.password,
-        role: 'PLAYER',
+        role: 'CASHIER',
       };
       if (formData.email.trim()) payload.email = formData.email;
       if (formData.firstName.trim()) payload.firstName = formData.firstName;
@@ -90,11 +90,11 @@ export default function CreateUserPage() {
 
       const response = await apiService.post('/users', payload);
       if (response.success) {
-        toast({ title: "Jugador creado", description: "El jugador fue creado exitosamente" });
+        toast({ title: "Cajero creado", description: "El cajero fue creado exitosamente" });
         router.push('/admin/users');
         router.refresh();
       } else {
-        toast({ variant: "destructive", title: "Error al crear jugador", description: response.error?.message || "Error desconocido" });
+        toast({ variant: "destructive", title: "Error al crear cajero", description: response.error?.message || "Error desconocido" });
       }
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Error inesperado. Intente nuevamente." });
@@ -104,13 +104,13 @@ export default function CreateUserPage() {
   };
 
   return (
-    <DashboardLayout title="Alta de Jugador">
+    <DashboardLayout title="Alta de Cajero">
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Datos del Jugador
+              <Briefcase className="h-5 w-5" />
+              Datos del Cajero
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -156,7 +156,7 @@ export default function CreateUserPage() {
                 value={formData.email}
                 onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
                 onBlur={() => handleBlur('email')}
-                placeholder="jugador@ejemplo.com"
+                placeholder="cajero@ejemplo.com"
                 validationState={touched.email ? emailValidation.state : 'neutral'}
                 errorMessage={emailValidation.message}
               />
@@ -217,7 +217,7 @@ export default function CreateUserPage() {
           </Button>
           <Button type="submit" disabled={isLoading || !isFormValid}>
             <Save className="mr-2 h-4 w-4" />
-            {isLoading ? "Creando..." : "Crear Jugador"}
+            {isLoading ? "Creando..." : "Crear Cajero"}
           </Button>
         </div>
       </form>

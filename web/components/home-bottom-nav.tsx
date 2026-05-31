@@ -20,10 +20,10 @@ interface HomeBottomNavProps {
 export function HomeBottomNav({ selected, onSelect }: HomeBottomNavProps) {
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border overflow-x-auto scrollbar-none"
+      className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="flex h-16 min-w-max px-1">
+      <div className="flex h-16 w-full">
         {NAV_ITEMS.map(item => {
           const isActive = selected === item.type
           const Icon = item.icon
@@ -32,15 +32,15 @@ export function HomeBottomNav({ selected, onSelect }: HomeBottomNavProps) {
               key={String(item.type)}
               onClick={() => onSelect(isActive ? null : item.type)}
               className={cn(
-                "relative flex flex-col items-center justify-center gap-1 px-4 transition-colors select-none",
+                "relative flex-1 flex flex-col items-center justify-center gap-1 transition-colors select-none min-w-0",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
               {isActive && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-primary rounded-b-full" />
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-b-full" />
               )}
-              <Icon className={cn("h-5 w-5 transition-all", isActive ? "stroke-[2.5]" : "stroke-[1.5]")} />
-              <span className={cn("text-[10px] leading-none whitespace-nowrap", isActive ? "font-semibold" : "font-medium")}>
+              <Icon className={cn("h-5 w-5 shrink-0 transition-all", isActive ? "stroke-[2.5]" : "stroke-[1.5]")} />
+              <span className={cn("text-[9px] leading-none w-full text-center truncate px-0.5", isActive ? "font-semibold" : "font-medium")}>
                 {item.label}
               </span>
             </button>

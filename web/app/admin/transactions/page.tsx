@@ -10,20 +10,25 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Download, Loader2 } from "lucide-react"
 import { useTransactions } from "@/hooks/useTransactions"
 import { useAuth } from "@/contexts/auth-context"
-import { ChipMovementType } from "helper"
+import { ChipMovementType, UserRole } from "helper"
 import { formatChips } from "@/lib/utils"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 export default function TransactionsPage() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { transactions, loading, loadTransactions } = useTransactions()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState<string>("all")
+  const [includeDescendants, setIncludeDescendants] = useState(true)
+
+  const canShowDescendants = role === UserRole.OWNER || role === UserRole.ADMIN || role === UserRole.CASHIER
 
   useEffect(() => {
     if (user) {
-      loadTransactions({ limit: 200 })
+      loadTransactions({ limit: 200, includeDescendants: canShowDescendants && includeDescendants })
     }
-  }, [user])
+  }, [user, includeDescendants])
 
   const filteredTransactions = transactions.filter((transaction) => {
     const matchesSearch =
@@ -88,18 +93,20 @@ export default function TransactionsPage() {
   const totalPrizes = prizes.reduce((sum, t) => sum + t.amount, 0)
 
   return (
-    <DashboardLayout>
+    <DashboardLayout title="Transacciones">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Transacciones</h1>
-            <p className="text-muted-foreground">
-              Historial de movimientos de fichas
-            </p>
-            <p className="text-xs text-yellow-600 mt-1">
-              Nota: Actualmente muestra transacciones del usuario actual. En producción se agregaría endpoint para ver todas las transacciones del árbol.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <p className="text-muted-foreground flex-1">Historial de movimientos de fichas</p>
+          {canShowDescendants && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="include-descendants"
+                checked={includeDescendants}
+                onCheckedChange={setIncludeDescendants}
+              />
+              <Label htmlFor="include-descendants" className="text-sm cursor-pointer">Incluir árbol completo</Label>
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}

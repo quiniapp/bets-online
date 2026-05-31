@@ -54,9 +54,11 @@ export default function AdminBalances() {
 
       for (const user of users) {
         try {
-          const response = await apiService.get<Balance>(`/chips/balance/${user.id}`)
-          if (response.success && response.data) {
-            balances[user.id] = response.data.chipBalance
+          const response = await apiService.get<{ balance: Balance }>(`/chips/balance/${user.id}`)
+          if (response.success && response.data?.balance) {
+            balances[user.id] = response.data.balance.chipBalance ?? 0
+          } else {
+            balances[user.id] = 0
           }
         } catch (error) {
           console.error(`Failed to load balance for user ${user.id}:`, error)
@@ -91,11 +93,11 @@ export default function AdminBalances() {
       if (response.success) {
         toast({ title: "Balance actualizado correctamente" })
 
-        const balanceResponse = await apiService.get<Balance>(`/chips/balance/${selectedUser.id}`)
-        if (balanceResponse.success && balanceResponse.data) {
+        const balanceResponse = await apiService.get<{ balance: Balance }>(`/chips/balance/${selectedUser.id}`)
+        if (balanceResponse.success && balanceResponse.data?.balance) {
           setUserBalances(prev => ({
             ...prev,
-            [selectedUser.id]: (balanceResponse.data as Balance).chipBalance
+            [selectedUser.id]: balanceResponse.data!.balance.chipBalance ?? 0
           }))
         }
 
@@ -121,7 +123,7 @@ export default function AdminBalances() {
     }
   }
 
-  const totalSystemBalance = Object.values(userBalances).reduce((sum, balance) => sum + balance, 0)
+  const totalSystemBalance = Object.values(userBalances).reduce((sum, b) => sum + (Number(b) || 0), 0)
 
   if (usersLoading || loadingBalances) {
     return (

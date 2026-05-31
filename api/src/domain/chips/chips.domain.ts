@@ -2,7 +2,8 @@ import {
   ChipMovement,
   ChipMovementType,
   ErrorCode,
-  UserRole
+  UserRole,
+  ROLE_HIERARCHY
 } from 'helper';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { balancesRepository } from '../../persistence/repositories/balances.repository';
@@ -38,7 +39,6 @@ export class ChipsDomain {
     }
 
     // Validar que el player esté en el árbol del seller
-    // Hijo directo (parentUserId) o descendiente (owner/admin pueden ver todo su árbol)
     const isDirectChild = player.parentUserId === sellerId;
     if (!isDirectChild) {
       const descendants = await usersRepository.findDescendants(sellerId);
@@ -50,6 +50,15 @@ export class ChipsDomain {
           'Can only sell chips to users in your hierarchy'
         );
       }
+    }
+
+    // Solo se puede cargar fichas a usuarios con rol inferior
+    if (ROLE_HIERARCHY[player.role] >= ROLE_HIERARCHY[seller.role]) {
+      throw new AppError(
+        403,
+        ErrorCode.FORBIDDEN,
+        'Cannot perform chip operation on a user with equal or higher role'
+      );
     }
 
     const t = await sequelize.transaction();
@@ -128,6 +137,14 @@ export class ChipsDomain {
       }
     }
 
+    if (ROLE_HIERARCHY[player.role] >= ROLE_HIERARCHY[cashier.role]) {
+      throw new AppError(
+        403,
+        ErrorCode.FORBIDDEN,
+        'Cannot perform chip operation on a user with equal or higher role'
+      );
+    }
+
     const t = await sequelize.transaction();
     try {
       const playerBalance = await balancesRepository.findByUserIdWithLock(playerId, t);
@@ -199,6 +216,14 @@ export class ChipsDomain {
       if (!descendants.some(d => d.id === playerId)) {
         throw new AppError(403, ErrorCode.FORBIDDEN, 'Can only register losses for users in your hierarchy');
       }
+    }
+
+    if (ROLE_HIERARCHY[player.role] >= ROLE_HIERARCHY[cashier.role]) {
+      throw new AppError(
+        403,
+        ErrorCode.FORBIDDEN,
+        'Cannot perform chip operation on a user with equal or higher role'
+      );
     }
 
     const t = await sequelize.transaction();
@@ -274,6 +299,14 @@ export class ChipsDomain {
           throw new AppError(403, ErrorCode.FORBIDDEN, 'Cannot process withdrawal for this user');
         }
       }
+
+      if (ROLE_HIERARCHY[player.role] >= ROLE_HIERARCHY[requester.role]) {
+        throw new AppError(
+          403,
+          ErrorCode.FORBIDDEN,
+          'Cannot perform chip operation on a user with equal or higher role'
+        );
+      }
     }
 
     const t = await sequelize.transaction();
@@ -335,6 +368,7 @@ export class ChipsDomain {
       endDate?: Date;
       type?: ChipMovementType;
       compact?: boolean;
+      includeDescendants?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number; page: number; limit: number }> {
     const requester = await usersRepository.findById(requesterId);
@@ -356,6 +390,19 @@ export class ChipsDomain {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
     const offset = (page - 1) * limit;
+
+    if (options?.includeDescendants) {
+      const descendants = await usersRepository.findDescendants(userId);
+      const userIds = [userId, ...descendants.map(d => d.id)];
+      const result = await chipMovementsRepository.findByUserIds(userIds, {
+        limit,
+        offset,
+        startDate: options?.startDate,
+        endDate: options?.endDate,
+        type: options?.type,
+      });
+      return { movements: result.movements, total: result.total, page, limit };
+    }
 
     const result = await chipMovementsRepository.findByUserId(userId, {
       limit,
