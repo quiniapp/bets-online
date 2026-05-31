@@ -10,7 +10,6 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
 import { Users, Gamepad2, DollarSign, Loader2, TrendingUp, Wifi, UserPlus, Activity } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ChipOperationDialog } from "@/components/admin/chip-operation-dialog"
 import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -48,7 +47,6 @@ export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth()
   const router = useRouter()
   const { balance: myBalance, loadBalance } = useChips()
-  const [loadBalanceOpen, setLoadBalanceOpen] = useState(false)
   const [chipLoadOpen, setChipLoadOpen] = useState(false)
 
   const [userStats, setUserStats] = useState<UserStats | null>(null)
@@ -254,7 +252,7 @@ export default function AdminDashboard() {
                   <p className="text-sm text-muted-foreground mt-1 mb-3">
                     {new Date(myBalance.lastUpdatedAt).toLocaleString('es-ES')}
                   </p>
-                  <Button size="sm" className="w-full" onClick={() => setLoadBalanceOpen(true)}>
+                  <Button size="sm" className="w-full" onClick={() => setChipLoadOpen(true)}>
                     <DollarSign className="h-3 w-3 mr-1" />
                     Cargar Saldo
                   </Button>
@@ -426,15 +424,10 @@ export default function AdminDashboard() {
       </Card>
 
 
-      <ChipOperationDialog
-        operationType="sell"
-        open={loadBalanceOpen}
-        onOpenChange={setLoadBalanceOpen}
-        onSuccess={loadBalance}
-      />
       <ChipLoadDialog
         open={chipLoadOpen}
         onOpenChange={setChipLoadOpen}
+        onSuccess={loadBalance}
       />
     </DashboardLayout>
   )
