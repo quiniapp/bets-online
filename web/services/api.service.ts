@@ -12,9 +12,11 @@ class ApiService {
   private sessionActive = false;
 
   constructor() {
-    // Las llamadas van a /api/* y Next.js las proxifica al backend.
-    // Funciona igual en desarrollo (rewrite a localhost:3001) y producción (Railway).
-    this.baseUrl = '';
+    // Browser: baseUrl vacío → Next.js rewrite maneja /api/* → backend.
+    // Server (SSR/build): URL relativa no funciona en Node.js, usar URL absoluta.
+    this.baseUrl = typeof window === 'undefined'
+      ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001')
+      : '';
     if (typeof window !== 'undefined') {
       this.sessionActive = localStorage.getItem(SESSION_FLAG) === '1';
     }
@@ -179,7 +181,7 @@ class ApiService {
   async refreshToken(): Promise<boolean> {
     try {
       const csrf = this.csrfToken ?? await this.fetchCsrfToken();
-      const response = await fetch('/api/auth/refresh', {
+      const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrf },
         credentials: 'include',
