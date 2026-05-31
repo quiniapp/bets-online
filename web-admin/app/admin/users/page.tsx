@@ -35,6 +35,11 @@ import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 const ITEMS_PER_PAGE = 10
 type ViewMode = 'table' | 'tree'
 
+const ROLE_LABELS: Record<string, string> = { OWNER: 'Propietario', ADMIN: 'Admin', CASHIER: 'Cajero', PLAYER: 'Jugador' }
+const STATUS_LABELS: Record<string, string> = { ACTIVE: 'Activo', BLOCKED: 'Bloqueado' }
+const roleLabel = (r: string) => ROLE_LABELS[r] ?? r
+const statusLabel = (s: string) => STATUS_LABELS[s] ?? s
+
 function formatDate(date: Date | string | null | undefined, withTime = false) {
   if (!date) return '-'
   const d = new Date(date)
@@ -100,39 +105,6 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
 
   return (
     <>
-      {/* Mobile card */}
-      <div className="md:hidden border-b last:border-b-0">
-        <div className="p-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <button onClick={() => onViewDetail(user)} className="text-left">
-              <div className="font-semibold text-blue-500 text-sm">{user.username}</div>
-              {(user.firstName || user.lastName) && (
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {[user.firstName, user.lastName].filter(Boolean).join(' ')}
-                </div>
-              )}
-            </button>
-            <div className="flex gap-1 flex-shrink-0">
-              <Badge variant="outline" className="text-xs">{user.role}</Badge>
-              <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-xs">
-                {user.status}
-              </Badge>
-            </div>
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Registro: {formatDate(user.createdAt)}</span>
-            <span>Últ. conexión: {formatDate(user.lastConnection, true)}</span>
-          </div>
-          <ActionButtons
-            user={user}
-            onEdit={onEdit}
-            onWallet={onWallet}
-            onResetPassword={onResetPassword}
-            onToggleBlock={onToggleBlock}
-          />
-        </div>
-      </div>
-
       {/* Desktop row */}
       <div
         className={cn(
@@ -162,13 +134,13 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
 
         {/* Rol */}
         <div className="col-span-1">
-          <Badge variant="outline" className="text-xs whitespace-nowrap">{user.role}</Badge>
+          <Badge variant="outline" className="text-xs whitespace-nowrap">{roleLabel(user.role)}</Badge>
         </div>
 
         {/* Estado */}
         <div className="col-span-1">
           <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-xs">
-            {user.status}
+            {statusLabel(user.status)}
           </Badge>
         </div>
 
@@ -231,13 +203,14 @@ function UsersPageContent() {
   const { users, loading, pagination, reload, getUserTree } = useUsers({
     page: currentPage,
     limit: ITEMS_PER_PAGE,
-    search: searchQuery
+    search: searchQuery,
+    mode: showAllDescendants ? 'descendants' : 'children'
   })
 
   const [userTree, setUserTree] = useState<UserTreeNode | null>(null)
   const [loadingTree, setLoadingTree] = useState(false)
 
-  useEffect(() => { setCurrentPage(1) }, [searchQuery])
+  useEffect(() => { setCurrentPage(1) }, [searchQuery, showAllDescendants])
 
   useEffect(() => {
     if (searchParams.get('refresh') === 'true') {
@@ -356,6 +329,48 @@ function UsersPageContent() {
 
       {viewMode === 'table' ? (
         <Card className="overflow-hidden">
+          {/* Mobile: 2-column compact grid */}
+          <div className="md:hidden grid grid-cols-2 gap-1.5 p-1.5">
+            {users.map(user => (
+              <div key={user.id} className="border rounded-lg p-2 space-y-1.5 bg-card">
+                <button className="w-full text-left" onClick={() => handleViewDetail(user)}>
+                  <div className="font-semibold text-blue-500 text-xs truncate">{user.username}</div>
+                  {(user.firstName || user.lastName) && (
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {[user.firstName, user.lastName].filter(Boolean).join(' ')}
+                    </div>
+                  )}
+                </button>
+                <div className="flex gap-1 flex-wrap">
+                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{roleLabel(user.role)}</Badge>
+                  <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-[10px] px-1 py-0 h-4">
+                    {statusLabel(user.status)}
+                  </Badge>
+                </div>
+                <div className="text-[10px] text-muted-foreground">Reg: {formatDate(user.createdAt)}</div>
+                <div className="flex items-center gap-0.5">
+                  <Button variant="outline" size="icon" className="h-6 w-6 text-yellow-600 border-yellow-300 hover:bg-yellow-50" onClick={() => handleWallet(user)} title="Fichas">
+                    <DollarSign className="h-3 w-3" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleResetPassword(user)} title="Contraseña">
+                    <Key className="h-3 w-3" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleEditUser(user.id)} title="Editar">
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="outline" size="icon"
+                    className={cn("h-6 w-6", user.status === UserStatus.BLOCKED ? "text-green-600 border-green-300" : "text-red-600 border-red-300")}
+                    onClick={() => handleToggleBlock(user)}
+                    title={user.status === UserStatus.BLOCKED ? "Desbloquear" : "Bloquear"}
+                  >
+                    {user.status === UserStatus.BLOCKED ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Desktop header */}
           <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 border-b bg-muted/30 text-sm font-medium text-muted-foreground">
             <div className="col-span-3">Usuario</div>
@@ -366,7 +381,7 @@ function UsersPageContent() {
             <div className="col-span-3">Acciones</div>
           </div>
 
-          <div>
+          <div className="hidden md:block">
             {showAllDescendants
               ? rootUsers.map(user => (
                 <CollapsibleRow key={user.id} user={user} level={0} allUsers={users} {...sharedRowProps} />

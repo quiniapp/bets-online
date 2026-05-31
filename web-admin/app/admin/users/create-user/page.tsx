@@ -13,11 +13,17 @@ import { useToast } from "@/hooks/use-toast";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useChips } from "@/hooks/useChips";
+import { useAuth } from "@/contexts/auth-context";
+import { UserRole } from "helper";
+
+const PRESET_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export default function CreateUserPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { balance, loadBalance } = useChips();
+  const { role } = useAuth();
+  const isOwner = role === UserRole.OWNER;
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -60,7 +66,7 @@ export default function CreateUserPage() {
 
   const parsedBalance = parseFloat(formData.initialBalance) || 0;
   const maxBalance = balance?.chipBalance ?? 0;
-  const balanceExceeds = parsedBalance > maxBalance;
+  const balanceExceeds = !isOwner && parsedBalance > maxBalance;
 
   const isFormValid =
     usernameValidation.state === 'valid' &&
@@ -191,10 +197,27 @@ export default function CreateUserPage() {
             <div className="space-y-2">
               <Label>
                 Saldo inicial (opcional)
-                {balance && (
+                {!isOwner && balance && (
                   <span className="ml-2 text-xs text-muted-foreground">Tu saldo: ${balance.chipBalance.toLocaleString('es-AR')}</span>
                 )}
               </Label>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                {PRESET_AMOUNTS.map(preset => (
+                  <Button
+                    key={preset}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs font-semibold px-1"
+                    onClick={() => {
+                      const current = parseFloat(formData.initialBalance.replace(',', '.')) || 0;
+                      setFormData(p => ({ ...p, initialBalance: String(current + preset) }));
+                    }}
+                  >
+                    +{preset.toLocaleString('es-AR')}
+                  </Button>
+                ))}
+              </div>
               <Input
                 type="number"
                 min="0"

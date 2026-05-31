@@ -19,6 +19,14 @@ export class FeaturedGamesRepository {
     return rows.map(r => this.map(r));
   }
 
+  async findAllWithGame(): Promise<FeaturedGameWithGame[]> {
+    const rows = await FeaturedGameModel.findAll({
+      include: [{ model: GameModel, as: 'game' }],
+      order: [['sort_order', 'ASC']]
+    });
+    return rows.map(r => this.mapWithGame(r));
+  }
+
   async create(data: CreateFeaturedGameDto): Promise<FeaturedGame> {
     const row = await FeaturedGameModel.create(data as any);
     return this.map(row);

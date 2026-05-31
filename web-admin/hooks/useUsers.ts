@@ -7,10 +7,11 @@ interface UseUsersOptions {
   limit?: number;
   search?: string;
   autoLoad?: boolean;
+  mode?: 'children' | 'descendants';
 }
 
 export function useUsers(options: UseUsersOptions = {}) {
-  const { page = 1, limit = 10, search, autoLoad = true } = options;
+  const { page = 1, limit = 10, search, autoLoad = true, mode = 'children' } = options;
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +34,8 @@ export function useUsers(options: UseUsersOptions = {}) {
         queryParams.append('search', querySearch);
       }
 
-      const response = await apiService.get<User[]>(`/users/me/children?${queryParams.toString()}`);
+      const endpoint = mode === 'descendants' ? '/users/me/descendants' : '/users/me/children';
+      const response = await apiService.get<User[]>(`${endpoint}?${queryParams.toString()}`);
 
       if (response.success && response.data) {
         setUsers(response.data);
@@ -49,7 +51,7 @@ export function useUsers(options: UseUsersOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search]);
+  }, [page, limit, search, mode]);
 
   useEffect(() => {
     if (autoLoad) {
