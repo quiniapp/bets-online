@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -109,6 +109,7 @@ interface LobbySlotEditorProps {
 
 export function LobbySlotEditor({ slots, saving, onSave }: LobbySlotEditorProps) {
   const [items, setItems] = useState<LobbySlot[]>(slots);
+  useEffect(() => { setItems(slots); }, [slots]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),

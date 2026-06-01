@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -33,6 +33,7 @@ interface HeaderCategoriesEditorProps {
 
 export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCategoriesEditorProps) {
   const [items, setItems] = useState(categories);
+  useEffect(() => { setItems(categories); }, [categories]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
