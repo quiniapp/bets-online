@@ -34,6 +34,12 @@ export class UsersRepository {
     return this.mapToUserWithPassword(user);
   }
 
+  async findOwner(): Promise<User | null> {
+    const user = await UserModel.findOne({ where: { role: 'OWNER' } });
+    if (!user) return null;
+    return this.mapToUser(user);
+  }
+
   async findByParentId(
     parentId: string,
     options?: {

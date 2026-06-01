@@ -54,7 +54,7 @@ export class CasinoSettingsRepository {
       headerCategories: patch.headerCategories ?? current.headerCategories,
       lobbySlots: patch.lobbySlots ?? current.lobbySlots,
       footerLinks: patch.footerLinks ?? current.footerLinks,
-    }, { returning: true });
+    }, { returning: true, conflictFields: ['owner_id'] });
     if (!record) {
       throw new Error('CasinoSettings upsert failed: no record returned');
     }

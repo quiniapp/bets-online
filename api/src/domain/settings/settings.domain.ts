@@ -4,7 +4,16 @@ import { usersRepository } from '../../persistence/repositories/users.repository
 import { AppError } from '../../middleware/error.middleware';
 
 export class SettingsDomain {
-  async getCasinoSettings(requesterId: string): Promise<CasinoSettings> {
+  async getCasinoSettings(requesterId?: string): Promise<CasinoSettings> {
+    if (!requesterId) {
+      // Anonymous request — find the system owner
+      const owner = await usersRepository.findOwner();
+      if (!owner) {
+        return casinoSettingsRepository.findByOwnerId('');
+      }
+      return casinoSettingsRepository.findByOwnerId(owner.id);
+    }
+
     const requester = await usersRepository.findById(requesterId);
     if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
 
