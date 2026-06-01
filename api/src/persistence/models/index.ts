@@ -18,6 +18,7 @@ import UserFavoriteGameModel from './UserFavoriteGame.model';
 import FeaturedGameModel from './featured-game.model';
 import GameBannerModel from './game-banner.model';
 import GameImageModel from './game-image.model';
+import CasinoSettingsModel from './casino-settings.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -304,7 +305,8 @@ export {
   UserFavoriteGameModel,
   FeaturedGameModel,
   GameBannerModel,
-  GameImageModel
+  GameImageModel,
+  CasinoSettingsModel
 };
 
 export default {
@@ -327,5 +329,6 @@ export default {
   UserFavoriteGameModel,
   FeaturedGameModel,
   GameBannerModel,
-  GameImageModel
+  GameImageModel,
+  CasinoSettingsModel
 };
