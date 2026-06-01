@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -41,10 +41,14 @@ function FooterLinkRow({ link, onChange, onRemove }: FooterLinkRowProps) {
         onChange={e => onChange({ ...link, href: e.target.value })}
       />
       <Switch
+        id={`visible-${link.id}`}
         checked={link.visible}
         onCheckedChange={v => onChange({ ...link, visible: v })}
+        aria-label="Visible"
       />
-      <span className="text-xs text-muted-foreground">Visible</span>
+      <label htmlFor={`visible-${link.id}`} className="text-xs text-muted-foreground cursor-pointer">
+        Visible
+      </label>
       <Button
         type="button"
         variant="ghost"
@@ -66,6 +70,10 @@ interface FooterLinksEditorProps {
 
 export function FooterLinksEditor({ links, saving, onSave }: FooterLinksEditorProps) {
   const [items, setItems] = useState<FooterLink[]>(links);
+
+  useEffect(() => {
+    setItems(links);
+  }, [links]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -115,7 +123,7 @@ export function FooterLinksEditor({ links, saving, onSave }: FooterLinksEditorPr
           <Plus className="h-4 w-4 mr-1" />
           Agregar enlace
         </Button>
-        <Button onClick={() => onSave(items)} disabled={saving}>
+        <Button type="button" onClick={() => onSave(items)} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           {saving ? 'Guardando...' : 'Guardar footer'}
         </Button>
