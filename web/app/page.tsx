@@ -14,23 +14,14 @@ import CategoriesBar from "@/components/categories-bar";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { HomeBottomNav } from "@/components/home-bottom-nav";
-
-const CATEGORY_SECTIONS = [
-  { gameType: "videoSlots",   title: "Slots",            emoji: "🎰" },
-  { gameType: "LiveGames",    title: "Casino en Vivo",   emoji: "📺" },
-  { gameType: "CrashGame",   title: "Crash",            emoji: "🔥" },
-  { gameType: "Roulette",    title: "Ruletas",           emoji: "🎡" },
-  { gameType: "Blackjack",   title: "Blackjack",         emoji: "🃏" },
-  { gameType: "Baccarat",    title: "Baccarat",          emoji: "♠️" },
-  { gameType: "Bingo",       title: "Bingo",             emoji: "🎱" },
-  { gameType: "Plinko",      title: "Plinko",            emoji: "🪂" },
-];
+import { useCasinoSettings } from "@/hooks/useCasinoSettings";
 
 export default function LandingPage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
+  const { lobbySlots } = useCasinoSettings();
 
   const hasFilter = selectedCategory !== null || selectedProvider !== null || debouncedSearch.trim().length > 0;
 
@@ -67,12 +58,12 @@ export default function LandingPage() {
         ) : (
           <>
             <FeaturedSection onShowAll={() => setSelectedCategory(null)} />
-            {CATEGORY_SECTIONS.map(({ gameType, title, emoji }) => (
+            {lobbySlots.map(slot => (
               <CategorySection
-                key={gameType}
-                gameType={gameType}
-                title={title}
-                emoji={emoji}
+                key={slot.id}
+                title={slot.label}
+                gameType={slot.kind === 'provider' ? null : (slot.categoryType ?? null)}
+                providerName={slot.kind === 'category' ? null : (slot.providerName ?? null)}
                 limit={8}
                 onShowAll={handleShowAll}
               />

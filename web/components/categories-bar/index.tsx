@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiService } from '@/services/api.service';
+import { useCasinoSettings } from '@/hooks/useCasinoSettings';
 import { Flex } from '../flex';
 import {
     Gamepad2,
@@ -20,7 +21,7 @@ interface TypeConfig {
 }
 
 const typeConfig: Record<string, TypeConfig> = {
-    videoSlots:   { label: 'Slots',             icon: Gamepad2  },
+    videoSlots:   { label: 'Casino',            icon: Gamepad2  },
     Roulette:     { label: 'Ruletas',            icon: CircleDot },
     LiveGames:    { label: 'Casino en Vivo',     icon: Tv2       },
     CrashGame:    { label: 'Crash',              icon: Flame     },
@@ -41,15 +42,16 @@ interface CategoriesBarProps {
 }
 
 const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
-    const [types, setTypes] = useState<string[]>([]);
+    const [availableTypes, setAvailableTypes] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
+    const { headerCategories, loading: settingsLoading } = useCasinoSettings();
 
     useEffect(() => {
         const fetchTypes = async () => {
             setLoading(true);
             const response = await apiService.get<{ types: string[] }>('/games/types');
             if (response.success && response.data) {
-                setTypes(response.data.types);
+                setAvailableTypes(response.data.types);
             }
             setLoading(false);
         };
@@ -63,7 +65,7 @@ const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
                 : 'bg-accent text-accent-foreground hover:bg-primary/80 hover:text-primary-foreground hover:scale-105'
         }`;
 
-    if (loading) {
+    if (loading || settingsLoading) {
         return (
             <Flex className="w-full max-w-[95vw] gap-2 px-4 py-3 overflow-x-auto scrollbar-none">
                 {[...Array(5)].map((_, i) => (
@@ -73,10 +75,14 @@ const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
         );
     }
 
-    if (types.length === 0) return null;
+    if (availableTypes.length === 0) return null;
 
-    const knownTypes = types.filter(t => t in typeConfig);
-    const otherTypes = types.filter(t => !(t in typeConfig));
+    // Types ordered by settings, filtered to only those with actual games
+    const orderedTypes = headerCategories.filter(t => availableTypes.includes(t));
+
+    // Types that have games but are not in headerCategories → shown as "Otros"
+    const headerSet = new Set(headerCategories);
+    const hasOtherTypes = availableTypes.some(t => !headerSet.has(t));
 
     const allPills = (
         <>
@@ -84,9 +90,10 @@ const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
                 <Grid3x3 className="h-3.5 w-3.5" />
                 Lobby
             </button>
-            {knownTypes.map(type => {
+            {orderedTypes.map(type => {
                 const config = typeConfig[type];
-                const Icon = config.icon;
+                const Icon = config ? config.icon : Gamepad2;
+                const label = config ? config.label : type;
                 return (
                     <button
                         key={type}
@@ -94,11 +101,11 @@ const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
                         className={pillClass(selected === type)}
                     >
                         <Icon className="h-3.5 w-3.5" />
-                        {config.label}
+                        {label}
                     </button>
                 );
             })}
-            {otherTypes.length > 0 && (
+            {hasOtherTypes && (
                 <button
                     onClick={() => onSelect(selected === '__otros__' ? null : '__otros__')}
                     className={pillClass(selected === '__otros__')}
