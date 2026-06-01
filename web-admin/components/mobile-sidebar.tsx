@@ -37,6 +37,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
   const pathname = usePathname()
   const [usersOpen, setUsersOpen] = useState(false)
   const [reportsOpen, setReportsOpen] = useState(false)
+  const [gamesOpen, setGamesOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [open, setOpen] = useState(false)
 
@@ -51,7 +52,13 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
         { title: "Alta de Jugador", href: "/admin/users/create-user" },
       ],
     },
-    { title: t("nav.games"), href: "/admin/games", icon: Gamepad2 },
+    {
+      title: t("nav.games"), icon: Gamepad2, collapsible: true, isOpen: gamesOpen, setOpen: setGamesOpen,
+      items: [
+        { title: "Catálogo", href: "/admin/games" },
+        { title: "Proveedores", href: "/admin/providers" },
+      ],
+    },
     {
       title: t("nav.reports"), icon: FileText, collapsible: true, isOpen: reportsOpen, setOpen: setReportsOpen,
       items: [

@@ -8,6 +8,7 @@ import { useCasinoSettings } from "@/hooks/useCasinoSettings"
 import { HeaderCategoriesEditor } from "@/components/admin/casino-settings/header-categories-editor"
 import { LobbySlotEditor } from "@/components/admin/casino-settings/lobby-slots-editor"
 import { FooterLinksEditor } from "@/components/admin/casino-settings/footer-links-editor"
+import { GameOrderEditor } from "@/components/admin/casino-settings/game-order-editor"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import type { UpdateCasinoSettingsDto } from "helper"
@@ -47,6 +48,7 @@ export default function CasinoSettingsPage() {
           <TabsTrigger value="header">Header</TabsTrigger>
           <TabsTrigger value="lobby">Lobby</TabsTrigger>
           <TabsTrigger value="footer">Footer</TabsTrigger>
+          <TabsTrigger value="games">Juegos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="header" className="space-y-4">
@@ -83,6 +85,14 @@ export default function CasinoSettingsPage() {
             saving={saving}
             onSave={links => handleSave({ footerLinks: links })}
           />
+        </TabsContent>
+
+        <TabsContent value="games" className="space-y-4">
+          <h2 className="text-lg font-semibold">Orden de Juegos por Proveedor</h2>
+          <p className="text-sm text-muted-foreground">
+            Elegí un proveedor y reordenás sus juegos. El orden afecta cómo aparecen en el lobby.
+          </p>
+          <GameOrderEditor />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
