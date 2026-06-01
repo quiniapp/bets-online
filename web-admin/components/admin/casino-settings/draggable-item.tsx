@@ -38,7 +38,7 @@ export function DraggableItem({ id, children, className }: DraggableItemProps) {
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground flex-shrink-0"
+        className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground flex-shrink-0"
         type="button"
         aria-label="Arrastrar"
       >
