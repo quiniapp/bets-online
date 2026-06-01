@@ -327,42 +327,37 @@ function UsersPageContent() {
 
       {viewMode === 'table' ? (
         <Card className="overflow-hidden">
-          {/* Mobile: 2-column compact grid */}
-          <div className="md:hidden grid grid-cols-2 gap-1.5 p-1.5">
+          {/* Mobile: single-column list */}
+          <div className="md:hidden divide-y">
             {paginatedUsers.map(user => (
-              <div key={user.id} className="border rounded-lg p-2 space-y-1.5 bg-card">
-                <button className="w-full text-left" onClick={() => handleViewDetail(user)}>
-                  <div className="font-semibold text-blue-500 text-xs truncate">{user.username}</div>
-                  {(user.firstName || user.lastName) && (
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {[user.firstName, user.lastName].filter(Boolean).join(' ')}
-                    </div>
-                  )}
+              <div key={user.id} className="flex items-center gap-3 px-3 py-2.5">
+                <button className="text-left flex-1 min-w-0" onClick={() => handleViewDetail(user)}>
+                  <div className="font-semibold text-blue-500 text-sm truncate">{user.username}</div>
+                  <div className="flex gap-1 flex-wrap mt-0.5">
+                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{roleLabel(user.role)}</Badge>
+                    <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-[10px] px-1 py-0 h-4">
+                      {statusLabel(user.status)}
+                    </Badge>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Reg: {formatDate(user.createdAt)}</div>
                 </button>
-                <div className="flex gap-1 flex-wrap">
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{roleLabel(user.role)}</Badge>
-                  <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-[10px] px-1 py-0 h-4">
-                    {statusLabel(user.status)}
-                  </Badge>
-                </div>
-                <div className="text-[10px] text-muted-foreground">Reg: {formatDate(user.createdAt)}</div>
-                <div className="flex items-center gap-0.5">
-                  <Button variant="outline" size="icon" className="h-6 w-6 text-yellow-600 border-yellow-300 hover:bg-yellow-50" onClick={() => handleWallet(user)} title="Fichas">
-                    <DollarSign className="h-3 w-3" />
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button variant="outline" size="icon" className="h-7 w-7 text-yellow-600 border-yellow-300 hover:bg-yellow-50" onClick={() => handleWallet(user)} title="Fichas">
+                    <DollarSign className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleResetPassword(user)} title="Contraseña">
-                    <Key className="h-3 w-3" />
+                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleResetPassword(user)} title="Contraseña">
+                    <Key className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => handleEditUser(user.id)} title="Editar">
-                    <Edit className="h-3 w-3" />
+                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleEditUser(user.id)} title="Editar">
+                    <Edit className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="outline" size="icon"
-                    className={cn("h-6 w-6", user.status === UserStatus.BLOCKED ? "text-green-600 border-green-300" : "text-red-600 border-red-300")}
+                    className={cn("h-7 w-7", user.status === UserStatus.BLOCKED ? "text-green-600 border-green-300" : "text-red-600 border-red-300")}
                     onClick={() => handleToggleBlock(user)}
                     title={user.status === UserStatus.BLOCKED ? "Desbloquear" : "Bloquear"}
                   >
-                    {user.status === UserStatus.BLOCKED ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                    {user.status === UserStatus.BLOCKED ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </div>

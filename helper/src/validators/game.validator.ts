@@ -28,6 +28,7 @@ export const updateGameSchema = z
     minBet: z.number().positive().optional(),
     maxBet: z.number().positive().optional(),
     houseEdge: z.number().min(0).max(100).optional(),
+    sortOrder: z.number().int().nonnegative().nullable().optional(),
   })
   .refine(
     (data) => {
