@@ -23,6 +23,7 @@ import {
   History,
   Settings,
   Menu,
+  LayoutGrid,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UserRole } from "helper"
@@ -62,6 +63,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
     { title: t("nav.earnings"), icon: DollarSign, items: [{ title: t("earnings.calculate"), href: "/admin/balances" }] },
     { title: t("nav.transactions"), href: "/admin/transactions", icon: ArrowUpDown },
     { title: t("nav.settings"), href: "/admin/settings", icon: Settings },
+    { title: "Casino Layout", href: "/admin/settings/casino", icon: LayoutGrid },
   ]
 
   const adminMenuItems = [

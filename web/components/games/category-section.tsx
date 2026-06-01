@@ -10,14 +10,15 @@ const GRID = "grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:g
 
 interface CategorySectionProps {
   title: string
-  emoji: string
-  gameType: string
+  emoji?: string
+  gameType?: string | null
+  providerName?: string | null
   limit?: number
   onShowAll?: (gameType: string) => void
 }
 
-const CategorySection = ({ title, emoji, gameType, limit = 8, onShowAll }: CategorySectionProps) => {
-  const { games, loading } = useGames({ activeOnly: true, gameType })
+const CategorySection = ({ title, emoji, gameType, providerName, limit = 8, onShowAll }: CategorySectionProps) => {
+  const { games, loading } = useGames({ activeOnly: true, gameType: gameType ?? null, providerName: providerName ?? null })
   const { user } = useAuth()
   const router = useRouter()
 
@@ -49,10 +50,10 @@ const CategorySection = ({ title, emoji, gameType, limit = 8, onShowAll }: Categ
     <div className="w-full px-4 py-2">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xl">{emoji}</span>
+          {emoji && <span className="text-xl">{emoji}</span>}
           <span className="font-bold text-lg">{title}</span>
         </div>
-        {onShowAll && (
+        {onShowAll && gameType && (
           <button
             onClick={() => onShowAll(gameType)}
             className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"

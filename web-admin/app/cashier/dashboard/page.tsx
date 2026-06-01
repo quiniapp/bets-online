@@ -88,10 +88,7 @@ export default function CashierDashboard() {
   return (
     <DashboardLayout title="Inicio">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <Card
-          className="cursor-pointer transition-shadow hover:shadow-md gap-2 py-4"
-          onClick={() => router.push(ROUTER.ADMIN_USERS)}
-        >
+        <Card className="gap-2 py-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
             <CardTitle className="text-lg font-semibold">Total Usuarios</CardTitle>
             <Users className="h-5 w-5 text-muted-foreground" />
@@ -109,24 +106,30 @@ export default function CashierDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-4xl font-bold text-green-600">{userStats?.active ?? 0}</div>
-                  <p className="text-sm text-muted-foreground">activos (7d)</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {userStats?.total ?? 0} total · {userStats?.blocked ?? 0} bloqueados
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1 text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span className="text-sm text-muted-foreground">Cajeros</span>
-                    <span className="text-base font-bold text-orange-500 w-6 text-right">{userStats?.cashiers ?? 0}</span>
+              <div>
+                <div className="flex items-center justify-between gap-4 mb-3 cursor-pointer" onClick={() => router.push(ROUTER.ADMIN_USERS)}>
+                  <div>
+                    <div className="text-4xl font-bold text-green-600">{userStats?.active ?? 0}</div>
+                    <p className="text-sm text-muted-foreground">activos (7d)</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {userStats?.total ?? 0} total · {userStats?.blocked ?? 0} bloqueados
+                    </p>
                   </div>
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span className="text-sm text-muted-foreground">Jugadores</span>
-                    <span className="text-base font-bold text-green-500 w-6 text-right">{userStats?.players ?? 0}</span>
+                  <div className="flex flex-col gap-1 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className="text-sm text-muted-foreground">Cajeros</span>
+                      <span className="text-base font-bold text-orange-500 w-6 text-right">{userStats?.cashiers ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className="text-sm text-muted-foreground">Jugadores</span>
+                      <span className="text-base font-bold text-green-500 w-6 text-right">{userStats?.players ?? 0}</span>
+                    </div>
                   </div>
                 </div>
+                <Button size="sm" className="w-full" onClick={() => router.push(ROUTER.CASHIER_CREATE_USER)}>
+                  <UserPlus className="h-3 w-3 mr-1" />
+                  Crear Usuario
+                </Button>
               </div>
             )}
           </CardContent>
@@ -157,23 +160,6 @@ export default function CashierDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="gap-2 py-4">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 pb-0">
-            <CardTitle className="text-lg font-semibold">Crear Usuario</CardTitle>
-            <UserPlus className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-5">
-            <p className="text-sm text-muted-foreground mb-3">
-              Registrar nuevos cajeros y jugadores
-            </p>
-            <div className="flex">
-              <Button size="sm" className="w-full" onClick={() => router.push(ROUTER.CASHIER_CREATE_USER)}>
-                <UserPlus className="h-3 w-3 mr-1" />
-                Crear Usuario
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Card className="mb-6">

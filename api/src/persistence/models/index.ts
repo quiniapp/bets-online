@@ -18,6 +18,7 @@ import UserFavoriteGameModel from './UserFavoriteGame.model';
 import FeaturedGameModel from './featured-game.model';
 import GameBannerModel from './game-banner.model';
 import GameImageModel from './game-image.model';
+import CasinoSettingsModel from './casino-settings.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -144,6 +145,10 @@ AuditLogModel.belongsTo(UserModel, {
   foreignKey: 'userId',
   as: 'user'
 });
+
+// User -> CasinoSettings (1:1)
+UserModel.hasOne(CasinoSettingsModel, { foreignKey: 'ownerId', as: 'casinoSettings' });
+CasinoSettingsModel.belongsTo(UserModel, { foreignKey: 'ownerId', as: 'owner' });
 
 // ===================================
 // USER HIERARCHY (Self-referential)
@@ -304,7 +309,8 @@ export {
   UserFavoriteGameModel,
   FeaturedGameModel,
   GameBannerModel,
-  GameImageModel
+  GameImageModel,
+  CasinoSettingsModel
 };
 
 export default {
@@ -327,5 +333,6 @@ export default {
   UserFavoriteGameModel,
   FeaturedGameModel,
   GameBannerModel,
-  GameImageModel
+  GameImageModel,
+  CasinoSettingsModel
 };

@@ -5,9 +5,8 @@ import CreateAdminFeature from "@/feature/pages/create-admin";
 
 export default function CreateAdminPage (){
     return (
-        <DashboardLayout> 
+        <DashboardLayout title="Alta de Administrador">
             <CreateAdminFeature />
-
         </DashboardLayout>
     )
 }

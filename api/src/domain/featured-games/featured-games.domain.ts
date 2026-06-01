@@ -6,8 +6,8 @@ export class FeaturedGamesDomain {
     return featuredGamesRepository.findAllActive();
   }
 
-  async getAll(): Promise<FeaturedGame[]> {
-    return featuredGamesRepository.findAll();
+  async getAll(): Promise<FeaturedGameWithGame[]> {
+    return featuredGamesRepository.findAllWithGame();
   }
 
   async create(data: CreateFeaturedGameDto): Promise<FeaturedGame> {

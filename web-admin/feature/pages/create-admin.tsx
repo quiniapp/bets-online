@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UserPlus } from "lucide-react"
@@ -11,10 +12,18 @@ import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
 import { ValidatedInput } from "@/components/ui/validated-input"
 import { PasswordInput } from "@/components/ui/password-input"
+import { useChips } from "@/hooks/useChips"
+import { useAuth } from "@/contexts/auth-context"
+import { UserRole } from "helper"
+
+const PRESET_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000]
 
 export default function CreateAdminFeature() {
   const router = useRouter()
   const { toast } = useToast()
+  const { balance, loadBalance } = useChips()
+  const { role: myRole } = useAuth()
+  const isOwner = myRole === UserRole.OWNER
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
@@ -23,8 +32,11 @@ export default function CreateAdminFeature() {
     lastName: "",
     password: "",
     confirmPassword: "",
+    initialBalance: "",
     role: "ADMIN"
   })
+
+  useState(() => { loadBalance() })
 
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [passwordValid, setPasswordValid] = useState(false)
@@ -55,6 +67,10 @@ export default function CreateAdminFeature() {
   const emailValidation = validateEmail(formData.email)
   const confirmPasswordValidation = validateConfirmPassword(formData.confirmPassword, formData.password)
 
+  const parsedBalance = parseFloat(formData.initialBalance) || 0
+  const maxBalance = balance?.chipBalance ?? 0
+  const balanceExceeds = !isOwner && parsedBalance > maxBalance
+
   const handlePasswordValidationChange = useCallback((isValid: boolean) => {
     setPasswordValid(isValid)
   }, [])
@@ -64,7 +80,8 @@ export default function CreateAdminFeature() {
       usernameValidation.state === 'valid' &&
       (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
       passwordValid &&
-      confirmPasswordValidation.state === 'valid'
+      confirmPasswordValidation.state === 'valid' &&
+      !balanceExceeds
     )
   }
 
@@ -104,6 +121,9 @@ export default function CreateAdminFeature() {
       }
       if (formData.lastName.trim()) {
         payload.lastName = formData.lastName
+      }
+      if (parsedBalance > 0) {
+        payload.initialBalance = parsedBalance
       }
 
       const response = await apiService.post('/users', payload)
@@ -244,6 +264,44 @@ export default function CreateAdminFeature() {
                 />
                 {touched.confirmPassword && confirmPasswordValidation.state === 'invalid' && (
                   <p className="text-sm text-red-500">{confirmPasswordValidation.message}</p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <Label>
+                  Saldo inicial (opcional)
+                  {!isOwner && balance && (
+                    <span className="ml-2 text-xs text-muted-foreground">Tu saldo: ${balance.chipBalance.toLocaleString('es-AR')}</span>
+                  )}
+                </Label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+                  {PRESET_AMOUNTS.map(preset => (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs font-semibold px-1"
+                      onClick={() => {
+                        const current = parseFloat(formData.initialBalance.replace(',', '.')) || 0
+                        handleChange("initialBalance", String(current + preset))
+                      }}
+                    >
+                      +{preset.toLocaleString('es-AR')}
+                    </Button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.initialBalance}
+                  onChange={e => handleChange("initialBalance", e.target.value)}
+                  placeholder="0.00"
+                  className={balanceExceeds ? "border-red-500" : ""}
+                />
+                {balanceExceeds && (
+                  <p className="text-sm text-red-500">El saldo inicial no puede superar tu saldo disponible</p>
                 )}
               </div>
             </div>
