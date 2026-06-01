@@ -27,13 +27,21 @@ export class SettingsDomain {
     return casinoSettingsRepository.patch(requesterId, patch);
   }
 
-  private async resolveOwnerId(userId: string, role: string): Promise<string> {
+  private async resolveOwnerId(userId: string, role: string, visited = new Set<string>()): Promise<string> {
     if (role === UserRole.OWNER) return userId;
+    if (visited.has(userId)) {
+      throw new AppError(500, ErrorCode.INTERNAL_ERROR, 'Circular parent chain detected');
+    }
+    visited.add(userId);
     const user = await usersRepository.findById(userId);
-    if (!user?.parentUserId) return userId;
+    if (!user?.parentUserId) {
+      throw new AppError(500, ErrorCode.INTERNAL_ERROR, 'Parent chain is broken: no OWNER found');
+    }
     const parent = await usersRepository.findById(user.parentUserId);
-    if (!parent) return userId;
-    return this.resolveOwnerId(parent.id, parent.role);
+    if (!parent) {
+      throw new AppError(500, ErrorCode.INTERNAL_ERROR, 'Parent chain is broken: referenced parent does not exist');
+    }
+    return this.resolveOwnerId(parent.id, parent.role, visited);
   }
 }
 
