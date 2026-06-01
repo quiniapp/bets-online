@@ -12,8 +12,9 @@ import { DraggableItem } from './draggable-item';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
+import { apiService } from '@/services/api.service';
 
-const ALL_CATEGORIES: Record<string, string> = {
+const TYPE_LABELS: Record<string, string> = {
   videoSlots:   'Casino',
   LiveGames:    'Casino en Vivo',
   CrashGame:    'Crash',
@@ -23,6 +24,10 @@ const ALL_CATEGORIES: Record<string, string> = {
   Bingo:        'Bingo',
   Plinko:       'Plinko',
   ActionGames:  'Acción',
+  InstantGames: 'Instantáneos',
+  Dice:         'Dados',
+  Scratch:      'Scratch',
+  Lottery:      'Lotería',
 };
 
 interface HeaderCategoriesEditorProps {
@@ -33,7 +38,16 @@ interface HeaderCategoriesEditorProps {
 
 export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCategoriesEditorProps) {
   const [items, setItems] = useState(categories);
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
+
   useEffect(() => { setItems(categories); }, [categories]);
+
+  useEffect(() => {
+    apiService.get<{ types: string[] }>('/games/types')
+      .then(res => { if (res.success && res.data) setAvailableTypes(res.data.types); })
+      .finally(() => setLoadingTypes(false));
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -58,6 +72,17 @@ export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCat
     );
   };
 
+  const getLabel = (type: string) => TYPE_LABELS[type] ?? type;
+
+  if (loadingTypes) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Cargando tipos de juegos...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
@@ -65,14 +90,14 @@ export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCat
       </p>
 
       <div className="flex flex-wrap gap-2">
-        {Object.entries(ALL_CATEGORIES).map(([type, label]) => (
+        {availableTypes.map(type => (
           <Badge
             key={type}
             variant={items.includes(type) ? 'default' : 'outline'}
             className="cursor-pointer select-none"
             onClick={() => toggle(type)}
           >
-            {label}
+            {getLabel(type)}
           </Badge>
         ))}
       </div>
@@ -80,9 +105,9 @@ export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCat
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
-            {items.map(type => (
+            {items.filter(t => availableTypes.includes(t)).map(type => (
               <DraggableItem key={type} id={type}>
-                <span className="text-sm font-medium">{ALL_CATEGORIES[type] ?? type}</span>
+                <span className="text-sm font-medium">{getLabel(type)}</span>
                 <span className="ml-2 text-xs text-muted-foreground">{type}</span>
               </DraggableItem>
             ))}

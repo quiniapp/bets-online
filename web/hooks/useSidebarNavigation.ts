@@ -47,7 +47,7 @@ export const useSidebarNavigation = () => {
     if (pathname.startsWith('/admin/reports')) {
       setReportsOpen(true);
     }
-    if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners')) {
+    if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners') || pathname.startsWith('/admin/settings/casino')) {
       setGamesOpen(true);
     }
     if (pathname.startsWith('/user/games')) {
@@ -93,6 +93,7 @@ export const useSidebarNavigation = () => {
         { title: "Proveedores", href: "/admin/providers" },
         { title: "Destacados", href: "/admin/featured-games" },
         { title: "Banners", href: "/admin/banners" },
+        { title: "Juegos", href: "/admin/settings/casino" },
       ],
     },
     {
