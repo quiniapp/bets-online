@@ -57,6 +57,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
       items: [
         { title: "Catálogo", href: "/admin/games" },
         { title: "Proveedores", href: "/admin/providers" },
+        { title: "Juegos", href: "/admin/settings/casino" },
       ],
     },
     {
@@ -73,7 +74,6 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
       title: t("nav.settings"), icon: Settings, collapsible: true, isOpen: settingsOpen, setOpen: setSettingsOpen,
       items: [
         { title: "General", href: "/admin/settings" },
-        { title: "Casino Layout", href: "/admin/settings/casino" },
       ],
     },
   ]

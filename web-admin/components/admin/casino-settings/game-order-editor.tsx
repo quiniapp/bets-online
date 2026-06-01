@@ -9,13 +9,15 @@ import {
   verticalListSortingStrategy, arrayMove, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Loader2 } from 'lucide-react';
+import { GripVertical, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProviders } from '@/hooks/useProviders';
 import { apiService } from '@/services/api.service';
 import type { Game } from 'helper';
+
+const PAGE_SIZE = 20;
 
 function GameRow({ game }: { game: Game }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: game.id });
@@ -66,6 +68,9 @@ export function GameOrderEditor() {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [activeGame, setActiveGame] = useState<Game | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -73,15 +78,18 @@ export function GameOrderEditor() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const loadGames = useCallback(async (providerName: string) => {
+  const loadGames = useCallback(async (providerName: string, targetPage: number) => {
     setLoadingGames(true);
     setHasChanges(false);
     try {
-      const qs = new URLSearchParams({ providerName, limit: '500', page: '1' });
+      const qs = new URLSearchParams({ providerName, limit: String(PAGE_SIZE), page: String(targetPage) });
       const res = await apiService.get<Game[]>(`/games?${qs.toString()}`);
       if (res.success && res.data) {
         const sorted = [...res.data].sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
         setGames(sorted);
+        setPage(res.meta?.page ?? targetPage);
+        setTotalPages(res.meta?.totalPages ?? 1);
+        setTotal(res.meta?.total ?? 0);
       }
     } finally {
       setLoadingGames(false);
@@ -89,8 +97,15 @@ export function GameOrderEditor() {
   }, []);
 
   useEffect(() => {
-    if (selectedProvider) loadGames(selectedProvider);
-    else setGames([]);
+    if (selectedProvider) {
+      setPage(1);
+      loadGames(selectedProvider, 1);
+    } else {
+      setGames([]);
+      setPage(1);
+      setTotalPages(1);
+      setTotal(0);
+    }
   }, [selectedProvider, loadGames]);
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -111,9 +126,10 @@ export function GameOrderEditor() {
 
   const handleSave = async () => {
     setSaving(true);
+    const pageOffset = (page - 1) * PAGE_SIZE;
     try {
       await Promise.all(
-        games.map((g, i) => apiService.patch(`/games/${g.id}`, { sortOrder: i + 1 }))
+        games.map((g, i) => apiService.patch(`/games/${g.id}`, { sortOrder: pageOffset + i + 1 }))
       );
       setHasChanges(false);
     } finally {
@@ -121,10 +137,15 @@ export function GameOrderEditor() {
     }
   };
 
+  const goToPage = (targetPage: number) => {
+    if (targetPage < 1 || targetPage > totalPages) return;
+    loadGames(selectedProvider, targetPage);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={selectedProvider} onValueChange={setSelectedProvider}>
+        <Select value={selectedProvider} onValueChange={val => { setSelectedProvider(val); }}>
           <SelectTrigger className="w-52">
             <SelectValue placeholder="Seleccionar proveedor" />
           </SelectTrigger>
@@ -141,7 +162,7 @@ export function GameOrderEditor() {
           </SelectContent>
         </Select>
         {selectedProvider && !loadingGames && (
-          <span className="text-sm text-muted-foreground">{games.length} juegos</span>
+          <span className="text-sm text-muted-foreground">{total} juegos</span>
         )}
       </div>
 
@@ -165,7 +186,7 @@ export function GameOrderEditor() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext items={games.map(g => g.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
+              <div className="space-y-1.5">
                 {games.map(game => <GameRow key={game.id} game={game} />)}
               </div>
             </SortableContext>
@@ -173,6 +194,30 @@ export function GameOrderEditor() {
               {activeGame && <GameRowOverlay game={activeGame} />}
             </DragOverlay>
           </DndContext>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(page - 1)}
+                disabled={page <= 1 || loadingGames}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Página {page} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages || loadingGames}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
 
           <Button onClick={handleSave} disabled={!hasChanges || saving} className="w-full sm:w-auto">
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}

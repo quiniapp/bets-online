@@ -15,7 +15,7 @@ const translations = {
     // Navigation
     "nav.statistics": "Inicio",
     "nav.users": "Usuarios",
-    "nav.games": "Casino",
+    "nav.games": "Juegos",
     "nav.reports": "Reportes",
     "nav.earnings": "Ganancias",
     "nav.transactions": "Cargas y Descargas",
