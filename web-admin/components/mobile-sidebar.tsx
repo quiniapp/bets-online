@@ -136,14 +136,13 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
         <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-        <div className="flex h-full flex-col">
-    
-          <div className="flex h-16 items-center border-b px-6">
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="flex h-16 shrink-0 items-center border-b px-6">
             <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
           </div>
 
           {/* Navigation */}
-          <ScrollArea className="flex-1 px-3 py-4">
+          <ScrollArea className="min-h-0 flex-1 px-3 py-4">
             <nav className="space-y-2">
               {menuItems.map((item, index) => (
                 <div key={index}>
@@ -211,7 +210,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
           </ScrollArea>
 
 
-          <div className="border-t p-4">
+          <div className="shrink-0 border-t p-4">
             <div className="mb-2 text-sm text-muted-foreground">
               {role === UserRole.ADMIN || role === UserRole.OWNER ? t("common.admin") : t("common.user")}
             </div>
