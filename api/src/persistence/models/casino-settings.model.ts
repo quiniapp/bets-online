@@ -23,7 +23,12 @@ CasinoSettingsModel.init(
       type: DataTypes.UUID,
       allowNull: false,
       unique: true,
-      field: 'owner_id'
+      field: 'owner_id',
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
     },
     headerCategories: {
       type: DataTypes.JSONB,
@@ -42,14 +47,28 @@ CasinoSettingsModel.init(
       allowNull: false,
       defaultValue: [],
       field: 'footer_links'
-    }
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'created_at',
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'updated_at',
+    },
   },
   {
     sequelize,
     tableName: 'casino_settings',
     modelName: 'CasinoSettings',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
   }
 );
 

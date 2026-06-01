@@ -146,6 +146,10 @@ AuditLogModel.belongsTo(UserModel, {
   as: 'user'
 });
 
+// User -> CasinoSettings (1:1)
+UserModel.hasOne(CasinoSettingsModel, { foreignKey: 'ownerId', as: 'casinoSettings' });
+CasinoSettingsModel.belongsTo(UserModel, { foreignKey: 'ownerId', as: 'owner' });
+
 // ===================================
 // USER HIERARCHY (Self-referential)
 // ===================================
