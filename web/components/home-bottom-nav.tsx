@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   { type: null,          label: "Lobby",   icon: Grid3x3  },
-  { type: "videoSlots",  label: "Slots",   icon: Gamepad2 },
+  { type: "videoSlots",  label: "Casino",  icon: Gamepad2 },
   { type: "LiveGames",   label: "En Vivo", icon: Tv2      },
   { type: "CrashGame",   label: "Crash",   icon: Flame    },
   { type: "Roulette",    label: "Ruletas", icon: CircleDot },
