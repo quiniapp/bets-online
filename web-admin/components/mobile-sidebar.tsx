@@ -23,7 +23,6 @@ import {
   History,
   Settings,
   Menu,
-  LayoutGrid,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { UserRole } from "helper"
@@ -38,6 +37,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
   const pathname = usePathname()
   const [usersOpen, setUsersOpen] = useState(false)
   const [reportsOpen, setReportsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [open, setOpen] = useState(false)
 
   const ownerMenuItems = [
@@ -62,8 +62,13 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
     },
     { title: t("nav.earnings"), icon: DollarSign, items: [{ title: t("earnings.calculate"), href: "/admin/balances" }] },
     { title: t("nav.transactions"), href: "/admin/transactions", icon: ArrowUpDown },
-    { title: t("nav.settings"), href: "/admin/settings", icon: Settings },
-    { title: "Casino Layout", href: "/admin/settings/casino", icon: LayoutGrid },
+    {
+      title: t("nav.settings"), icon: Settings, collapsible: true, isOpen: settingsOpen, setOpen: setSettingsOpen,
+      items: [
+        { title: "General", href: "/admin/settings" },
+        { title: "Casino Layout", href: "/admin/settings/casino" },
+      ],
+    },
   ]
 
   const adminMenuItems = [
