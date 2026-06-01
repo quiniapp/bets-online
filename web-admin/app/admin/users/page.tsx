@@ -1,12 +1,10 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
@@ -183,6 +181,10 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
   )
 }
 
+function flattenTreeNode(node: UserTreeNode): User[] {
+  return [node.user, ...node.children.flatMap(flattenTreeNode)]
+}
+
 function UsersPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -191,7 +193,6 @@ function UsersPageContent() {
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
-  const [showAllDescendants, setShowAllDescendants] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [dialogType, setDialogType] = useState<'wallet' | 'reset-password' | 'detail' | null>(null)
   const [blockConfirmUser, setBlockConfirmUser] = useState<User | null>(null)
@@ -200,42 +201,38 @@ function UsersPageContent() {
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
 
-  const { users, loading, pagination, reload, getUserTree } = useUsers({
-    page: currentPage,
-    limit: ITEMS_PER_PAGE,
-    search: searchQuery,
-    mode: showAllDescendants ? 'descendants' : 'children'
-  })
+  const { getUserTree } = useUsers({ autoLoad: false })
 
+  const [allDescendants, setAllDescendants] = useState<User[]>([])
   const [userTree, setUserTree] = useState<UserTreeNode | null>(null)
   const [loadingTree, setLoadingTree] = useState(false)
 
-  useEffect(() => { setCurrentPage(1) }, [searchQuery, showAllDescendants])
+  useEffect(() => { setCurrentPage(1) }, [searchQuery])
 
-  useEffect(() => {
-    if (searchParams.get('refresh') === 'true') {
-      reload()
-      router.replace('/admin/users')
-    }
-  }, [searchParams, reload, router])
-
-  useEffect(() => {
-    if (viewMode === 'tree') loadUserTree()
-  }, [viewMode])
-
-  const loadUserTree = async () => {
+  const loadTree = useCallback(async () => {
     setLoadingTree(true)
     try {
       const response = await getUserTree()
       if (response.success && response.data) {
-        setUserTree(response.data as unknown as UserTreeNode)
+        const tree = response.data as unknown as UserTreeNode
+        setUserTree(tree)
+        setAllDescendants(tree.children.flatMap(flattenTreeNode))
       }
     } catch (error) {
       console.error('Error loading user tree:', error)
     } finally {
       setLoadingTree(false)
     }
-  }
+  }, [getUserTree])
+
+  useEffect(() => { loadTree() }, [loadTree])
+
+  useEffect(() => {
+    if (searchParams.get('refresh') === 'true') {
+      loadTree()
+      router.replace('/admin/users')
+    }
+  }, [searchParams, loadTree, router])
 
   const handleConfirmBlock = async () => {
     if (!blockConfirmUser) return
@@ -246,7 +243,7 @@ function UsersPageContent() {
       const response = await apiService.post(endpoint, {})
       if (response.success) {
         toast({ title: isBlocked ? "Usuario desbloqueado" : "Usuario bloqueado", description: `${blockConfirmUser.username} fue ${isBlocked ? 'desbloqueado' : 'bloqueado'} correctamente` })
-        reload()
+        loadTree()
       } else {
         toast({ variant: "destructive", title: "Error", description: response.error?.message || "No se pudo cambiar el estado" })
       }
@@ -263,9 +260,17 @@ function UsersPageContent() {
     return ROUTER.CREATE_USER
   }
 
-  const rootUsers = showAllDescendants
-    ? users.filter(u => !users.some(p => p.id === u.parentUserId))
-    : users.filter(u => !u.parentUserId || !users.some(p => p.id === u.parentUserId))
+  const filteredUsers = searchQuery
+    ? allDescendants.filter(u =>
+        u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        [u.firstName, u.lastName].filter(Boolean).join(' ').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : allDescendants
+
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE)
+
+  const rootUsers = paginatedUsers.filter(u => !paginatedUsers.some(p => p.id === u.parentUserId))
 
   const handleEditUser = (userId: string) => router.push(`${ROUTER.EDIT_USER}?id=${userId}`)
   const handleWallet = (user: User) => { setSelectedUser(user); setDialogType('wallet') }
@@ -282,7 +287,7 @@ function UsersPageContent() {
     onToggleBlock: handleToggleBlock,
   }
 
-  if (loading) {
+  if (loadingTree && allDescendants.length === 0) {
     return (
       <DashboardLayout title="Lista de Usuarios">
         <div className="text-center py-8 text-muted-foreground">Cargando usuarios...</div>
@@ -314,13 +319,6 @@ function UsersPageContent() {
             </Button>
           </div>
 
-          {viewMode === 'table' && (
-            <div className="flex items-center gap-2">
-              <Switch id="show-all" checked={showAllDescendants} onCheckedChange={setShowAllDescendants} />
-              <Label htmlFor="show-all" className="text-sm cursor-pointer">Mostrar jerarquía</Label>
-            </div>
-          )}
-
           <Button onClick={() => router.push(getCreateUserHref())} className="ml-auto">
             <UserPlus className="h-4 w-4 mr-2" />Nuevo Usuario
           </Button>
@@ -331,7 +329,7 @@ function UsersPageContent() {
         <Card className="overflow-hidden">
           {/* Mobile: 2-column compact grid */}
           <div className="md:hidden grid grid-cols-2 gap-1.5 p-1.5">
-            {users.map(user => (
+            {paginatedUsers.map(user => (
               <div key={user.id} className="border rounded-lg p-2 space-y-1.5 bg-card">
                 <button className="w-full text-left" onClick={() => handleViewDetail(user)}>
                   <div className="font-semibold text-blue-500 text-xs truncate">{user.username}</div>
@@ -382,14 +380,9 @@ function UsersPageContent() {
           </div>
 
           <div className="hidden md:block">
-            {showAllDescendants
-              ? rootUsers.map(user => (
-                <CollapsibleRow key={user.id} user={user} level={0} allUsers={users} {...sharedRowProps} />
-              ))
-              : users.map(user => (
-                <CollapsibleRow key={user.id} user={user} level={0} {...sharedRowProps} />
-              ))
-            }
+            {rootUsers.map(user => (
+              <CollapsibleRow key={user.id} user={user} level={0} allUsers={paginatedUsers} {...sharedRowProps} />
+            ))}
           </div>
         </Card>
       ) : (
@@ -405,26 +398,26 @@ function UsersPageContent() {
       )}
 
       {/* Pagination */}
-      {viewMode === 'table' && pagination && pagination.totalPages > 1 && (
+      {viewMode === 'table' && totalPages > 1 && (
         <div className="flex items-center justify-between mt-5">
           <p className="text-sm text-muted-foreground">
-            {users.length} de {pagination.total} usuarios
+            {filteredUsers.length} de {allDescendants.length} usuarios
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1}>
               <ChevronLeft className="h-4 w-4" />Anterior
             </Button>
             <span className="text-sm px-2">
-              {currentPage} / {pagination.totalPages}
+              {currentPage} / {totalPages}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))} disabled={currentPage >= pagination.totalPages}>
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}>
               Siguiente<ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       )}
 
-      {users.length === 0 && (
+      {allDescendants.length === 0 && !loadingTree && (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             No se encontraron usuarios{searchQuery ? " que coincidan con la búsqueda" : ""}.
@@ -434,15 +427,15 @@ function UsersPageContent() {
 
       {selectedUser && dialogType === 'wallet' && (
         <ChipLoadDialog preselectedUser={selectedUser} open={true}
-          onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => reload()} />
+          onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => loadTree()} />
       )}
       {selectedUser && dialogType === 'reset-password' && (
         <ResetPasswordDialog user={selectedUser} open={true}
-          onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => reload()} />
+          onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => loadTree()} />
       )}
       {selectedUser && dialogType === 'detail' && (
         <UserDetailDialog user={selectedUser} open={true}
-          onOpenChange={open => { if (!open) handleCloseDialog() }} onOperationSuccess={() => reload()} />
+          onOpenChange={open => { if (!open) handleCloseDialog() }} onOperationSuccess={() => loadTree()} />
       )}
 
       <AlertDialog open={!!blockConfirmUser} onOpenChange={open => { if (!open) setBlockConfirmUser(null) }}>
