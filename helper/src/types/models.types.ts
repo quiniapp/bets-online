@@ -465,3 +465,38 @@ export interface BetResult {
   movement?: ChipMovement;
   newBalance: number;
 }
+
+/**
+ * Casino Layout Settings Types
+ */
+export type LobbySlotKind = 'category' | 'provider' | 'both'
+
+export interface LobbySlot {
+  id: string
+  kind: LobbySlotKind
+  categoryType?: string
+  providerName?: string
+  label: string
+}
+
+export interface FooterLink {
+  id: string
+  label: string
+  href: string
+  visible: boolean
+}
+
+export interface CasinoSettings {
+  id: string
+  ownerId: string
+  headerCategories: string[]
+  lobbySlots: LobbySlot[]
+  footerLinks: FooterLink[]
+  updatedAt: Date
+}
+
+export interface UpdateCasinoSettingsDto {
+  headerCategories?: string[]
+  lobbySlots?: LobbySlot[]
+  footerLinks?: FooterLink[]
+}

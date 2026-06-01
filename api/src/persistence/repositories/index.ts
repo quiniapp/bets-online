@@ -14,3 +14,7 @@ export {
 } from './providerTransaction.repository';
 export { providersRepository, ProvidersRepository } from './providers.repository';
 export { gameTypesRepository, GameTypesRepository } from './game-types.repository';
+export {
+  casinoSettingsRepository,
+  CasinoSettingsRepository
+} from './casino-settings.repository';
