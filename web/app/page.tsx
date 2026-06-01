@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FlexCol } from "@/components/flex";
 import Box from "@/components/box";
 import HeaderIndex from "@/components/header";
@@ -15,13 +15,21 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { HomeBottomNav } from "@/components/home-bottom-nav";
 import { useCasinoSettings } from "@/hooks/useCasinoSettings";
+import { apiService } from "@/services/api.service";
 
 export default function LandingPage() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const debouncedSearch = useDebounce(search, 350);
-  const { lobbySlots } = useCasinoSettings();
+  const { lobbySlots, headerCategories } = useCasinoSettings();
+
+  useEffect(() => {
+    apiService.get<{ types: string[] }>('/games/types').then(res => {
+      if (res.success && res.data) setAvailableTypes(res.data.types);
+    });
+  }, []);
 
   const hasFilter = selectedCategory !== null || selectedProvider !== null || debouncedSearch.trim().length > 0;
 
@@ -72,7 +80,12 @@ export default function LandingPage() {
         )}
       </FlexCol>
       <Footer />
-      <HomeBottomNav selected={selectedCategory} onSelect={setSelectedCategory} />
+      <HomeBottomNav
+        selected={selectedCategory}
+        onSelect={setSelectedCategory}
+        headerCategories={headerCategories}
+        availableTypes={availableTypes}
+      />
     </Box>
   );
 }

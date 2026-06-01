@@ -12,7 +12,6 @@ import {
   Gamepad2,
   User,
   Settings,
-  LayoutGrid,
 } from "lucide-react";
 
 interface MenuItem {
@@ -48,7 +47,7 @@ export const useSidebarNavigation = () => {
     if (pathname.startsWith('/admin/reports')) {
       setReportsOpen(true);
     }
-    if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners')) {
+    if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners') || pathname.startsWith('/admin/settings/casino')) {
       setGamesOpen(true);
     }
     // No collapsible auto-open needed for /admin/settings/casino (flat items)
@@ -95,6 +94,7 @@ export const useSidebarNavigation = () => {
         { title: "Proveedores", href: "/admin/providers" },
         { title: "Destacados", href: "/admin/featured-games" },
         { title: "Banners", href: "/admin/banners" },
+        { title: "Juegos", href: "/admin/settings/casino" },
       ],
     },
     {
@@ -123,11 +123,6 @@ export const useSidebarNavigation = () => {
       title: t("nav.settings"),
       href: "/admin/settings",
       icon: Settings,
-    },
-    {
-      title: "Casino Layout",
-      href: "/admin/settings/casino",
-      icon: LayoutGrid,
     },
   ];
 
