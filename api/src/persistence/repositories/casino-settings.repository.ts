@@ -20,13 +20,14 @@ const DEFAULT_FOOTER_LINKS: FooterLink[] = [
 ];
 
 function mapToSettings(model: CasinoSettingsModel): CasinoSettings {
+  const plain = model.get({ plain: true }) as CasinoSettingsModel;
   return {
-    id: model.id,
-    ownerId: model.ownerId,
-    headerCategories: model.headerCategories,
-    lobbySlots: model.lobbySlots,
-    footerLinks: model.footerLinks,
-    updatedAt: model.updatedAt,
+    id: plain.id,
+    ownerId: plain.ownerId,
+    headerCategories: plain.headerCategories,
+    lobbySlots: plain.lobbySlots,
+    footerLinks: plain.footerLinks,
+    updatedAt: new Date(plain.updatedAt),
   };
 }
 
@@ -54,6 +55,9 @@ export class CasinoSettingsRepository {
       lobbySlots: patch.lobbySlots ?? current.lobbySlots,
       footerLinks: patch.footerLinks ?? current.footerLinks,
     }, { returning: true });
+    if (!record) {
+      throw new Error('CasinoSettings upsert failed: no record returned');
+    }
     return mapToSettings(record);
   }
 }
