@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+export const bulkSortOrderSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string().uuid(),
+      sortOrder: z.number().int().nonnegative(),
+    })
+  ).min(1).max(500),
+});
+
 /**
  * Create Game Schema
  */

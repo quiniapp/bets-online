@@ -234,6 +234,23 @@ export class GamesRepository {
     return this.mapToGame(created);
   }
 
+  async bulkUpdateSortOrder(items: { id: string; sortOrder: number }[]): Promise<void> {
+    if (!items.length) return;
+    const db = GameModel.sequelize!;
+    const binds: (string | number)[] = [];
+    const valuePlaceholders = items.map((item, i) => {
+      const base = i * 2;
+      binds.push(item.id, item.sortOrder);
+      return `($${base + 1}::uuid, $${base + 2}::int)`;
+    });
+    await db.query(
+      `UPDATE games SET sort_order = v.sort_order
+       FROM (VALUES ${valuePlaceholders.join(', ')}) AS v(id, sort_order)
+       WHERE games.id = v.id`,
+      { bind: binds, type: QueryTypes.UPDATE }
+    );
+  }
+
   private mapToGame(model: GameModel): Game {
     const plain = model.get({ plain: true });
     return {

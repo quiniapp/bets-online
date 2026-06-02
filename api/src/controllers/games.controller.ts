@@ -76,6 +76,19 @@ export class GamesController {
     }
   }
 
+  async bulkUpdateSortOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const { items } = req.body as { items: { id: string; sortOrder: number }[] };
+      await gamesDomain.bulkUpdateSortOrder(req.user.userId, items);
+      return res.json(ApiResponseBuilder.success({ message: `${items.length} juegos actualizados` }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async bulkSetStatus(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) {
