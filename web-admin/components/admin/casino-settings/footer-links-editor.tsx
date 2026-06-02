@@ -94,9 +94,15 @@ export function FooterLinksEditor({ links, saving, onSave }: FooterLinksEditorPr
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Arrastrá para reordenar. Usá el toggle para mostrar u ocultar un enlace.
-      </p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-muted-foreground">
+          Arrastrá para reordenar. Usá el toggle para mostrar u ocultar un enlace.
+        </p>
+        <Button type="button" onClick={() => onSave(items)} disabled={saving} size="sm">
+          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {saving ? 'Guardando...' : 'Guardar footer'}
+        </Button>
+      </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items.map(l => l.id)} strategy={verticalListSortingStrategy}>
@@ -114,21 +120,15 @@ export function FooterLinksEditor({ links, saving, onSave }: FooterLinksEditorPr
         </SortableContext>
       </DndContext>
 
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setItems(prev => [...prev, { id: newLinkId(), label: '', href: '/', visible: true }])}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Agregar enlace
-        </Button>
-        <Button type="button" onClick={() => onSave(items)} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          {saving ? 'Guardando...' : 'Guardar footer'}
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setItems(prev => [...prev, { id: newLinkId(), label: '', href: '/', visible: true }])}
+      >
+        <Plus className="h-4 w-4 mr-1" />
+        Agregar enlace
+      </Button>
     </div>
   );
 }
