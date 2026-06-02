@@ -40,16 +40,16 @@ router.post(
 );
 
 router.patch(
+  '/bulk-sort-order',
+  validate(bulkSortOrderSchema),
+  gamesController.bulkUpdateSortOrder.bind(gamesController)
+);
+
+router.patch(
   '/:id',
   validateParams(idParamSchema),
   validate(updateGameSchema),
   gamesController.update.bind(gamesController)
-);
-
-router.patch(
-  '/bulk-sort-order',
-  validate(bulkSortOrderSchema),
-  gamesController.bulkUpdateSortOrder.bind(gamesController)
 );
 
 router.post(
