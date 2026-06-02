@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor,
   DragOverlay, useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -9,7 +9,7 @@ import {
   verticalListSortingStrategy, arrayMove, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { GripVertical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,12 +65,14 @@ export function GameOrderEditor() {
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [games, setGames] = useState<Game[]>([]);
   const [loadingGames, setLoadingGames] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -78,35 +80,52 @@ export function GameOrderEditor() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const loadGames = useCallback(async (providerName: string, targetPage: number) => {
-    setLoadingGames(true);
-    setHasChanges(false);
+  const loadPage = useCallback(async (providerName: string, targetPage: number, append: boolean) => {
+    if (append) setLoadingMore(true);
+    else setLoadingGames(true);
     try {
       const qs = new URLSearchParams({ providerName, limit: String(PAGE_SIZE), page: String(targetPage) });
       const res = await apiService.get<Game[]>(`/games?${qs.toString()}`);
       if (res.success && res.data) {
         const sorted = [...res.data].sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
-        setGames(sorted);
+        setGames(prev => append ? [...prev, ...sorted] : sorted);
         setPage(res.meta?.page ?? targetPage);
         setTotalPages(res.meta?.totalPages ?? 1);
         setTotal(res.meta?.total ?? 0);
       }
     } finally {
-      setLoadingGames(false);
+      if (append) setLoadingMore(false);
+      else setLoadingGames(false);
     }
   }, []);
 
   useEffect(() => {
     if (selectedProvider) {
-      setPage(1);
-      loadGames(selectedProvider, 1);
-    } else {
       setGames([]);
       setPage(1);
       setTotalPages(1);
       setTotal(0);
+      setHasChanges(false);
+      loadPage(selectedProvider, 1, false);
+    } else {
+      setGames([]);
     }
-  }, [selectedProvider, loadGames]);
+  }, [selectedProvider, loadPage]);
+
+  // Infinite scroll sentinel
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !loadingMore && !loadingGames && page < totalPages && selectedProvider) {
+          loadPage(selectedProvider, page + 1, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [loadingMore, loadingGames, page, totalPages, selectedProvider, loadPage]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveGame(games.find(g => g.id === event.active.id) ?? null);
@@ -126,10 +145,9 @@ export function GameOrderEditor() {
 
   const handleSave = async () => {
     setSaving(true);
-    const pageOffset = (page - 1) * PAGE_SIZE;
     try {
       await Promise.all(
-        games.map((g, i) => apiService.patch(`/games/${g.id}`, { sortOrder: pageOffset + i + 1 }))
+        games.map((g, i) => apiService.patch(`/games/${g.id}`, { sortOrder: i + 1 }))
       );
       setHasChanges(false);
     } finally {
@@ -137,15 +155,10 @@ export function GameOrderEditor() {
     }
   };
 
-  const goToPage = (targetPage: number) => {
-    if (targetPage < 1 || targetPage > totalPages) return;
-    loadGames(selectedProvider, targetPage);
-  };
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Select value={selectedProvider} onValueChange={val => { setSelectedProvider(val); }}>
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={selectedProvider} onValueChange={setSelectedProvider}>
           <SelectTrigger className="w-52">
             <SelectValue placeholder="Seleccionar proveedor" />
           </SelectTrigger>
@@ -164,6 +177,12 @@ export function GameOrderEditor() {
         {selectedProvider && !loadingGames && (
           <span className="text-sm text-muted-foreground">{total} juegos</span>
         )}
+        {games.length > 0 && (
+          <Button onClick={handleSave} disabled={!hasChanges || saving} size="sm">
+            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {saving ? 'Guardando...' : 'Guardar orden'}
+          </Button>
+        )}
       </div>
 
       {!selectedProvider && (
@@ -178,7 +197,10 @@ export function GameOrderEditor() {
 
       {!loadingGames && games.length > 0 && (
         <>
-          <p className="text-sm text-muted-foreground">Arrastrá para reordenar. El orden se aplica en el lobby.</p>
+          <p className="text-sm text-muted-foreground">
+            Arrastrá para reordenar. El orden se aplica en el lobby.
+            {page < totalPages && ` (${games.length} de ${total} cargados)`}
+          </p>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -195,34 +217,10 @@ export function GameOrderEditor() {
             </DragOverlay>
           </DndContext>
 
-          {totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => goToPage(page - 1)}
-                disabled={page <= 1 || loadingGames}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Página {page} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => goToPage(page + 1)}
-                disabled={page >= totalPages || loadingGames}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          <Button onClick={handleSave} disabled={!hasChanges || saving} className="w-full sm:w-auto">
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {saving ? 'Guardando...' : 'Guardar orden'}
-          </Button>
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="py-2 flex justify-center">
+            {loadingMore && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+          </div>
         </>
       )}
     </div>

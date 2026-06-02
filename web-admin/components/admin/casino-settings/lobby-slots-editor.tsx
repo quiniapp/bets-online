@@ -138,11 +138,17 @@ export function LobbySlotEditor({ slots, saving, onSave }: LobbySlotEditorProps)
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Máximo {MAX_SLOTS} slots. Arrastrá para reordenar.
-        </p>
-        <Badge variant="outline">{items.length} / {MAX_SLOTS}</Badge>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted-foreground">
+            Máximo {MAX_SLOTS} slots. Arrastrá para reordenar.
+          </p>
+          <Badge variant="outline">{items.length} / {MAX_SLOTS}</Badge>
+        </div>
+        <Button onClick={() => onSave(items)} disabled={saving} size="sm">
+          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {saving ? 'Guardando...' : 'Guardar slots'}
+        </Button>
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -161,22 +167,16 @@ export function LobbySlotEditor({ slots, saving, onSave }: LobbySlotEditorProps)
         </SortableContext>
       </DndContext>
 
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addSlot}
-          disabled={items.length >= MAX_SLOTS}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Agregar slot
-        </Button>
-        <Button onClick={() => onSave(items)} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          {saving ? 'Guardando...' : 'Guardar slots'}
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={addSlot}
+        disabled={items.length >= MAX_SLOTS}
+      >
+        <Plus className="h-4 w-4 mr-1" />
+        Agregar slot
+      </Button>
     </div>
   );
 }
