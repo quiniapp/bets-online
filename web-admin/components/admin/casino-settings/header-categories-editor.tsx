@@ -114,7 +114,6 @@ export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCat
             {items.filter(t => availableTypes.includes(t)).map(type => (
               <DraggableItem key={type} id={type}>
                 <span className="text-sm font-medium">{getLabel(type)}</span>
-                <span className="ml-2 text-xs text-muted-foreground">{type}</span>
               </DraggableItem>
             ))}
           </div>
