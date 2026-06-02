@@ -9,6 +9,7 @@ import {
   createGameSchema,
   updateGameSchema,
   idParamSchema,
+  bulkSortOrderSchema,
 } from 'helper';
 
 const launchGameSchema = z.object({
@@ -36,6 +37,12 @@ router.post(
   '/',
   validate(createGameSchema),
   gamesController.create.bind(gamesController)
+);
+
+router.patch(
+  '/bulk-sort-order',
+  validate(bulkSortOrderSchema),
+  gamesController.bulkUpdateSortOrder.bind(gamesController)
 );
 
 router.patch(

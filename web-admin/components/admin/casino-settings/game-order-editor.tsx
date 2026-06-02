@@ -146,9 +146,9 @@ export function GameOrderEditor() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await Promise.all(
-        games.map((g, i) => apiService.patch(`/games/${g.id}`, { sortOrder: i + 1 }))
-      );
+      await apiService.patch('/games/bulk-sort-order', {
+        items: games.map((g, i) => ({ id: g.id, sortOrder: i + 1 })),
+      });
       setHasChanges(false);
     } finally {
       setSaving(false);

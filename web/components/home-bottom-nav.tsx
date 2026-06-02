@@ -29,7 +29,7 @@ interface HomeBottomNavProps {
 export function HomeBottomNav({ selected, onSelect, headerCategories, availableTypes }: HomeBottomNavProps) {
   const orderedTypes = headerCategories
     ? headerCategories
-        .filter(t => !availableTypes || availableTypes.includes(t))
+        .filter(t => !availableTypes?.length || availableTypes.includes(t))
         .slice(0, MAX_CATEGORY_ITEMS)
     : []
 
