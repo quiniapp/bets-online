@@ -257,6 +257,13 @@ export class GamesDomain {
     return affected;
   }
 
+  async bulkUpdateSortOrder(requesterId: string, items: { id: string; sortOrder: number }[]): Promise<void> {
+    await this.requireAdminOrOwner(requesterId);
+    await gamesRepository.bulkUpdateSortOrder(items);
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+  }
+
   /**
    * Toggle game active status (OWNER/ADMIN only)
    */
