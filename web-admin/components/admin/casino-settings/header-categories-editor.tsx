@@ -85,9 +85,15 @@ export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCat
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Arrastrá para reordenar. Activá o desactivá categorías con los badges.
-      </p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-muted-foreground">
+          Arrastrá para reordenar. Activá o desactivá categorías con los badges.
+        </p>
+        <Button onClick={() => onSave(items)} disabled={saving} size="sm">
+          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {saving ? 'Guardando...' : 'Guardar orden'}
+        </Button>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {availableTypes.map(type => (
@@ -115,10 +121,6 @@ export function HeaderCategoriesEditor({ categories, saving, onSave }: HeaderCat
         </SortableContext>
       </DndContext>
 
-      <Button onClick={() => onSave(items)} disabled={saving} className="w-full sm:w-auto">
-        {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-        {saving ? 'Guardando...' : 'Guardar orden'}
-      </Button>
     </div>
   );
 }
