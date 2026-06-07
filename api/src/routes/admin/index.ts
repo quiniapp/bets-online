@@ -7,6 +7,7 @@ import gameBannersAdminRoutes from './game-banners.routes';
 import adminStatsRoutes from './stats.routes';
 import gameImagesRoutes from './game-images.routes';
 import gameAnalyticsRoutes from './game-analytics.routes';
+import reportsRoutes from './reports.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/banners', gameBannersAdminRoutes);
 router.use('/stats/overview', adminStatsRoutes);
 router.use('/games', gameImagesRoutes);
 router.use('/game-analytics', gameAnalyticsRoutes);
+router.use('/reports', reportsRoutes);
 
 export default router;

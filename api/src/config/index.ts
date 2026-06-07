@@ -30,7 +30,8 @@ export const config = {
   cors: envs.cors,
   admin: envs.admin,
   supabase: envs.supabase,
-  viral: envs.viral
+  viral: envs.viral,
+  logging: envs.logging
 };
 
 // Re-exportar envs para uso directo

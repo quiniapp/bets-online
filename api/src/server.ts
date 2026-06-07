@@ -2,7 +2,6 @@ import crypto from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
 import { config } from './config';
@@ -15,6 +14,8 @@ import { globalLimiter } from './middleware/rateLimiter.middleware';
 import { startGameSyncJob } from './cron/gameSyncJob';
 import { startCacheSyncJob } from './cron/cacheSyncJob';
 import { warmupCache } from './utils/cache-warmup';
+import { requestTiming } from './middleware/request-timing.middleware';
+import { logger } from './utils/logger';
 
 const app = express();
 
@@ -72,9 +73,9 @@ const csrfMiddleware = (req: Request, res: Response, next: NextFunction): void =
   next();
 };
 
-// Logging
+// Structured request logging with per-request DB / 21viral / app timing breakdown
 if (config.server.env !== 'test') {
-  app.use(morgan('dev'));
+  app.use(requestTiming);
 }
 
 // Swagger documentation
@@ -127,15 +128,16 @@ const startServer = async () => {
     startCacheSyncJob();
 
     // Pre-warm cache so first users after deploy hit memory, not DB
-    warmupCache().catch(e => console.error('[CacheWarmup] failed:', e));
+    warmupCache().catch(e => logger.error({ err: e }, '[CacheWarmup] failed'));
 
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📚 API Documentation available at ${config.server.apiUrl}/doc`);
-      console.log(`🌍 Environment: ${config.server.env}`);
+      logger.info(
+        { port: PORT, env: config.server.env, docs: `${config.server.apiUrl}/doc` },
+        `🚀 Server running on port ${PORT}`
+      );
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 };

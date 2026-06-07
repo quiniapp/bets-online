@@ -22,8 +22,10 @@ export default function PlayGamePage() {
   const depositUrl = `/user/dashboard`;
 
   // Iframe captures all user events so the parent window sees no activity.
-  // While the tab is visible the user is actively gaming → reset inactivity timer.
-  // While the tab is hidden the user is away → let the 10-min timer expire normally.
+  // While the tab is visible the user is actively gaming → reset inactivity timer
+  // and refresh the session (the iframe talks to 21viral, not our API, so the
+  // backend sliding window never sees a request here).
+  // While the tab is hidden the user is away → let the 30-min timer expire normally.
   useEffect(() => {
     const interval = setInterval(() => {
       if (!document.hidden) {

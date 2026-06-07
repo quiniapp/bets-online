@@ -22,28 +22,33 @@ export class GamesRepository {
     return { total, active };
   }
 
-  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
+  async getTopPlayed(
+    limit = 5,
+    sortBy: 'rounds' | 'wagered' = 'rounds'
+  ): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
     const db = GameModel.sequelize!;
+    const orderCol = sortBy === 'wagered' ? '"totalWagered"' : '"betCount"';
+    // betCount = rounds: native bets (1 row = 1 round) + integrator rounds
+    // (DISTINCT provider_game_round_id). Provider txns link by provider_game_id
+    // only — pt.provider_name is the integrator ('21viral'), not g.provider_name.
     const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string; totalWagered: string }>(
       `SELECT g.id, g.name, g.is_active AS "isActive",
         (
-          COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id), 0) +
-          COALESCE((SELECT COUNT(*) FROM provider_transactions pt
+          COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT COUNT(DISTINCT pt.provider_game_round_id) FROM provider_transactions pt
                     WHERE pt.transaction_type = 'Debit'
                       AND g.provider_game_id IS NOT NULL
-                      AND pt.provider_game_id = g.provider_game_id
-                      AND pt.provider_name = g.provider_name), 0)
+                      AND pt.provider_game_id = g.provider_game_id), 0)
         ) AS "betCount",
         (
-          COALESCE((SELECT SUM(b.amount) FROM bets b WHERE b.game_id = g.id), 0) +
+          COALESCE((SELECT SUM(b.amount) FROM bets b WHERE b.game_id = g.id AND b.status <> 'CANCELLED'), 0) +
           COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
                     WHERE pt.transaction_type = 'Debit'
                       AND g.provider_game_id IS NOT NULL
-                      AND pt.provider_game_id = g.provider_game_id
-                      AND pt.provider_name = g.provider_name), 0)
+                      AND pt.provider_game_id = g.provider_game_id), 0)
         ) AS "totalWagered"
       FROM games g
-      ORDER BY "betCount" DESC
+      ORDER BY ${orderCol} DESC
       LIMIT :limit`,
       { replacements: { limit }, type: QueryTypes.SELECT }
     );
@@ -51,6 +56,40 @@ export class GamesRepository {
       id: r.id,
       name: r.name,
       isActive: r.isActive,
+      betCount: parseInt(String(r.betCount), 10) || 0,
+      totalWagered: parseFloat(String(r.totalWagered)) || 0
+    }));
+  }
+
+  async getTopProviders(
+    limit = 5,
+    sortBy: 'rounds' | 'wagered' = 'rounds'
+  ): Promise<Array<{ providerName: string; betCount: number; totalWagered: number }>> {
+    const db = GameModel.sequelize!;
+    const orderCol = sortBy === 'wagered' ? '"totalWagered"' : '"betCount"';
+    const results = await db.query<{ providerName: string; betCount: string; totalWagered: string }>(
+      `SELECT p.provider_name AS "providerName",
+        (
+          COALESCE((SELECT COUNT(*) FROM bets b JOIN games g2 ON g2.id = b.game_id
+                    WHERE g2.provider_name = p.provider_name AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT COUNT(DISTINCT pt.provider_game_round_id) FROM provider_transactions pt
+                    JOIN games g3 ON g3.provider_game_id = pt.provider_game_id
+                    WHERE pt.transaction_type = 'Debit' AND g3.provider_name = p.provider_name), 0)
+        ) AS "betCount",
+        (
+          COALESCE((SELECT SUM(b.amount) FROM bets b JOIN games g2 ON g2.id = b.game_id
+                    WHERE g2.provider_name = p.provider_name AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
+                    JOIN games g3 ON g3.provider_game_id = pt.provider_game_id
+                    WHERE pt.transaction_type = 'Debit' AND g3.provider_name = p.provider_name), 0)
+        ) AS "totalWagered"
+      FROM (SELECT DISTINCT provider_name FROM games WHERE provider_name IS NOT NULL) p
+      ORDER BY ${orderCol} DESC
+      LIMIT :limit`,
+      { replacements: { limit }, type: QueryTypes.SELECT }
+    );
+    return results.map(r => ({
+      providerName: r.providerName,
       betCount: parseInt(String(r.betCount), 10) || 0,
       totalWagered: parseFloat(String(r.totalWagered)) || 0
     }));

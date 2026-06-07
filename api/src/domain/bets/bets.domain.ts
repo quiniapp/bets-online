@@ -7,7 +7,7 @@ import {
   UserRole,
   ChipMovementType,
 } from 'helper';
-import { betsRepository } from '../../persistence/repositories/bets.repository';
+import { betsRepository, HouseReportResult } from '../../persistence/repositories/bets.repository';
 import { gamesRepository } from '../../persistence/repositories/games.repository';
 import { balancesRepository } from '../../persistence/repositories/balances.repository';
 import { chipMovementsRepository } from '../../persistence/repositories/chip-movements.repository';
@@ -177,6 +177,60 @@ export class BetsDomain {
     await this.validateBetAccessPermission(requesterId, userId);
 
     return await betsRepository.getStatistics(userId);
+  }
+
+  /**
+   * House-wide report (OWNER only): rounds, wagered, prizes and house balance
+   * across native bets + integrator games, with optional filters. When `userId`
+   * is given it scopes to that user AND their whole downline (agent view).
+   */
+  async getHouseReport(
+    requesterId: string,
+    filters: {
+      dateFrom?: Date;
+      dateTo?: Date;
+      providerName?: string;
+      gameId?: string;
+      userId?: string;
+      username?: string;
+      limit: number;
+      offset: number;
+    }
+  ): Promise<HouseReportResult> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.USER_NOT_FOUND, 'User not found');
+    }
+    if (requester.role !== UserRole.OWNER) {
+      throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Only OWNER can view the house report');
+    }
+
+    // Resolve the target user (by id, or by username typed in the UI). When set,
+    // the report scopes to that user AND their whole downline (agent view).
+    let targetUserId = filters.userId;
+    if (!targetUserId && filters.username) {
+      const target = await usersRepository.findByUsername(filters.username);
+      if (!target) {
+        return { totals: { rounds: 0, wagered: 0, prizes: 0, balance: 0 }, rows: [], total: 0 };
+      }
+      targetUserId = target.id;
+    }
+
+    let userIds: string[] | undefined;
+    if (targetUserId) {
+      const descendants = await usersRepository.findDescendants(targetUserId);
+      userIds = [targetUserId, ...descendants.map(d => d.id)];
+    }
+
+    return betsRepository.getHouseReport({
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      providerName: filters.providerName,
+      gameId: filters.gameId,
+      userIds,
+      limit: filters.limit,
+      offset: filters.offset
+    });
   }
 
   /**
