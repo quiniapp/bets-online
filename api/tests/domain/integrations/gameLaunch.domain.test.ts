@@ -44,7 +44,8 @@ jest.mock('../../../src/persistence/repositories/game-types.repository', () => (
 jest.mock('../../../src/persistence/repositories/userProviderProfile.repository', () => ({
   userProviderProfileRepository: {
     findByUserId: jest.fn(),
-    create: jest.fn()
+    create: jest.fn(),
+    updateCurrentGame: jest.fn()
   }
 }));
 jest.mock('../../../src/persistence/repositories/balances.repository', () => ({
@@ -175,6 +176,9 @@ describe('gameLaunchDomain', () => {
           currency: 'ARS'
         })
       );
+      // Launch must persist the current game so provider callbacks (which omit
+      // providerGameId) can attribute each round to the right game.
+      expect(mockProfileRepo.updateCurrentGame).toHaveBeenCalledWith('21viral', '100001', 'vs25wolfgold');
     });
 
     it('auto-creates UserProviderProfile when none exists', async () => {
