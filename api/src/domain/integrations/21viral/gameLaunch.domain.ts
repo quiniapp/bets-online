@@ -77,6 +77,15 @@ class GameLaunchDomain {
       });
     }
 
+    // Persist the launched game on the player's provider profile. 21viral debit/credit
+    // callbacks omit providerGameId, so transactions fall back to this value to attribute
+    // each round to the correct game (powers top-played / top-providers reporting).
+    await userProviderProfileRepository.updateCurrentGame(
+      '21viral',
+      profile.providerPlayerId,
+      game.providerGameId
+    );
+
     const balance = await balancesRepository.findByUserId(params.userId);
     const formattedBalance = new Decimal(balance?.chipBalance ?? 0).toFixed(2);
 
