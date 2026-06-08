@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
-import { Users, Gamepad2, DollarSign, Loader2, TrendingUp, Wifi, UserPlus, Activity } from "lucide-react"
+import { Users, Gamepad2, DollarSign, Loader2, Wifi, UserPlus, Activity } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
 import {
@@ -61,8 +61,11 @@ export default function AdminDashboard() {
   const [gameStats, setGameStats] = useState<GameStats | null>(null)
   const [topGames, setTopGames] = useState<TopGame[]>([])
   const [topProviders, setTopProviders] = useState<TopProvider[]>([])
-  const [topSortBy, setTopSortBy] = useState<TopSortBy>('rounds')
+  const [gamesSortBy, setGamesSortBy] = useState<TopSortBy>('rounds')
+  const [providersSortBy, setProvidersSortBy] = useState<TopSortBy>('rounds')
   const [loadingStats, setLoadingStats] = useState(true)
+  const [loadingGames, setLoadingGames] = useState(true)
+  const [loadingProviders, setLoadingProviders] = useState(true)
   const { stats: adminStats, loading: loadingAdminStats } = useAdminStats()
 
   useEffect(() => {
@@ -84,6 +87,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!user) return
+    setLoadingStats(true)
     const controller = new AbortController()
     Promise.all([
       apiService.get<UserStats>('/users/me/stats'),
@@ -92,27 +96,41 @@ export default function AdminDashboard() {
       if (controller.signal.aborted) return
       if (uRes.success && uRes.data) setUserStats(uRes.data)
       if (gRes.success && gRes.data) setGameStats(gRes.data)
-    })
-    return () => controller.abort()
-  }, [user?.id])
-
-  // Top games + providers — re-fetched when the rounds/money toggle changes.
-  useEffect(() => {
-    if (!user) return
-    setLoadingStats(true)
-    const controller = new AbortController()
-    Promise.all([
-      apiService.get<TopGame[]>(`/games/top-played?limit=5&sortBy=${topSortBy}`),
-      apiService.get<TopProvider[]>(`/games/top-providers?limit=5&sortBy=${topSortBy}`),
-    ]).then(([tRes, pRes]) => {
-      if (controller.signal.aborted) return
-      if (tRes.success && tRes.data) setTopGames(tRes.data)
-      if (pRes.success && pRes.data) setTopProviders(pRes.data)
     }).finally(() => {
       if (!controller.signal.aborted) setLoadingStats(false)
     })
     return () => controller.abort()
-  }, [user?.id, topSortBy])
+  }, [user?.id])
+
+  // Top games — re-fetched when its own rounds/money toggle changes.
+  useEffect(() => {
+    if (!user) return
+    setLoadingGames(true)
+    const controller = new AbortController()
+    apiService.get<TopGame[]>(`/games/top-played?limit=5&sortBy=${gamesSortBy}`)
+      .then(res => {
+        if (controller.signal.aborted) return
+        if (res.success && res.data) setTopGames(res.data)
+      }).finally(() => {
+        if (!controller.signal.aborted) setLoadingGames(false)
+      })
+    return () => controller.abort()
+  }, [user?.id, gamesSortBy])
+
+  // Top providers — re-fetched when its own rounds/money toggle changes.
+  useEffect(() => {
+    if (!user) return
+    setLoadingProviders(true)
+    const controller = new AbortController()
+    apiService.get<TopProvider[]>(`/games/top-providers?limit=5&sortBy=${providersSortBy}`)
+      .then(res => {
+        if (controller.signal.aborted) return
+        if (res.success && res.data) setTopProviders(res.data)
+      }).finally(() => {
+        if (!controller.signal.aborted) setLoadingProviders(false)
+      })
+    return () => controller.abort()
+  }, [user?.id, providersSortBy])
 
   if (isLoading) {
     return (
@@ -403,21 +421,21 @@ export default function AdminDashboard() {
               <div>
                 <CardTitle className="text-base">Juegos Más Jugados</CardTitle>
                 <CardDescription>
-                  Ordenado por {topSortBy === 'rounds' ? 'cantidad de rondas' : 'monto apostado'}
+                  Ordenado por {gamesSortBy === 'rounds' ? 'cantidad de rondas' : 'monto apostado'}
                 </CardDescription>
               </div>
               <div className="flex gap-1 shrink-0">
-                <Button size="sm" variant={topSortBy === 'rounds' ? 'default' : 'outline'} onClick={() => setTopSortBy('rounds')}>
+                <Button size="sm" variant={gamesSortBy === 'rounds' ? 'default' : 'outline'} onClick={() => setGamesSortBy('rounds')}>
                   Rondas
                 </Button>
-                <Button size="sm" variant={topSortBy === 'wagered' ? 'default' : 'outline'} onClick={() => setTopSortBy('wagered')}>
+                <Button size="sm" variant={gamesSortBy === 'wagered' ? 'default' : 'outline'} onClick={() => setGamesSortBy('wagered')}>
                   Plata
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {loadingStats ? (
+            {loadingGames ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
@@ -452,18 +470,25 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <CardTitle className="text-base">Proveedores Más Jugados</CardTitle>
                 <CardDescription>
-                  Ordenado por {topSortBy === 'rounds' ? 'cantidad de rondas' : 'monto apostado'}
+                  Ordenado por {providersSortBy === 'rounds' ? 'cantidad de rondas' : 'monto apostado'}
                 </CardDescription>
               </div>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant={providersSortBy === 'rounds' ? 'default' : 'outline'} onClick={() => setProvidersSortBy('rounds')}>
+                  Rondas
+                </Button>
+                <Button size="sm" variant={providersSortBy === 'wagered' ? 'default' : 'outline'} onClick={() => setProvidersSortBy('wagered')}>
+                  Plata
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            {loadingStats ? (
+            {loadingProviders ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
