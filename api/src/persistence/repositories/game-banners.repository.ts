@@ -45,6 +45,7 @@ export class GameBannersRepository {
       gameId: plain.gameId,
       sortOrder: plain.sortOrder,
       isActive: plain.isActive,
+      imageUrl: plain.imageUrl ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)
     };
@@ -64,6 +65,7 @@ export class GameBannersRepository {
       providerGameId: plain.game.providerGameId ?? null,
       providerName: plain.game.providerName ?? null,
       defaultLogo: plain.game.defaultLogo ?? null,
+      customLogo: plain.game.customLogo ?? null,
       gameType: plain.game.gameType ?? null,
       sortOrder: plain.game.sortOrder ?? null,
       createdAt: new Date(plain.game.createdAt),
@@ -74,6 +76,7 @@ export class GameBannersRepository {
       gameId: plain.gameId,
       sortOrder: plain.sortOrder,
       isActive: plain.isActive,
+      imageUrl: plain.imageUrl ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt),
       game

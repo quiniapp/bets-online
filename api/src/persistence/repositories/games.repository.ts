@@ -304,6 +304,7 @@ export class GamesRepository {
       providerGameId: plain.providerGameId ?? null,
       providerName: plain.providerName ?? null,
       defaultLogo: plain.defaultLogo ?? null,
+      customLogo: plain.customLogo ?? null,
       gameType: plain.gameType ?? null,
       sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
