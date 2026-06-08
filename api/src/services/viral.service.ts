@@ -1,5 +1,7 @@
 import { config } from '../config';
 import { buildHmacAuthHeader } from '../utils/hmac.utils';
+import { addProviderTiming } from '../utils/request-context';
+import { logger } from '../utils/logger';
 
 export interface ViralGame {
   id: number;
@@ -46,17 +48,41 @@ class ViralService {
   }
 
   private log(direction: 'REQUEST' | 'RESPONSE', endpoint: string, data: unknown) {
-    console.log(
-      `[21Viral][${direction}][${endpoint}]`,
-      JSON.stringify(data, null, 2)
-    );
+    logger.debug({ provider: '21viral', direction, endpoint, data }, 'provider-payload');
+  }
+
+  /**
+   * fetch wrapper that measures the round-trip to the 21viral integrator and
+   * attributes it to the current request (addProviderTiming) so the per-request
+   * timing log can separate provider latency from DB/app latency.
+   */
+  private async timedFetch(endpoint: string, init: RequestInit): Promise<Response> {
+    const start = process.hrtime.bigint();
+    try {
+      const res = await fetch(`${this.baseUrl}${endpoint}`, init);
+      const ms = Number(process.hrtime.bigint() - start) / 1e6;
+      addProviderTiming(ms);
+      logger.info(
+        { provider: '21viral', endpoint, ms: Math.round(ms * 100) / 100, status: res.status },
+        'provider-call'
+      );
+      return res;
+    } catch (error) {
+      const ms = Number(process.hrtime.bigint() - start) / 1e6;
+      addProviderTiming(ms);
+      logger.error(
+        { provider: '21viral', endpoint, ms: Math.round(ms * 100) / 100, error: String(error) },
+        'provider-call-failed'
+      );
+      throw error;
+    }
   }
 
   async getGames(): Promise<ViralGame[]> {
     const body = { timestamp: Math.floor(Date.now() / 1000) };
     this.log('REQUEST', 'v1/games', body);
 
-    const res = await fetch(`${this.baseUrl}v1/games`, {
+    const res = await this.timedFetch('v1/games', {
       method: 'POST',
       headers: this.buildHeaders(body),
       body: JSON.stringify(body)
@@ -95,7 +121,7 @@ class ViralService {
 
     this.log('REQUEST', 'v1/games/sessions', body);
 
-    const res = await fetch(`${this.baseUrl}v1/games/sessions`, {
+    const res = await this.timedFetch('v1/games/sessions', {
       method: 'POST',
       headers: this.buildHeaders(body),
       body: JSON.stringify(body)

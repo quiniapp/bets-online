@@ -8,8 +8,8 @@ import type { User, UserRole } from "helper"
 import ROUTER from "@/routes"
 import { getSiteType, isRoleAllowedForSite, SITE_ACCESS_ERROR } from "@/lib/site-config"
 
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000
-const INACTIVITY_SECONDS = 10 * 60
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000
+const INACTIVITY_SECONDS = 30 * 60
 const LAST_ACTIVE_COOKIE = 'last-active'
 // Watchdog runs every 2 min: if cookie gone → logout; piggybacks token refresh every ~10 min.
 const SESSION_WATCHDOG_INTERVAL = 2 * 60 * 1000
@@ -197,8 +197,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, resetInactivityTimer])
 
   // Session watchdog: runs every 2 min.
-  // - If last-active cookie is gone → user was inactive > 10 min → force logout.
+  // - If last-active cookie is gone → user was inactive > 30 min → force logout.
   // - If cookie alive → piggyback token refresh every 5 cycles (~10 min).
+  //   (Backend sliding window already keeps the cookie fresh while active; this
+  //    is a fallback for background-throttled tabs.)
   // This is the primary fallback for when setTimeout gets throttled in background tabs.
   useEffect(() => {
     if (!user) return

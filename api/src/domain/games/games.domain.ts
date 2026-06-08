@@ -12,6 +12,16 @@ import { gamesCache, gameTypesMemCache, CACHE_PAGE } from '../../utils/games-cac
 
 export class GamesDomain {
   /**
+   * Re-warm the page-1 games cache from DB. Call after any mutation that changes
+   * which games appear or their order — including provider re-ordering, since the
+   * game list is sorted by provider sort_order.
+   */
+  refreshGamesCache(): void {
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+  }
+
+  /**
    * Create a new game (OWNER/ADMIN only)
    */
   async createGame(
@@ -72,8 +82,7 @@ export class GamesDomain {
 
     // Create game
     const game = await gamesRepository.create(gameData);
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
     return game;
   }
 
@@ -120,8 +129,18 @@ export class GamesDomain {
     return gamesRepository.getStats();
   }
 
-  async getTopPlayed(limit = 5): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
-    return gamesRepository.getTopPlayed(limit);
+  async getTopPlayed(
+    limit = 5,
+    sortBy: 'rounds' | 'wagered' = 'rounds'
+  ): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
+    return gamesRepository.getTopPlayed(limit, sortBy);
+  }
+
+  async getTopProviders(
+    limit = 5,
+    sortBy: 'rounds' | 'wagered' = 'rounds'
+  ): Promise<Array<{ providerName: string; betCount: number; totalWagered: number }>> {
+    return gamesRepository.getTopProviders(limit, sortBy);
   }
 
   async getDistinctGameTypes(): Promise<string[]> {
@@ -215,8 +234,7 @@ export class GamesDomain {
 
     // Update game
     const updated = await gamesRepository.update(gameId, updateData);
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
     return updated;
   }
 
@@ -235,8 +253,7 @@ export class GamesDomain {
     await this.requireAdminOrOwner(requesterId);
     if (!ids.length) return 0;
     const affected = await gamesRepository.bulkSetStatus(ids, isActive);
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
     return affected;
   }
 
@@ -252,16 +269,14 @@ export class GamesDomain {
   ): Promise<number> {
     await this.requireAdminOrOwner(requesterId);
     const affected = await gamesRepository.bulkSetStatusByFilter(isActive, providerName, gameType, currentStatus);
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
     return affected;
   }
 
   async bulkUpdateSortOrder(requesterId: string, items: { id: string; sortOrder: number }[]): Promise<void> {
     await this.requireAdminOrOwner(requesterId);
     await gamesRepository.bulkUpdateSortOrder(items);
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
   }
 
   /**
@@ -290,8 +305,7 @@ export class GamesDomain {
 
     // Toggle status
     const toggled = await gamesRepository.update(gameId, { isActive: !game.isActive });
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
     return toggled;
   }
 
@@ -321,8 +335,7 @@ export class GamesDomain {
 
     // Delete game
     await gamesRepository.delete(gameId);
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    this.refreshGamesCache();
   }
 }
 
