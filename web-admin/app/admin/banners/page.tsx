@@ -130,8 +130,8 @@ function BannerRow({
         <GripVertical className="h-5 w-5" />
       </button>
       <div className="w-9 h-9 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
-        {item.game?.defaultLogo ? (
-          <img src={item.game.defaultLogo} alt={item.game.name} className="w-full h-full object-cover" />
+        {(item.imageUrl ?? item.game?.customLogo ?? item.game?.defaultLogo) ? (
+          <img src={(item.imageUrl ?? item.game?.customLogo ?? item.game?.defaultLogo) ?? undefined} alt={item.game?.name ?? "banner"} className="w-full h-full object-cover" />
         ) : (
           <Gamepad2 className="h-4 w-4 text-muted-foreground/50" />
         )}
@@ -164,8 +164,8 @@ function BannerRowOverlay({ item }: { item: GameBannerWithGame }) {
         <GripVertical className="h-5 w-5" />
       </div>
       <div className="w-9 h-9 rounded overflow-hidden bg-muted flex items-center justify-center shrink-0">
-        {item.game?.defaultLogo ? (
-          <img src={item.game.defaultLogo} alt={item.game.name} className="w-full h-full object-cover" />
+        {(item.imageUrl ?? item.game?.customLogo ?? item.game?.defaultLogo) ? (
+          <img src={(item.imageUrl ?? item.game?.customLogo ?? item.game?.defaultLogo) ?? undefined} alt={item.game?.name ?? "banner"} className="w-full h-full object-cover" />
         ) : (
           <Gamepad2 className="h-4 w-4 text-muted-foreground/50" />
         )}

@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, RotateCcw, Trash2, Check, ImageIcon } from 'lucide-react';
+import { Loader2, Upload, Trash2, Check, ImageIcon } from 'lucide-react';
 import { useGameImages } from '@/hooks/useGameImages';
 import { useToast } from '@/hooks/use-toast';
 
@@ -140,37 +140,62 @@ export function GameImageManager({
             )}
             {uploading ? 'Subiendo...' : 'Subir imagen'}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={resetting}
-            onClick={handleResetToDefault}
-          >
-            {resetting ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RotateCcw className="h-4 w-4 mr-2" />
-            )}
-            {resetting ? 'Restaurando...' : 'Usar imagen del proveedor'}
-          </Button>
         </div>
 
         {/* Gallery */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Imágenes subidas</p>
+          <p className="text-sm font-medium text-muted-foreground">Elegí la imagen</p>
 
           {loading ? (
             <div className="flex items-center justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : !data?.images.length ? (
+          ) : !defaultLogo && !data?.images.length ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              No hay imágenes subidas aún
+              No hay imágenes aún
             </p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              {data.images.map(image => {
-                const isActive = image.url === data.activeImageUrl;
+              {defaultLogo && (
+                <div
+                  className={`relative rounded-lg border-2 overflow-hidden bg-muted transition-colors ${
+                    !data?.activeImageUrl ? 'border-primary' : 'border-border'
+                  }`}
+                >
+                  <div className="aspect-square w-full overflow-hidden">
+                    <img
+                      src={defaultLogo}
+                      alt="Imagen del proveedor"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="absolute top-1 left-1 bg-background/80 text-foreground rounded px-1 py-0.5 text-[10px] font-medium">
+                    Proveedor
+                  </span>
+                  {!data?.activeImageUrl && (
+                    <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
+                      <Check className="h-3 w-3 text-primary-foreground" />
+                    </div>
+                  )}
+                  <div className="flex gap-1 p-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-7 text-xs px-1"
+                      disabled={!data?.activeImageUrl || resetting}
+                      onClick={handleResetToDefault}
+                    >
+                      {resetting ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        'Usar esta'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {(data?.images ?? []).map(image => {
+                const isActive = image.url === data?.activeImageUrl;
                 const isDeleting = deletingId === image.id;
                 const isSelecting = selectingId === image.id;
 
