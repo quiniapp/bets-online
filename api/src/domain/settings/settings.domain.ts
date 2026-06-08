@@ -2,23 +2,28 @@ import { CasinoSettings, UpdateCasinoSettingsDto, UserRole, ErrorCode } from 'he
 import { casinoSettingsRepository } from '../../persistence/repositories/casino-settings.repository';
 import { usersRepository } from '../../persistence/repositories/users.repository';
 import { AppError } from '../../middleware/error.middleware';
+import { casinoSettingsMemCache } from '../../utils/games-cache';
 
 export class SettingsDomain {
   async getCasinoSettings(requesterId?: string): Promise<CasinoSettings> {
-    if (!requesterId) {
-      // Anonymous request — find the system owner
-      const owner = await usersRepository.findOwner();
-      if (!owner) {
-        return casinoSettingsRepository.findByOwnerId('');
+    // Cached by requester ('anon' for the public home call). Caches the whole
+    // owner-chain resolution + DB read; cleared on updateCasinoSettings.
+    return casinoSettingsMemCache.getOrFetch(requesterId ?? 'anon', async () => {
+      if (!requesterId) {
+        // Anonymous request — find the system owner
+        const owner = await usersRepository.findOwner();
+        if (!owner) {
+          return casinoSettingsRepository.findByOwnerId('');
+        }
+        return casinoSettingsRepository.findByOwnerId(owner.id);
       }
-      return casinoSettingsRepository.findByOwnerId(owner.id);
-    }
 
-    const requester = await usersRepository.findById(requesterId);
-    if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+      const requester = await usersRepository.findById(requesterId);
+      if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
 
-    const ownerId = await this.resolveOwnerId(requesterId, requester.role);
-    return casinoSettingsRepository.findByOwnerId(ownerId);
+      const ownerId = await this.resolveOwnerId(requesterId, requester.role);
+      return casinoSettingsRepository.findByOwnerId(ownerId);
+    });
   }
 
   async updateCasinoSettings(
@@ -33,7 +38,9 @@ export class SettingsDomain {
     if (patch.lobbySlots && patch.lobbySlots.length > 10) {
       throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Lobby slots cannot exceed 10');
     }
-    return casinoSettingsRepository.patch(requesterId, patch);
+    const updated = await casinoSettingsRepository.patch(requesterId, patch);
+    casinoSettingsMemCache.invalidate();
+    return updated;
   }
 
   private async resolveOwnerId(userId: string, role: string, visited = new Set<string>()): Promise<string> {

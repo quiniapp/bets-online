@@ -108,7 +108,11 @@ const envSchema = z.object({
   // 21Viral provider integration
   VIRAL_USERNAME: z.string().min(1, 'VIRAL_USERNAME is required'),
   VIRAL_SECRET_KEY: z.string().min(32, 'VIRAL_SECRET_KEY must be at least 32 characters'),
-  INTEGRATOR_URL: z.string().url().optional()
+  INTEGRATOR_URL: z.string().url().optional(),
+
+  // Logging — pino level. Overridable in prod to enable per-query debug logs
+  // without a redeploy. Defaults: production=info, otherwise debug.
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional()
 });
 
 /**
@@ -216,6 +220,11 @@ export const envs = {
     username: envVars.VIRAL_USERNAME,
     secretKey: envVars.VIRAL_SECRET_KEY,
     integratorUrl: envVars.INTEGRATOR_URL
+  },
+
+  // Logging
+  logging: {
+    level: envVars.LOG_LEVEL ?? (envVars.NODE_ENV === Environment.PRODUCTION ? 'info' : 'debug')
   }
 } as const;
 

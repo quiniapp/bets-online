@@ -2,7 +2,55 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
 import { betsDomain } from '../domain/bets/bets.domain';
 
+const parseQueryDate = (v: unknown): Date | undefined => {
+  if (typeof v !== 'string' || !v) return undefined;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? undefined : d;
+};
+
 export class BetsController {
+  /**
+   * @swagger
+   * /api/admin/reports/bets:
+   *   get:
+   *     summary: House-wide bets report (OWNER only)
+   *     tags: [Bets]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Totals (rounds, wagered, prizes, balance) + paginated rows
+   */
+  async getHouseReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const limit = Math.min(100, parseInt(req.query.limit as string) || 20);
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const offset = (page - 1) * limit;
+
+      const result = await betsDomain.getHouseReport(req.user.userId, {
+        dateFrom: parseQueryDate(req.query.dateFrom),
+        dateTo: parseQueryDate(req.query.dateTo),
+        providerName: (req.query.providerName as string) || undefined,
+        gameId: (req.query.gameId as string) || undefined,
+        userId: (req.query.userId as string) || undefined,
+        username: (req.query.username as string) || undefined,
+        limit,
+        offset
+      });
+
+      return res.json({
+        success: true,
+        data: { totals: result.totals, rows: result.rows },
+        meta: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) || 1 }
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   /**
    * @swagger
    * /api/bets:

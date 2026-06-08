@@ -60,7 +60,13 @@ export class SessionsRepository {
     expiresAt: Date
   ): Promise<Session | null> {
     const [count, rows] = await SessionModel.update(
-      { token: newToken, refreshToken: newRefreshToken, expiresAt },
+      {
+        token: newToken,
+        refreshToken: newRefreshToken,
+        previousRefreshToken: oldRefreshToken,
+        rotatedAt: new Date(),
+        expiresAt
+      },
       {
         where: {
           refreshToken: oldRefreshToken,
@@ -72,6 +78,23 @@ export class SessionsRepository {
 
     if (count === 0 || !rows[0]) return null;
     return this.mapToSession(rows[0]);
+  }
+
+  // Grace lookup for concurrent refreshes: returns the session whose PREVIOUS
+  // refresh token matches (i.e. it was just rotated, within `graceMs`), so a
+  // second concurrent request with the same old token can receive the tokens
+  // the first rotation produced instead of failing.
+  async findRecentlyRotated(oldRefreshToken: string, graceMs: number): Promise<Session | null> {
+    const session = await SessionModel.findOne({
+      where: {
+        previousRefreshToken: oldRefreshToken,
+        rotatedAt: { [Op.gte]: new Date(Date.now() - graceMs) },
+        expiresAt: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!session) return null;
+    return this.mapToSession(session);
   }
 
   async deleteByToken(token: string): Promise<void> {

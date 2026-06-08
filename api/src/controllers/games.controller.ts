@@ -51,7 +51,19 @@ export class GamesController {
   async topPlayed(req: Request, res: Response, next: NextFunction) {
     try {
       const limit = Math.min(20, parseInt(req.query.limit as string) || 5);
-      const data = await gamesDomain.getTopPlayed(limit);
+      const sortBy = req.query.sortBy === 'wagered' ? 'wagered' : 'rounds';
+      const data = await gamesDomain.getTopPlayed(limit, sortBy);
+      return res.json(ApiResponseBuilder.success(data));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async topProviders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const limit = Math.min(20, parseInt(req.query.limit as string) || 5);
+      const sortBy = req.query.sortBy === 'wagered' ? 'wagered' : 'rounds';
+      const data = await gamesDomain.getTopProviders(limit, sortBy);
       return res.json(ApiResponseBuilder.success(data));
     } catch (error) {
       return next(error);

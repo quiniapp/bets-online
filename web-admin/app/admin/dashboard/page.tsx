@@ -43,6 +43,14 @@ interface TopGame {
   totalWagered: number
 }
 
+interface TopProvider {
+  providerName: string
+  betCount: number
+  totalWagered: number
+}
+
+type TopSortBy = 'rounds' | 'wagered'
+
 export default function AdminDashboard() {
   const { user, role, isLoading } = useAuth()
   const router = useRouter()
@@ -52,6 +60,8 @@ export default function AdminDashboard() {
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [gameStats, setGameStats] = useState<GameStats | null>(null)
   const [topGames, setTopGames] = useState<TopGame[]>([])
+  const [topProviders, setTopProviders] = useState<TopProvider[]>([])
+  const [topSortBy, setTopSortBy] = useState<TopSortBy>('rounds')
   const [loadingStats, setLoadingStats] = useState(true)
   const { stats: adminStats, loading: loadingAdminStats } = useAdminStats()
 
@@ -74,22 +84,35 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!user) return
-    setLoadingStats(true)
     const controller = new AbortController()
     Promise.all([
       apiService.get<UserStats>('/users/me/stats'),
       apiService.get<GameStats>('/games/stats'),
-      apiService.get<TopGame[]>('/games/top-played?limit=5'),
-    ]).then(([uRes, gRes, tRes]) => {
+    ]).then(([uRes, gRes]) => {
       if (controller.signal.aborted) return
       if (uRes.success && uRes.data) setUserStats(uRes.data)
       if (gRes.success && gRes.data) setGameStats(gRes.data)
+    })
+    return () => controller.abort()
+  }, [user?.id])
+
+  // Top games + providers — re-fetched when the rounds/money toggle changes.
+  useEffect(() => {
+    if (!user) return
+    setLoadingStats(true)
+    const controller = new AbortController()
+    Promise.all([
+      apiService.get<TopGame[]>(`/games/top-played?limit=5&sortBy=${topSortBy}`),
+      apiService.get<TopProvider[]>(`/games/top-providers?limit=5&sortBy=${topSortBy}`),
+    ]).then(([tRes, pRes]) => {
+      if (controller.signal.aborted) return
       if (tRes.success && tRes.data) setTopGames(tRes.data)
+      if (pRes.success && pRes.data) setTopProviders(pRes.data)
     }).finally(() => {
       if (!controller.signal.aborted) setLoadingStats(false)
     })
     return () => controller.abort()
-  }, [user?.id])
+  }, [user?.id, topSortBy])
 
   if (isLoading) {
     return (
@@ -372,59 +395,103 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Top Juegos Más Jugados */}
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Juegos Más Jugados</CardTitle>
-              <CardDescription>Ordenado por cantidad de rondas</CardDescription>
-            </div>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loadingStats ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </div>
-          ) : topGames.length > 0 ? (
-            <div className="space-y-2">
-              {topGames.map((game, index) => (
-                <div
-                  key={game.id}
-                  className="flex items-center gap-3 p-3 border rounded-lg"
-                >
-                  <span className="text-lg font-bold text-muted-foreground w-6 text-center">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{game.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {game.betCount} rondas · ${formatChips(game.totalWagered)} apostados
-                    </p>
-                  </div>
-                  <Badge variant={game.isActive ? "default" : "secondary"} className="shrink-0 text-xs">
-                    {game.isActive ? "Activo" : "Inactivo"}
-                  </Badge>
-                </div>
-              ))}
-              <Link href="/admin/games">
-                <Button variant="outline" className="w-full mt-2">
-                  Ver todos los juegos
+      {/* Top Juegos / Proveedores Más Jugados */}
+      <div className="grid gap-4 md:grid-cols-2 mb-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="text-base">Juegos Más Jugados</CardTitle>
+                <CardDescription>
+                  Ordenado por {topSortBy === 'rounds' ? 'cantidad de rondas' : 'monto apostado'}
+                </CardDescription>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant={topSortBy === 'rounds' ? 'default' : 'outline'} onClick={() => setTopSortBy('rounds')}>
+                  Rondas
                 </Button>
-              </Link>
+                <Button size="sm" variant={topSortBy === 'wagered' ? 'default' : 'outline'} onClick={() => setTopSortBy('wagered')}>
+                  Plata
+                </Button>
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">No hay datos de juegos</p>
-              <Link href="/admin/games">
-                <Button>Ver Juegos</Button>
-              </Link>
+          </CardHeader>
+          <CardContent>
+            {loadingStats ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : topGames.length > 0 ? (
+              <div className="space-y-2">
+                {topGames.map((game, index) => (
+                  <div key={game.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <span className="text-lg font-bold text-muted-foreground w-6 text-center">{index + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{game.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {game.betCount} rondas · ${formatChips(game.totalWagered)} apostados
+                      </p>
+                    </div>
+                    <Badge variant={game.isActive ? "default" : "secondary"} className="shrink-0 text-xs">
+                      {game.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                ))}
+                <Link href="/admin/games">
+                  <Button variant="outline" className="w-full mt-2">Ver todos los juegos</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">No hay datos de juegos</p>
+                <Link href="/admin/games"><Button>Ver Juegos</Button></Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Proveedores Más Jugados</CardTitle>
+                <CardDescription>
+                  Ordenado por {topSortBy === 'rounds' ? 'cantidad de rondas' : 'monto apostado'}
+                </CardDescription>
+              </div>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {loadingStats ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              </div>
+            ) : topProviders.length > 0 ? (
+              <div className="space-y-2">
+                {topProviders.map((p, index) => (
+                  <div key={p.providerName} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <span className="text-lg font-bold text-muted-foreground w-6 text-center">{index + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{p.providerName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.betCount} rondas · ${formatChips(p.totalWagered)} apostados
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <Link href="/admin/providers">
+                  <Button variant="outline" className="w-full mt-2">Ver proveedores</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No hay datos de proveedores</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
 
       <ChipLoadDialog

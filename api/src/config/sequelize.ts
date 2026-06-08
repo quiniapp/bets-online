@@ -1,5 +1,7 @@
 import { Sequelize } from 'sequelize';
 import { config } from './index';
+import { addDbTiming } from '../utils/request-context';
+import { logger } from '../utils/logger';
 
 if (!config.database.url) {
   throw new Error('DATABASE_URL is required');
@@ -14,7 +16,17 @@ export const sequelize = new Sequelize(config.database.url, {
       rejectUnauthorized: false
     } : false
   },
-  logging: config.server.env === 'development' ? console.log : false,
+  // benchmark:true makes Sequelize pass the elapsed ms as the 2nd logging arg.
+  // We attribute it to the current request (addDbTiming) and emit a debug line
+  // per query (hidden unless LOG_LEVEL=debug, so it's free in prod by default).
+  benchmark: config.server.env !== 'test',
+  logging:
+    config.server.env === 'test'
+      ? false
+      : (sql: string, timing?: number) => {
+          if (typeof timing === 'number') addDbTiming(timing);
+          logger.debug({ ms: timing, sql }, 'db-query');
+        },
   pool: {
     max: 10,
     min: 0,

@@ -1,4 +1,4 @@
-import type { Game, Provider } from 'helper';
+import type { Game, Provider, FeaturedGameWithGame, CasinoSettings } from 'helper';
 
 export interface CachedPage {
   games: Game[];
@@ -87,4 +87,41 @@ export const gameTypesMemCache = {
     return promise;
   },
   invalidate(): void { _gameTypes = null; },
+};
+
+// Featured games (active, with joined Game) — single-value cache for the home
+// "destacados" section. Invalidated on any admin featured-games mutation.
+let _featured: FeaturedGameWithGame[] | Promise<FeaturedGameWithGame[]> | null = null;
+
+export const featuredGamesMemCache = {
+  getOrFetch(fetch: () => Promise<FeaturedGameWithGame[]>): Promise<FeaturedGameWithGame[]> {
+    if (_featured !== null) {
+      return _featured instanceof Promise ? _featured : Promise.resolve(_featured);
+    }
+    const promise = fetch()
+      .then(data => { _featured = data; return data; })
+      .catch(e => { _featured = null; throw e; });
+    _featured = promise;
+    return promise;
+  },
+  invalidate(): void { _featured = null; },
+};
+
+// Casino settings — keyed by requesterId (`'anon'` for the public home call).
+// Caches the full owner-chain resolution + DB read. Cleared on settings update.
+const settingsStore = new Map<string, CasinoSettings | Promise<CasinoSettings>>();
+
+export const casinoSettingsMemCache = {
+  getOrFetch(key: string, fetch: () => Promise<CasinoSettings>): Promise<CasinoSettings> {
+    const existing = settingsStore.get(key);
+    if (existing !== undefined) {
+      return existing instanceof Promise ? existing : Promise.resolve(existing);
+    }
+    const promise = fetch()
+      .then(data => { settingsStore.set(key, data); return data; })
+      .catch(e => { settingsStore.delete(key); throw e; });
+    settingsStore.set(key, promise);
+    return promise;
+  },
+  invalidate(): void { settingsStore.clear(); },
 };

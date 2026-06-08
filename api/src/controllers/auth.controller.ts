@@ -1,35 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
 import { authDomain } from '../domain/auth/auth.domain';
-import { config } from '../config';
 import { usersRepository } from '../persistence/repositories/users.repository';
 import { userCache } from '../persistence/cache/user.cache';
+import { setAuthCookies, clearAuthCookies } from '../utils/auth-cookies';
 
 export class AuthController {
-  private cookieBase(isProd: boolean) {
-    return { httpOnly: true, secure: isProd, sameSite: 'strict' as const };
-  }
-
-  private setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
-    const isProd = config.server.env === 'production';
-    const base = this.cookieBase(isProd);
-
-    res.cookie('session', accessToken, { ...base, maxAge: config.jwt.accessTokenMaxAge });
-    res.cookie('refresh-token', refreshToken, {
-      ...base,
-      maxAge: config.jwt.refreshTokenMaxAge,
-      path: '/api/auth/refresh'
-    });
-  }
-
-  private clearAuthCookies(res: Response): void {
-    const isProd = config.server.env === 'production';
-    const base = this.cookieBase(isProd);
-
-    res.clearCookie('session', base);
-    res.clearCookie('refresh-token', { ...base, path: '/api/auth/refresh' });
-  }
-
   /**
    * @swagger
    * /api/auth/login:
@@ -60,7 +36,7 @@ export class AuthController {
     try {
       const { username, password } = req.body;
       const result = await authDomain.login(username, password);
-      this.setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
+      setAuthCookies(res, result.tokens.accessToken, result.tokens.refreshToken);
       return res.json(ApiResponseBuilder.success({ user: result.user }));
     } catch (error) {
       return next(error);
@@ -90,7 +66,7 @@ export class AuthController {
       }
 
       const tokens = await authDomain.refreshToken(refreshToken);
-      this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+      setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
       return res.json(ApiResponseBuilder.success({}));
     } catch (error) {
       return next(error);
@@ -115,7 +91,7 @@ export class AuthController {
       if (token) {
         await authDomain.logout(token);
       }
-      this.clearAuthCookies(res);
+      clearAuthCookies(res);
       return res.json(ApiResponseBuilder.success({ message: 'Logout successful' }));
     } catch (error) {
       return next(error);
@@ -143,7 +119,7 @@ export class AuthController {
       }
 
       await authDomain.logoutAll(req.user.userId);
-      this.clearAuthCookies(res);
+      clearAuthCookies(res);
       return res.json(ApiResponseBuilder.success({ message: 'Logged out from all devices' }));
     } catch (error) {
       return next(error);
@@ -189,7 +165,7 @@ export class AuthController {
 
       const { currentPassword, newPassword } = req.body;
       await authDomain.changePassword(req.user.userId, currentPassword, newPassword);
-      this.clearAuthCookies(res);
+      clearAuthCookies(res);
       return res.json(ApiResponseBuilder.success({ message: SUCCESS_MESSAGES.PASSWORD_CHANGED }));
     } catch (error) {
       return next(error);

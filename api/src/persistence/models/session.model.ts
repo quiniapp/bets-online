@@ -6,6 +6,8 @@ export class SessionModel extends Model {
   declare userId: string;
   declare token: string;
   declare refreshToken: string;
+  declare previousRefreshToken: string | null;
+  declare rotatedAt: Date | null;
   declare expiresAt: Date;
   declare createdAt: Date;
 }
@@ -37,6 +39,16 @@ SessionModel.init(
       type: DataTypes.TEXT,
       allowNull: false,
       field: 'refresh_token'
+    },
+    previousRefreshToken: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'previous_refresh_token'
+    },
+    rotatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'rotated_at'
     },
     expiresAt: {
       type: DataTypes.DATE,

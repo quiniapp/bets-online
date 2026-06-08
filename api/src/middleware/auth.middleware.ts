@@ -4,6 +4,7 @@ import { ApiResponseBuilder, ErrorCode, UserRole, JwtPayload } from 'helper';
 import { config } from '../config';
 import { AppError } from './error.middleware';
 import { userCache } from '../persistence/cache/user.cache';
+import { setSessionCookie } from '../utils/auth-cookies';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -30,11 +31,27 @@ export const authMiddleware = async (
       );
     }
 
-    const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload;
+    const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload & { exp?: number };
     req.user = decoded;
 
-    // Sliding window server-side: cada request autenticado renueva el TTL
-    // del usuario en caché (operación de Map, sin DB).
+    // Sliding window (real): once the access token is past half its lifetime,
+    // re-issue a fresh session cookie on this response. An actively-using user
+    // therefore never hits expiry, with no dependency on client refresh timing
+    // and no DB write (the access token is stateless).
+    if (decoded.exp) {
+      const lifetimeSec = config.jwt.accessTokenMaxAge / 1000;
+      const remainingSec = decoded.exp - Math.floor(Date.now() / 1000);
+      if (remainingSec < lifetimeSec / 2) {
+        const fresh = jwt.sign(
+          { userId: decoded.userId, role: decoded.role, sessionId: decoded.sessionId },
+          config.jwt.secret as jwt.Secret,
+          { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
+        );
+        setSessionCookie(res, fresh);
+      }
+    }
+
+    // Renew the user cache TTL (cheap Map op, no DB).
     const cachedUser = userCache.get(decoded.userId);
     if (cachedUser) {
       userCache.set(cachedUser);

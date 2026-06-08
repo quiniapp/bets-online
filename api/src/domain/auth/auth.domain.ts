@@ -15,6 +15,10 @@ import { sessionsRepository } from '../../persistence/repositories/sessions.repo
 import { userCache } from '../../persistence/cache/user.cache';
 import { AppError } from '../../middleware/error.middleware';
 
+// Window during which a just-rotated refresh token's predecessor is still
+// honoured, to absorb concurrent refreshes from multiple tabs sharing a cookie.
+const REFRESH_GRACE_MS = 60_000;
+
 export class AuthDomain {
   async login(username: string, password: string): Promise<{ user: User; tokens: AuthTokens }> {
     // Find user
@@ -152,10 +156,15 @@ export class AuthDomain {
     );
 
     if (!session) {
-      // JWT valid but token not in DB → already rotated by someone else → possible theft.
-      // Revoke all sessions for this user as a precaution.
-      await sessionsRepository.deleteByUserId(decoded.userId);
-      userCache.invalidate(decoded.userId);
+      // Concurrent-refresh grace: another request (e.g. another tab sharing the
+      // same cookie) may have JUST rotated this refresh token. If so, return the
+      // tokens that rotation produced instead of failing — and crucially do NOT
+      // revoke the user's other sessions, which was logging legitimate users out
+      // on benign races.
+      const recent = await sessionsRepository.findRecentlyRotated(refreshToken, REFRESH_GRACE_MS);
+      if (recent) {
+        return { accessToken: recent.token, refreshToken: recent.refreshToken };
+      }
       throw new AppError(401, ErrorCode.INVALID_TOKEN, 'Session not found or expired');
     }
 
