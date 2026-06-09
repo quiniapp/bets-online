@@ -30,6 +30,13 @@ class SupabaseStorageService {
     const { error } = await client.storage.from(bucket).remove([filePath]);
     if (error) throw new Error(`Delete failed: ${error.message}`);
   }
+
+  pathFromPublicUrl(bucket: string, url: string): string | null {
+    const marker = `/${bucket}/`;
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    return url.slice(idx + marker.length);
+  }
 }
 
 export const supabaseStorage = new SupabaseStorageService();
