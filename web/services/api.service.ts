@@ -167,6 +167,31 @@ class ApiService {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
+  // Multipart upload (FormData). No seteamos Content-Type: el browser pone
+  // multipart/form-data con su boundary. Incluimos el header x-csrf-token
+  // porque el backend exige CSRF en toda mutación (igual que request() para JSON).
+  async postForm<T>(endpoint: string, formData: FormData, isRetry = false): Promise<ApiResponse<T>> {
+    const csrf = this.csrfToken ?? await this.fetchCsrfToken();
+    try {
+      const response = await fetch(`${this.baseUrl}/api${endpoint}`, {
+        method: 'POST',
+        body: formData,
+        headers: { 'x-csrf-token': csrf },
+        credentials: 'include',
+      });
+      const data: ApiResponse<T> = await response.json();
+      // CSRF token inválido (cookie rotó) — limpiar caché y reintentar una vez
+      if (!data.success && data.error?.code === 'CSRF_INVALID' && !isRetry) {
+        this.csrfToken = null;
+        return this.postForm<T>(endpoint, formData, true);
+      }
+      return data;
+    } catch (error) {
+      console.error('API form request failed:', error);
+      throw error;
+    }
+  }
+
   // Auth methods
   async login(username: string, password: string) {
     const response = await this.post<{ user: User }>('/auth/login', { username, password });
