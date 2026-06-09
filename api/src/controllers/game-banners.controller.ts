@@ -26,8 +26,8 @@ export class GameBannersController {
       if (!req.file) {
         return res.status(400).json(ApiResponseBuilder.error('BAD_REQUEST', 'No file provided'));
       }
-      const sortOrder =
-        req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : undefined;
+      const parsedSort = req.body.sortOrder !== undefined ? Number(req.body.sortOrder) : undefined;
+      const sortOrder = parsedSort !== undefined && Number.isFinite(parsedSort) ? parsedSort : undefined;
       const banner = await gameBannersDomain.createWithImage(
         {
           buffer: req.file.buffer,

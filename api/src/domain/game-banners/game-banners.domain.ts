@@ -21,19 +21,23 @@ export class GameBannersDomain {
 
   async createWithImage(file: BannerImageFile, sortOrder?: number): Promise<GameBanner> {
     const banner = await gameBannersRepository.create({ sortOrder });
+    const filePath = `banners/${banner.id}/${Date.now()}-${file.originalname}`;
+    let uploaded = false;
     try {
-      const filePath = `banners/${banner.id}/${Date.now()}-${file.originalname}`;
-      const imageUrl = await supabaseStorage.uploadFile(
-        BUCKET,
-        filePath,
-        file.buffer,
-        file.mimetype
-      );
+      const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, file.buffer, file.mimetype);
+      uploaded = true;
       await gameBannersRepository.setImageUrl(banner.id, imageUrl);
       return { ...banner, imageUrl };
     } catch (err) {
       // roll back the orphan row so we never leave an image-less banner
       await gameBannersRepository.delete(banner.id);
+      if (uploaded) {
+        try {
+          await supabaseStorage.deleteFile(BUCKET, filePath);
+        } catch {
+          // object may not exist; rollback cleanup is best-effort
+        }
+      }
       throw err;
     }
   }
@@ -44,6 +48,7 @@ export class GameBannersDomain {
     const filePath = `banners/${id}/${Date.now()}-${file.originalname}`;
     const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, file.buffer, file.mimetype);
     await gameBannersRepository.setImageUrl(id, imageUrl);
+    await this.deleteStoredImage(banner.imageUrl);
     return { ...banner, imageUrl };
   }
 
@@ -54,18 +59,20 @@ export class GameBannersDomain {
   async delete(id: string): Promise<boolean> {
     const deleted = await gameBannersRepository.delete(id);
     if (!deleted) return false;
-    if (deleted.imageUrl) {
-      const path = supabaseStorage.pathFromPublicUrl(BUCKET, deleted.imageUrl);
-      if (path) {
-        try {
-          await supabaseStorage.deleteFile(BUCKET, path);
-        } catch (err) {
-          // row is already gone; a storage cleanup failure must not fail the delete
-          console.error(`Failed to delete banner image from storage: ${path}`, err);
-        }
-      }
-    }
+    await this.deleteStoredImage(deleted.imageUrl);
     return true;
+  }
+
+  private async deleteStoredImage(imageUrl: string | null | undefined): Promise<void> {
+    if (!imageUrl) return;
+    const path = supabaseStorage.pathFromPublicUrl(BUCKET, imageUrl);
+    if (!path) return;
+    try {
+      await supabaseStorage.deleteFile(BUCKET, path);
+    } catch (err) {
+      // best-effort cleanup; a storage failure must not fail the operation
+      console.error(`Failed to delete banner image from storage: ${path}`, err);
+    }
   }
 }
 

@@ -76,4 +76,35 @@ describe('GameBannersDomain', () => {
     expect(await gameBannersDomain.delete('x')).toBe(false);
     expect(supabaseStorage.deleteFile).not.toHaveBeenCalled();
   });
+
+  it('replaceImage deletes the previous image object after uploading the new one', async () => {
+    (gameBannersRepository.findById as jest.Mock).mockResolvedValue({
+      id: 'b1', imageUrl: 'http://x/banner-images/banners/b1/old.png'
+    });
+    (supabaseStorage.uploadFile as jest.Mock).mockResolvedValue(
+      'http://x/banner-images/banners/b1/2-a.png'
+    );
+    (supabaseStorage.pathFromPublicUrl as jest.Mock).mockReturnValue('banners/b1/old.png');
+    const res = await gameBannersDomain.replaceImage('b1', file);
+    expect(gameBannersRepository.setImageUrl).toHaveBeenCalledWith('b1', 'http://x/banner-images/banners/b1/2-a.png');
+    expect(supabaseStorage.deleteFile).toHaveBeenCalledWith('banner-images', 'banners/b1/old.png');
+    expect(res?.imageUrl).toContain('2-a.png');
+  });
+
+  it('replaceImage does not call deleteFile when there was no previous image', async () => {
+    (gameBannersRepository.findById as jest.Mock).mockResolvedValue({ id: 'b1', imageUrl: null });
+    (supabaseStorage.uploadFile as jest.Mock).mockResolvedValue('http://x/banner-images/banners/b1/2-a.png');
+    await gameBannersDomain.replaceImage('b1', file);
+    expect(supabaseStorage.deleteFile).not.toHaveBeenCalled();
+  });
+
+  it('createWithImage does not delete any object when the upload itself fails', async () => {
+    (gameBannersRepository.create as jest.Mock).mockResolvedValue({
+      id: 'b1', gameId: null, sortOrder: 1, isActive: true, imageUrl: null
+    });
+    (supabaseStorage.uploadFile as jest.Mock).mockRejectedValue(new Error('boom'));
+    await expect(gameBannersDomain.createWithImage(file)).rejects.toThrow('boom');
+    expect(gameBannersRepository.delete).toHaveBeenCalledWith('b1');
+    expect(supabaseStorage.deleteFile).not.toHaveBeenCalled();
+  });
 });
