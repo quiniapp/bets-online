@@ -398,27 +398,26 @@ export interface UpdateFeaturedGameDto {
  */
 export interface GameBanner {
   id: string;
-  gameId: string;
+  gameId?: string | null;       // legacy, unused — banners are standalone images
   sortOrder: number;
   isActive: boolean;
-  imageUrl?: string | null;   // custom banner image (overrides game thumbnail in hero)
+  imageUrl?: string | null;     // public Supabase Storage URL of the banner image
   createdAt: Date;
   updatedAt: Date;
 }
 
 /**
- * Game Banner with embedded game data (for public reads)
+ * Game Banner with optional embedded game data (legacy; banners are standalone)
  */
 export interface GameBannerWithGame extends GameBanner {
-  game: Game;
+  game?: Game | null;
 }
 
 /**
- * Create Game Banner DTO
+ * Create Game Banner DTO — image is sent as multipart, not in the body
  */
 export interface CreateGameBannerDto {
-  gameId: string;
-  sortOrder: number;
+  sortOrder?: number;
 }
 
 /**

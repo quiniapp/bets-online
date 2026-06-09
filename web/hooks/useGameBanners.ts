@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
-import type { GameBannerWithGame, CreateGameBannerDto, UpdateGameBannerDto } from 'helper';
+import type { GameBanner, UpdateGameBannerDto } from 'helper';
 
 export function useGameBanners() {
-  const [items, setItems] = useState<GameBannerWithGame[]>([]);
+  const [items, setItems] = useState<GameBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const response = await apiService.get<GameBannerWithGame[]>('/admin/banners');
+    const response = await apiService.get<GameBanner[]>('/admin/banners');
     if (response.success && response.data) {
       setItems(response.data);
     }
@@ -18,22 +18,13 @@ export function useGameBanners() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const create = async (data: CreateGameBannerDto) => {
-    const response = await apiService.post<{ gameBanner: GameBannerWithGame; message: string }>(
-      '/admin/banners',
-      data
-    );
-    if (response.success) await fetchAll();
-    return response;
-  };
-
   const update = async (id: string, data: UpdateGameBannerDto) => {
-    const response = await apiService.patch<{ gameBanner: GameBannerWithGame; message: string }>(
+    const response = await apiService.patch<{ gameBanner: GameBanner; message: string }>(
       `/admin/banners/${id}`,
       data
     );
     if (response.success) {
-      setItems(prev => prev.map(item => item.id === id ? { ...item, ...data } : item));
+      setItems(prev => prev.map(item => (item.id === id ? { ...item, ...data } : item)));
     }
     return response;
   };
@@ -44,7 +35,7 @@ export function useGameBanners() {
     return response;
   };
 
-  const saveOrder = async (ordered: GameBannerWithGame[]) => {
+  const saveOrder = async (ordered: GameBanner[]) => {
     setSaving(true);
     try {
       await Promise.all(
@@ -59,7 +50,5 @@ export function useGameBanners() {
     }
   };
 
-  const maxSortOrder = items.length > 0 ? Math.max(...items.map(i => i.sortOrder)) : 0;
-
-  return { items, setItems, loading, saving, fetchAll, create, update, remove, saveOrder, maxSortOrder };
+  return { items, setItems, loading, saving, fetchAll, update, remove, saveOrder };
 }
