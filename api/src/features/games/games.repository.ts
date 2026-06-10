@@ -1,6 +1,19 @@
 import { GameModel } from '../../persistence/models';
 import { Game, CreateGameDto, UpdateGameDto } from 'helper';
-import { Transaction, Op, QueryTypes, literal } from 'sequelize';
+import { Transaction, Op, QueryTypes, literal, Order } from 'sequelize';
+
+// Catalog order: provider (admin sort) → game type within provider (per-provider
+// rule first, global game_types sort as fallback) → game sort within provider+type
+// → name. NULL sort_orders sink via COALESCE(…, max int).
+const GAME_ORDER: Order = [
+  [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+  [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+  [literal(`COALESCE((SELECT pgto.sort_order FROM provider_game_type_orders pgto WHERE pgto.provider_name = "GameModel"."provider_name" AND pgto.game_type = "GameModel"."game_type"), 2147483647)`), 'ASC'],
+  [literal(`COALESCE((SELECT sort_order FROM game_types WHERE name = "GameModel"."game_type"), 2147483647)`), 'ASC'],
+  [literal(`COALESCE("GameModel"."game_type", '')`), 'ASC'],
+  [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+  ['name', 'ASC']
+];
 
 export class GamesRepository {
   async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
@@ -99,12 +112,7 @@ export class GamesRepository {
     const where = activeOnly ? { isActive: true } : {};
     const games = await GameModel.findAll({
       where,
-      order: [
-        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
-        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
-        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
-        ['name', 'ASC']
-      ]
+      order: GAME_ORDER
     });
     return games.map(g => this.mapToGame(g));
   }
@@ -129,12 +137,7 @@ export class GamesRepository {
     if (search) where['name'] = { [Op.iLike]: `%${search}%` };
     const { rows, count } = await GameModel.findAndCountAll({
       where,
-      order: [
-        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
-        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
-        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
-        ['name', 'ASC']
-      ],
+      order: GAME_ORDER,
       limit,
       offset
     });
