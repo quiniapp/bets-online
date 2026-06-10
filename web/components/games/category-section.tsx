@@ -5,8 +5,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
-
-const GRID = "grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-1.5 sm:gap-2"
+import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, twoRowItemClass } from "@/lib/two-row-grid"
 
 interface CategorySectionProps {
   title: string
@@ -17,7 +16,7 @@ interface CategorySectionProps {
   onShowAll?: (gameType: string) => void
 }
 
-const CategorySection = ({ title, emoji, gameType, providerName, limit = 8, onShowAll }: CategorySectionProps) => {
+const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, onShowAll }: CategorySectionProps) => {
   const { games, loading } = useGames({ activeOnly: true, gameType: gameType ?? null, providerName: providerName ?? null })
   const { user } = useAuth()
   const router = useRouter()
@@ -37,7 +36,9 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = 8, onSh
         <div className="h-5 w-40 bg-accent animate-pulse rounded mb-3" />
         <div className={GRID}>
           {[...Array(limit)].map((_, i) => (
-            <div key={i} className="aspect-square bg-accent animate-pulse rounded-xl" />
+            <div key={i} className={twoRowItemClass(i)}>
+              <div className="aspect-square bg-accent animate-pulse rounded-xl" />
+            </div>
           ))}
         </div>
       </div>
@@ -64,8 +65,10 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = 8, onSh
         )}
       </div>
       <div className={GRID}>
-        {games.slice(0, limit).map(game => (
-          <GameCard key={game.id} game={game} onClick={() => handleGameClick(game.id)} />
+        {games.slice(0, limit).map((game, idx) => (
+          <div key={game.id} className={twoRowItemClass(idx)}>
+            <GameCard game={game} onClick={() => handleGameClick(game.id)} />
+          </div>
         ))}
       </div>
     </div>

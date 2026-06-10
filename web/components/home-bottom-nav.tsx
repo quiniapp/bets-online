@@ -2,6 +2,7 @@
 
 import { Grid3x3, Gamepad2, Tv2, Flame, CircleDot, Trophy, Layers, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MAX_BOTTOM_NAV_VISIBLE, type BottomNavItem } from "helper"
 
 const typeConfig: Record<string, { label: string; icon: LucideIcon }> = {
   videoSlots:   { label: "Casino",        icon: Gamepad2  },
@@ -17,21 +18,25 @@ const typeConfig: Record<string, { label: string; icon: LucideIcon }> = {
   Plinko:       { label: "Plinko",        icon: Layers    },
 }
 
-const MAX_CATEGORY_ITEMS = 5
-
 interface HomeBottomNavProps {
   selected: string | null
   onSelect: (type: string | null) => void
   headerCategories?: string[]
   availableTypes?: string[]
+  bottomNavItems?: BottomNavItem[]
 }
 
-export function HomeBottomNav({ selected, onSelect, headerCategories, availableTypes }: HomeBottomNavProps) {
-  const orderedTypes = headerCategories
-    ? headerCategories
-        .filter(t => !availableTypes?.length || availableTypes.includes(t))
-        .slice(0, MAX_CATEGORY_ITEMS)
-    : []
+export function HomeBottomNav({ selected, onSelect, headerCategories, availableTypes, bottomNavItems }: HomeBottomNavProps) {
+  const existsInCatalog = (t: string) => !availableTypes?.length || availableTypes.includes(t)
+  // Admin-configured order/visibility; fallback to header categories when unset.
+  const orderedTypes = bottomNavItems?.length
+    ? bottomNavItems
+        .filter(i => i.visible && existsInCatalog(i.categoryType))
+        .slice(0, MAX_BOTTOM_NAV_VISIBLE)
+        .map(i => i.categoryType)
+    : (headerCategories ?? [])
+        .filter(existsInCatalog)
+        .slice(0, MAX_BOTTOM_NAV_VISIBLE)
 
   return (
     <nav

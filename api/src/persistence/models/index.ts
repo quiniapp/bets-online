@@ -19,6 +19,7 @@ import FeaturedGameModel from '../../features/featured-games/featured-game.model
 import GameBannerModel from '../../features/game-banners/game-banner.model';
 import GameImageModel from '../../features/game-images/game-image.model';
 import CasinoSettingsModel from '../../features/settings/casino-settings.model';
+import ProviderGameTypeOrderModel from '../../features/provider-type-orders/provider-game-type-order.model';
 
 // ===================================
 // USER ASSOCIATIONS
@@ -310,7 +311,8 @@ export {
   FeaturedGameModel,
   GameBannerModel,
   GameImageModel,
-  CasinoSettingsModel
+  CasinoSettingsModel,
+  ProviderGameTypeOrderModel
 };
 
 export default {
@@ -334,5 +336,6 @@ export default {
   FeaturedGameModel,
   GameBannerModel,
   GameImageModel,
-  CasinoSettingsModel
+  CasinoSettingsModel,
+  ProviderGameTypeOrderModel
 };

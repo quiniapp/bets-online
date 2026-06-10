@@ -27,6 +27,7 @@ function mapToSettings(model: CasinoSettingsModel): CasinoSettings {
     headerCategories: plain.headerCategories,
     lobbySlots: plain.lobbySlots,
     footerLinks: plain.footerLinks,
+    bottomNavItems: plain.bottomNavItems ?? [],
     updatedAt: new Date(plain.updatedAt),
   };
 }
@@ -41,6 +42,7 @@ export class CasinoSettingsRepository {
         headerCategories: DEFAULT_HEADER_CATEGORIES,
         lobbySlots: DEFAULT_LOBBY_SLOTS,
         footerLinks: DEFAULT_FOOTER_LINKS,
+        bottomNavItems: [],
         updatedAt: new Date(),
       };
     }
@@ -54,6 +56,7 @@ export class CasinoSettingsRepository {
       headerCategories: patch.headerCategories ?? current.headerCategories,
       lobbySlots: patch.lobbySlots ?? current.lobbySlots,
       footerLinks: patch.footerLinks ?? current.footerLinks,
+      bottomNavItems: patch.bottomNavItems ?? current.bottomNavItems,
     }, { returning: true, conflictFields: ['owner_id'] });
     if (!record) {
       throw new Error('CasinoSettings upsert failed: no record returned');

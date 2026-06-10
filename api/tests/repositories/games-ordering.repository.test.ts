@@ -8,22 +8,35 @@ jest.mock('../../src/persistence/models', () => ({
   }
 }));
 
+// Catalog order: provider sort → provider name → per-provider type rule →
+// global game_types sort → game_type name → game sort → name.
+function assertCatalogOrder(order: unknown): void {
+  const orderStr = JSON.stringify(order);
+  expect(orderStr).toContain('2147483647');
+  const providerSort = orderStr.indexOf('SELECT sort_order FROM providers');
+  const typeRule = orderStr.indexOf('FROM provider_game_type_orders');
+  const globalTypeSort = orderStr.indexOf('SELECT sort_order FROM game_types');
+  const typeName = orderStr.indexOf('COALESCE(\\"GameModel\\".\\"game_type\\"');
+  const gameSort = orderStr.indexOf('COALESCE(\\"GameModel\\".\\"sort_order\\"');
+  expect(providerSort).toBeGreaterThanOrEqual(0);
+  expect(typeRule).toBeGreaterThan(providerSort);
+  expect(globalTypeSort).toBeGreaterThan(typeRule);
+  expect(typeName).toBeGreaterThan(globalTypeSort);
+  expect(gameSort).toBeGreaterThan(typeName);
+}
+
 describe('GamesRepository ordering', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('findAll uses provider sort_order then game sort_order ORDER BY', async () => {
+  it('findAll orders by provider, per-provider type rule, global type sort, then game sort', async () => {
     await gamesRepository.findAll(false);
     const call = (GameModel.findAll as jest.Mock).mock.calls[0][0];
-    const orderStr = JSON.stringify(call.order);
-    expect(orderStr).toContain('sort_order');
-    expect(orderStr).toContain('2147483647');
+    assertCatalogOrder(call.order);
   });
 
-  it('findPaginated uses provider sort_order then game sort_order ORDER BY', async () => {
+  it('findPaginated orders by provider, per-provider type rule, global type sort, then game sort', async () => {
     await gamesRepository.findPaginated(1, 10);
     const call = (GameModel.findAndCountAll as jest.Mock).mock.calls[0][0];
-    const orderStr = JSON.stringify(call.order);
-    expect(orderStr).toContain('sort_order');
-    expect(orderStr).toContain('2147483647');
+    assertCatalogOrder(call.order);
   });
 });
