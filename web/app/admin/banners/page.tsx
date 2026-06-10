@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useGameBanners } from "@/hooks/useGameBanners"
+import { apiService } from "@/services/api.service"
 import type { GameBanner } from "helper"
 
 function BannerThumb({ url }: { url?: string | null }) {
@@ -59,12 +60,7 @@ function ReplaceImageButton({
     formData.append("image", file)
     setUploading(true)
     try {
-      const res = await fetch(`/api/admin/banners/${bannerId}/image`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      })
-      const json = await res.json()
+      const json = await apiService.postForm(`/admin/banners/${bannerId}/image`, formData)
       if (json.success) onUploaded()
       else toast({ title: "Error al subir la imagen", variant: "destructive" })
     } catch {
@@ -172,12 +168,7 @@ function UploadBannerButton({ onUploaded }: { onUploaded: () => void }) {
     formData.append("image", file)
     setUploading(true)
     try {
-      const res = await fetch(`/api/admin/banners`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      })
-      const json = await res.json()
+      const json = await apiService.postForm(`/admin/banners`, formData)
       if (json.success) onUploaded()
       else toast({ title: "Error al subir el banner", variant: "destructive" })
     } catch {
