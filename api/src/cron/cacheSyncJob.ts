@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { userCache } from '../persistence/cache/user.cache';
-import { sessionsRepository } from '../persistence/repositories/sessions.repository';
+import { sessionsRepository } from '../features/auth/sessions.repository';
 
 export function startCacheSyncJob(): void {
   cron.schedule('0 */6 * * *', () => {

@@ -1,7 +1,7 @@
-import { gamesDomain } from '../domain/games/games.domain';
-import { providersDomain } from '../domain/providers/providers.domain';
-import { featuredGamesDomain } from '../domain/featured-games/featured-games.domain';
-import { settingsDomain } from '../domain/settings/settings.domain';
+import { gamesDomain } from '../features/games/games.domain';
+import { providersDomain } from '../features/providers/providers.domain';
+import { featuredGamesDomain } from '../features/featured-games/featured-games.domain';
+import { settingsDomain } from '../features/settings/settings.domain';
 import { CACHE_PAGE, CACHE_LIMIT } from './games-cache';
 import { logger } from './logger';
 

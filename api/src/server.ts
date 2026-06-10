@@ -8,7 +8,7 @@ import { config } from './config';
 import { testConnection } from './config/database';
 import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import routes from './routes';
-import viralCallbackRoutes from './routes/integrations/21viral/callbacks';
+import viralCallbackRoutes from './features/integrations/21viral/callbacks.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { globalLimiter } from './middleware/rateLimiter.middleware';
 import { startGameSyncJob } from './cron/gameSyncJob';

@@ -2,7 +2,7 @@
 process.env.VIRAL_USERNAME = 'testuser';
 process.env.VIRAL_SECRET_KEY = 'a'.repeat(32);
 
-import { viralService } from '../../src/services/viral.service';
+import { viralService } from '../../src/features/integrations/21viral/viral.service';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;

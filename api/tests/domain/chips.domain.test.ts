@@ -1,20 +1,20 @@
 import { UserRole, ChipMovementType, ErrorCode } from 'helper';
 
-jest.mock('../../src/persistence/models/index', () => ({}));
-jest.mock('../../src/persistence/repositories/users.repository', () => ({
+jest.mock('../../src/persistence/models', () => ({}));
+jest.mock('../../src/features/users/users.repository', () => ({
   usersRepository: {
     findById: jest.fn(),
     findDescendants: jest.fn()
   }
 }));
-jest.mock('../../src/persistence/repositories/balances.repository', () => ({
+jest.mock('../../src/features/chips/balances.repository', () => ({
   balancesRepository: {
     findByUserId: jest.fn(),
     findByUserIdWithLock: jest.fn(),
     atomicIncrement: jest.fn()
   }
 }));
-jest.mock('../../src/persistence/repositories/chip-movements.repository', () => ({
+jest.mock('../../src/features/chips/chip-movements.repository', () => ({
   chipMovementsRepository: {
     findByIdempotencyKey: jest.fn(),
     findByUserId: jest.fn(),
@@ -27,10 +27,10 @@ jest.mock('../../src/config/sequelize', () => ({
   }
 }));
 
-import { ChipsDomain } from '../../src/domain/chips/chips.domain';
-import { usersRepository } from '../../src/persistence/repositories/users.repository';
-import { balancesRepository } from '../../src/persistence/repositories/balances.repository';
-import { chipMovementsRepository } from '../../src/persistence/repositories/chip-movements.repository';
+import { ChipsDomain } from '../../src/features/chips/chips.domain';
+import { usersRepository } from '../../src/features/users/users.repository';
+import { balancesRepository } from '../../src/features/chips/balances.repository';
+import { chipMovementsRepository } from '../../src/features/chips/chip-movements.repository';
 import { sequelize } from '../../src/config/sequelize';
 
 const mockTransaction = {
