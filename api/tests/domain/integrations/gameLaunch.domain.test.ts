@@ -1,11 +1,11 @@
-import { gameLaunchDomain } from '../../../src/domain/integrations/21viral/gameLaunch.domain';
-import { viralService } from '../../../src/services/viral.service';
-import { gamesRepository } from '../../../src/persistence/repositories/games.repository';
-import { providersRepository } from '../../../src/persistence/repositories/providers.repository';
-import { gameTypesRepository } from '../../../src/persistence/repositories/game-types.repository';
-import { userProviderProfileRepository } from '../../../src/persistence/repositories/userProviderProfile.repository';
-import { balancesRepository } from '../../../src/persistence/repositories/balances.repository';
-import { usersRepository } from '../../../src/persistence/repositories/users.repository';
+import { gameLaunchDomain } from '../../../src/features/integrations/21viral/gameLaunch.domain';
+import { viralService } from '../../../src/features/integrations/21viral/viral.service';
+import { gamesRepository } from '../../../src/features/games/games.repository';
+import { providersRepository } from '../../../src/features/providers/providers.repository';
+import { gameTypesRepository } from '../../../src/features/game-types/game-types.repository';
+import { userProviderProfileRepository } from '../../../src/features/integrations/21viral/userProviderProfile.repository';
+import { balancesRepository } from '../../../src/features/chips/balances.repository';
+import { usersRepository } from '../../../src/features/users/users.repository';
 import { UserRole } from 'helper';
 
 jest.mock('../../../src/config', () => ({
@@ -18,42 +18,42 @@ jest.mock('../../../src/config', () => ({
   }
 }));
 
-jest.mock('../../../src/services/viral.service', () => ({
+jest.mock('../../../src/features/integrations/21viral/viral.service', () => ({
   viralService: {
     getGames: jest.fn(),
     createGameSession: jest.fn()
   }
 }));
-jest.mock('../../../src/persistence/repositories/games.repository', () => ({
+jest.mock('../../../src/features/games/games.repository', () => ({
   gamesRepository: {
     findById: jest.fn(),
     upsertFromProvider: jest.fn(),
     findPaginated: jest.fn().mockResolvedValue({ games: [], total: 0 })
   }
 }));
-jest.mock('../../../src/persistence/repositories/providers.repository', () => ({
+jest.mock('../../../src/features/providers/providers.repository', () => ({
   providersRepository: {
     upsertByName: jest.fn().mockResolvedValue(undefined)
   }
 }));
-jest.mock('../../../src/persistence/repositories/game-types.repository', () => ({
+jest.mock('../../../src/features/game-types/game-types.repository', () => ({
   gameTypesRepository: {
     upsertByName: jest.fn().mockResolvedValue(undefined)
   }
 }));
-jest.mock('../../../src/persistence/repositories/userProviderProfile.repository', () => ({
+jest.mock('../../../src/features/integrations/21viral/userProviderProfile.repository', () => ({
   userProviderProfileRepository: {
     findByUserId: jest.fn(),
     create: jest.fn(),
     updateCurrentGame: jest.fn()
   }
 }));
-jest.mock('../../../src/persistence/repositories/balances.repository', () => ({
+jest.mock('../../../src/features/chips/balances.repository', () => ({
   balancesRepository: {
     findByUserId: jest.fn()
   }
 }));
-jest.mock('../../../src/persistence/repositories/users.repository', () => ({
+jest.mock('../../../src/features/users/users.repository', () => ({
   usersRepository: {
     findById: jest.fn()
   }

@@ -1,4 +1,4 @@
-import { BalancesRepository } from '../../src/persistence/repositories/balances.repository';
+import { BalancesRepository } from '../../src/features/chips/balances.repository';
 
 describe('BalancesRepository.updateChipBalance', () => {
   it('should export updateChipBalance method', () => {

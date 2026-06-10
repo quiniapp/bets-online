@@ -1,4 +1,4 @@
-jest.mock('../../src/persistence/repositories/game-banners.repository', () => ({
+jest.mock('../../src/features/game-banners/game-banners.repository', () => ({
   gameBannersRepository: {
     create: jest.fn(),
     setImageUrl: jest.fn(),
@@ -17,8 +17,8 @@ jest.mock('../../src/services/supabase-storage.service', () => ({
   }
 }));
 
-import { gameBannersDomain } from '../../src/domain/game-banners/game-banners.domain';
-import { gameBannersRepository } from '../../src/persistence/repositories/game-banners.repository';
+import { gameBannersDomain } from '../../src/features/game-banners/game-banners.domain';
+import { gameBannersRepository } from '../../src/features/game-banners/game-banners.repository';
 import { supabaseStorage } from '../../src/services/supabase-storage.service';
 
 const file = { buffer: Buffer.from('x'), originalname: 'a.png', mimetype: 'image/png' };

@@ -1,7 +1,7 @@
-import { gameBannersRepository } from '../../src/persistence/repositories/game-banners.repository';
-import { GameBannerModel } from '../../src/persistence/models/game-banner.model';
+import { gameBannersRepository } from '../../src/features/game-banners/game-banners.repository';
+import { GameBannerModel } from '../../src/features/game-banners/game-banner.model';
 
-jest.mock('../../src/persistence/models/game-banner.model', () => ({
+jest.mock('../../src/features/game-banners/game-banner.model', () => ({
   GameBannerModel: {
     create: jest.fn(),
     findAll: jest.fn().mockResolvedValue([]),

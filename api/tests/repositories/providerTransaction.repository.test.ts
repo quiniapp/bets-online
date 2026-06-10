@@ -1,4 +1,4 @@
-import { ProviderTransactionRepository } from '../../src/persistence/repositories/providerTransaction.repository';
+import { ProviderTransactionRepository } from '../../src/features/integrations/21viral/providerTransaction.repository';
 import { TransactionType } from 'helper';
 import { sequelize } from '../../src/config/sequelize';
 

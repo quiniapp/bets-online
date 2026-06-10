@@ -8,9 +8,7 @@
     "baseUrl": "./src",
     "paths": {
       "@/*": ["./*"],
-      "@routes/*": ["./routes/*"],
-      "@controllers/*": ["./controllers/*"],
-      "@domain/*": ["./domain/*"],
+      "@features/*": ["./features/*"],
       "@persistence/*": ["./persistence/*"],
       "@middleware/*": ["./middleware/*"],
       "@config/*": ["./config/*"],
