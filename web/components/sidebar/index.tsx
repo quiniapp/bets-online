@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { useLanguage } from "@/contexts/language-context";
 
@@ -45,7 +46,9 @@ export function Sidebar({ className }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
-        <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
+        <Link href="/" aria-label="Ir al inicio">
+          <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
+        </Link>
       </div>
 
    

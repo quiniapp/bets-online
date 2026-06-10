@@ -6,18 +6,23 @@ export interface CachedPage {
 }
 
 export const CACHE_PAGE = 1;
-export const CACHE_LIMIT = 50;
+export const CACHE_LIMIT = 30;
 
-// Key: `${activeOnly ? '1' : '0'}:${gameType ?? ''}:${limit}`
+// Key: `${activeOnly ? '1' : '0'}:${gameType ?? ''}:${providerName ?? ''}:${limit}`
 const store = new Map<string, CachedPage | Promise<CachedPage>>();
 let _providers: Provider[] | Promise<Provider[]> | null = null;
 let _gameTypes: string[] | Promise<string[]> | null = null;
 
-function pageKey(activeOnly: boolean, gameType: string | undefined, limit: number): string {
-  return `${activeOnly ? '1' : '0'}:${gameType ?? ''}:${limit}`;
+function pageKey(activeOnly: boolean, gameType: string | undefined, providerName: string | undefined, limit: number): string {
+  return `${activeOnly ? '1' : '0'}:${gameType ?? ''}:${providerName ?? ''}:${limit}`;
 }
 
-type PageRefreshFn = (activeOnly: boolean, gameType: string | undefined, limit: number) => Promise<CachedPage>;
+type PageRefreshFn = (
+  activeOnly: boolean,
+  gameType: string | undefined,
+  providerName: string | undefined,
+  limit: number
+) => Promise<CachedPage>;
 
 export const gamesCache = {
   /**
@@ -27,10 +32,11 @@ export const gamesCache = {
   getOrFetch(
     activeOnly: boolean,
     gameType: string | undefined,
+    providerName: string | undefined,
     limit: number,
     fetch: () => Promise<CachedPage>
   ): Promise<CachedPage> {
-    const key = pageKey(activeOnly, gameType, limit);
+    const key = pageKey(activeOnly, gameType, providerName, limit);
     const existing = store.get(key);
     if (existing !== undefined) {
       return existing instanceof Promise ? existing : Promise.resolve(existing);
@@ -52,8 +58,9 @@ export const gamesCache = {
       const parts = key.split(':');
       const activeOnly = parts[0] === '1';
       const gameType = parts[1] || undefined;
-      const limit = parseInt(parts[2], 10);
-      const promise = refresh(activeOnly, gameType, limit)
+      const providerName = parts[2] || undefined;
+      const limit = parseInt(parts[3], 10);
+      const promise = refresh(activeOnly, gameType, providerName, limit)
         .then(d => { store.set(key, d); return d; })
         .catch(e => { store.delete(key); console.error(`[GamesCache] refresh ${key} failed:`, e); throw e; });
       store.set(key, promise);

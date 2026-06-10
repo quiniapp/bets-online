@@ -94,7 +94,7 @@ export const useSidebarNavigation = () => {
         { title: "Proveedores", href: "/admin/providers" },
         { title: "Destacados", href: "/admin/featured-games" },
         { title: "Banners", href: "/admin/banners" },
-        { title: "Juegos", href: "/admin/settings/casino" },
+        { title: "Personalización", href: "/admin/settings/casino" },
       ],
     },
     {

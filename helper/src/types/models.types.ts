@@ -485,12 +485,21 @@ export interface FooterLink {
   visible: boolean
 }
 
+/**
+ * Item of the mobile bottom navbar (Lobby is implicit and always first; not stored)
+ */
+export interface BottomNavItem {
+  categoryType: string
+  visible: boolean
+}
+
 export interface CasinoSettings {
   id: string
   ownerId: string
   headerCategories: string[]
   lobbySlots: LobbySlot[]
   footerLinks: FooterLink[]
+  bottomNavItems: BottomNavItem[]
   updatedAt: Date
 }
 
@@ -498,4 +507,31 @@ export interface UpdateCasinoSettingsDto {
   headerCategories?: string[]
   lobbySlots?: LobbySlot[]
   footerLinks?: FooterLink[]
+  bottomNavItems?: BottomNavItem[]
+}
+
+/**
+ * Per-provider game-type ordering rule. Games of a provider are grouped by
+ * type following these sort orders; types without a rule fall back to the
+ * global GameType.sortOrder.
+ */
+export interface ProviderGameTypeOrder {
+  id: string
+  providerName: string
+  gameType: string
+  sortOrder: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * Effective type-order item for a provider as consumed/produced by the admin
+ * editor: every distinct game_type of the provider, with its rule sortOrder
+ * (null = no rule yet) and the global display name if any.
+ */
+export interface ProviderTypeOrderItem {
+  gameType: string
+  sortOrder: number | null
+  displayName?: string | null
+  gamesCount?: number
 }

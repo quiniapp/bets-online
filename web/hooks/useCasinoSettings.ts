@@ -22,6 +22,7 @@ export function useCasinoSettings() {
     headerCategories: settings?.headerCategories ?? DEFAULT_HEADER_CATEGORIES,
     lobbySlots: settings?.lobbySlots ?? [],
     footerLinks: settings?.footerLinks ?? [],
+    bottomNavItems: settings?.bottomNavItems ?? [],
     loading,
   };
 }

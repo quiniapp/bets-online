@@ -1,6 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../../config/sequelize';
-import type { LobbySlot, FooterLink } from 'helper';
+import type { LobbySlot, FooterLink, BottomNavItem } from 'helper';
 
 export class CasinoSettingsModel extends Model {
   declare id: string;
@@ -8,6 +8,7 @@ export class CasinoSettingsModel extends Model {
   declare headerCategories: string[];
   declare lobbySlots: LobbySlot[];
   declare footerLinks: FooterLink[];
+  declare bottomNavItems: BottomNavItem[];
   declare updatedAt: Date;
   declare createdAt: Date;
 }
@@ -47,6 +48,12 @@ CasinoSettingsModel.init(
       allowNull: false,
       defaultValue: [],
       field: 'footer_links'
+    },
+    bottomNavItems: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+      field: 'bottom_nav_items'
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -31,6 +31,18 @@ export const DEFAULT_LIMIT = 10;
 export const MAX_LIMIT = 100;
 
 /**
+ * Game lists page size — shared by web sections, admin lists and the API
+ * cache warmup so page-1 requests always hit the same cache key.
+ */
+export const GAMES_PAGE_LIMIT = 30;
+
+/**
+ * Casino layout constraints
+ */
+export const MAX_LOBBY_SLOTS = 10;
+export const MAX_BOTTOM_NAV_VISIBLE = 6;
+
+/**
  * Token Expiration
  */
 export const ACCESS_TOKEN_EXPIRY = '15m';

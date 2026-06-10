@@ -40,7 +40,12 @@ jest.mock('sequelize', () => {
       ),
       query: jest.fn().mockResolvedValue([])
     })),
-    DataTypes: actual.DataTypes
+    DataTypes: actual.DataTypes,
+    // Non-enumerable in sequelize v6 → lost by the spread; repositories use
+    // them at module level (GAME_ORDER literals), so re-export explicitly.
+    literal: actual.literal,
+    Op: actual.Op,
+    QueryTypes: actual.QueryTypes
   };
 });
 

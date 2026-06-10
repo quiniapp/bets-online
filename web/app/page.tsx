@@ -23,7 +23,7 @@ export default function LandingPage() {
   const [search, setSearch] = useState("");
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const debouncedSearch = useDebounce(search, 350);
-  const { lobbySlots, headerCategories } = useCasinoSettings();
+  const { lobbySlots, headerCategories, bottomNavItems } = useCasinoSettings();
 
   useEffect(() => {
     apiService.get<{ types: string[] }>('/games/types').then(res => {
@@ -72,7 +72,6 @@ export default function LandingPage() {
                 title={slot.label}
                 gameType={slot.kind === 'provider' ? null : (slot.categoryType ?? null)}
                 providerName={slot.kind === 'category' ? null : (slot.providerName ?? null)}
-                limit={8}
                 onShowAll={handleShowAll}
               />
             ))}
@@ -85,6 +84,7 @@ export default function LandingPage() {
         onSelect={setSelectedCategory}
         headerCategories={headerCategories}
         availableTypes={availableTypes}
+        bottomNavItems={bottomNavItems}
       />
     </Box>
   );

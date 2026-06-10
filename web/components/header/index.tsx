@@ -124,7 +124,13 @@ const HeaderIndex = () => {
                 <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
                 <div className="flex h-full flex-col">
                     <div className="flex h-14 items-center border-b px-5">
-                        <img src="/logo-small.png" alt="Logo" className="h-8 w-auto max-w-[130px]" />
+                        <button
+                            onClick={() => { setMenuOpen(false); router.push('/') }}
+                            aria-label="Ir al inicio"
+                            className="flex items-center"
+                        >
+                            <img src="/logo-small.png" alt="Logo" className="h-8 w-auto max-w-[130px]" />
+                        </button>
                     </div>
 
                     <ScrollArea className="flex-1 px-3 py-4">

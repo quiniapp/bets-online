@@ -7,8 +7,7 @@ import { apiService } from "@/services/api.service"
 import type { FeaturedGameWithGame } from "helper"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
-
-const GRID = "grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-1.5 sm:gap-2"
+import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, featuredItemClass } from "@/lib/two-row-grid"
 
 interface FeaturedSectionProps {
   onShowAll?: () => void
@@ -73,12 +72,13 @@ const FeaturedSection = ({ onShowAll }: FeaturedSectionProps) => {
         )}
       </div>
       <div className={GRID}>
-        {items.slice(0, 16).map(item => (
-          <GameCard
-            key={item.id}
-            game={item.game!}
-            onClick={() => handleGameClick(item.game!.id)}
-          />
+        {items.slice(0, TWO_ROW_MAX_ITEMS).map((item, idx) => (
+          <div key={item.id} className={featuredItemClass(idx)}>
+            <GameCard
+              game={item.game!}
+              onClick={() => handleGameClick(item.game!.id)}
+            />
+          </div>
         ))}
       </div>
     </div>

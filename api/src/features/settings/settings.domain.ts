@@ -1,8 +1,9 @@
-import { CasinoSettings, UpdateCasinoSettingsDto, UserRole, ErrorCode } from 'helper';
+import { CasinoSettings, UpdateCasinoSettingsDto, UserRole, ErrorCode, MAX_LOBBY_SLOTS } from 'helper';
 import { casinoSettingsRepository } from './casino-settings.repository';
 import { usersRepository } from '../users/users.repository';
 import { AppError } from '../../middleware/error.middleware';
 import { casinoSettingsMemCache } from '../../utils/games-cache';
+import { warmLobbySections } from '../../utils/cache-warmup';
 
 export class SettingsDomain {
   async getCasinoSettings(requesterId?: string): Promise<CasinoSettings> {
@@ -35,11 +36,16 @@ export class SettingsDomain {
     if (requester.role !== UserRole.OWNER) {
       throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Only owners can update casino settings');
     }
-    if (patch.lobbySlots && patch.lobbySlots.length > 10) {
-      throw new AppError(400, ErrorCode.VALIDATION_ERROR, 'Lobby slots cannot exceed 10');
+    if (patch.lobbySlots && patch.lobbySlots.length > MAX_LOBBY_SLOTS) {
+      throw new AppError(400, ErrorCode.VALIDATION_ERROR, `Lobby slots cannot exceed ${MAX_LOBBY_SLOTS}`);
     }
     const updated = await casinoSettingsRepository.patch(requesterId, patch);
     casinoSettingsMemCache.invalidate();
+    if (patch.lobbySlots) {
+      // The home renders one games section per lobby slot — warm the new
+      // combos right away so the first visitor is served from cache.
+      warmLobbySections().catch(() => { /* warmup failure must not fail the PATCH */ });
+    }
     return updated;
   }
 
