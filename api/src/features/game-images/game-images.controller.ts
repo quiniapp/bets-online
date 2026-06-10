@@ -3,6 +3,7 @@ import { ApiResponseBuilder } from 'helper';
 import { GameModel } from '../games/game.model';
 import { gameImagesRepository } from './game-images.repository';
 import { supabaseStorage } from '../../services/supabase-storage.service';
+import { safeImageFileName } from '../../utils/storage-key.utils';
 
 const BUCKET = 'game-images';
 
@@ -39,7 +40,7 @@ export class GameImagesController {
       if (!game) {
         return res.status(404).json(ApiResponseBuilder.error('NOT_FOUND', 'Game not found'));
       }
-      const filePath = `games/${gameId}/${Date.now()}-${req.file.originalname}`;
+      const filePath = `games/${gameId}/${safeImageFileName(req.file.originalname)}`;
       const url = await supabaseStorage.uploadFile(
         BUCKET,
         filePath,

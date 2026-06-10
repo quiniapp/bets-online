@@ -1,6 +1,7 @@
 import { GameBanner, UpdateGameBannerDto } from 'helper';
 import { gameBannersRepository } from './game-banners.repository';
 import { supabaseStorage } from '../../services/supabase-storage.service';
+import { safeImageFileName } from '../../utils/storage-key.utils';
 
 const BUCKET = 'banner-images';
 
@@ -21,7 +22,7 @@ export class GameBannersDomain {
 
   async createWithImage(file: BannerImageFile, sortOrder?: number): Promise<GameBanner> {
     const banner = await gameBannersRepository.create({ sortOrder });
-    const filePath = `banners/${banner.id}/${Date.now()}-${file.originalname}`;
+    const filePath = `banners/${banner.id}/${safeImageFileName(file.originalname)}`;
     let uploaded = false;
     try {
       const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, file.buffer, file.mimetype);
@@ -45,7 +46,7 @@ export class GameBannersDomain {
   async replaceImage(id: string, file: BannerImageFile): Promise<GameBanner | null> {
     const banner = await gameBannersRepository.findById(id);
     if (!banner) return null;
-    const filePath = `banners/${id}/${Date.now()}-${file.originalname}`;
+    const filePath = `banners/${id}/${safeImageFileName(file.originalname)}`;
     const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, file.buffer, file.mimetype);
     await gameBannersRepository.setImageUrl(id, imageUrl);
     await this.deleteStoredImage(banner.imageUrl);
