@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { gameLaunchDomain } from '../domain/integrations/21viral/gameLaunch.domain';
+import { gameLaunchDomain } from '../features/integrations/21viral/gameLaunch.domain';
 
 export function startGameSyncJob(): void {
   // Runs at minute 0 of every 12th hour: 00:00 and 12:00

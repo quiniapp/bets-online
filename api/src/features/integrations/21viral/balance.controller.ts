@@ -1,0 +1,38 @@
+import { Request, Response, NextFunction } from 'express';
+import { providerBalanceRequestSchema, ViralErrorCode } from 'helper';
+import { balanceDomain, ViralError } from './balance.domain';
+
+export class BalanceController {
+  async getBalance(req: Request, res: Response, next: NextFunction) {
+    console.log('[21Viral][CALLBACK][balance] REQUEST', JSON.stringify(req.body));
+    try {
+      const parsed = providerBalanceRequestSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        const errorBody = {
+          viralErrorCode: ViralErrorCode.RequestValidationFailure,
+          message: 'Request body validation failed'
+        };
+        console.log('[21Viral][CALLBACK][balance] RESPONSE 422', JSON.stringify(errorBody));
+        return res.status(422).json(errorBody);
+      }
+
+      const result = await balanceDomain.getBalance(parsed.data);
+      console.log('[21Viral][CALLBACK][balance] RESPONSE 200', JSON.stringify(result));
+      return res.status(200).json(result);
+    } catch (error) {
+      if (error instanceof ViralError) {
+        const statusCode = error.viralErrorCode === ViralErrorCode.AuthenticationFailure ? 401 : 422;
+        const errorBody = {
+          viralErrorCode: error.viralErrorCode,
+          message: error.message
+        };
+        console.log(`[21Viral][CALLBACK][balance] RESPONSE ${statusCode}`, JSON.stringify(errorBody));
+        return res.status(statusCode).json(errorBody);
+      }
+      return next(error);
+    }
+  }
+}
+
+export const balanceController = new BalanceController();

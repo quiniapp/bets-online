@@ -1,4 +1,4 @@
-import { gamesRepository } from '../../src/persistence/repositories/games.repository';
+import { gamesRepository } from '../../src/features/games/games.repository';
 import { GameModel } from '../../src/persistence/models';
 
 jest.mock('../../src/persistence/models', () => ({

@@ -1,0 +1,316 @@
+import { GameModel } from '../../persistence/models';
+import { Game, CreateGameDto, UpdateGameDto } from 'helper';
+import { Transaction, Op, QueryTypes, literal } from 'sequelize';
+
+export class GamesRepository {
+  async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
+    const game = await GameModel.create(
+      {
+        ...gameData,
+        houseEdge: gameData.houseEdge || 2.5,
+      },
+      { transaction }
+    );
+    return this.mapToGame(game);
+  }
+
+  async getStats(): Promise<{ total: number; active: number }> {
+    const [total, active] = await Promise.all([
+      GameModel.count(),
+      GameModel.count({ where: { isActive: true } })
+    ]);
+    return { total, active };
+  }
+
+  async getTopPlayed(
+    limit = 5,
+    sortBy: 'rounds' | 'wagered' = 'rounds'
+  ): Promise<Array<{ id: string; name: string; isActive: boolean; betCount: number; totalWagered: number }>> {
+    const db = GameModel.sequelize!;
+    const orderCol = sortBy === 'wagered' ? '"totalWagered"' : '"betCount"';
+    // betCount = rounds: native bets (1 row = 1 round) + integrator rounds
+    // (DISTINCT provider_game_round_id). Provider txns link by provider_game_id
+    // only — pt.provider_name is the integrator ('21viral'), not g.provider_name.
+    const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string; totalWagered: string }>(
+      `SELECT g.id, g.name, g.is_active AS "isActive",
+        (
+          COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT COUNT(DISTINCT pt.provider_game_round_id) FROM provider_transactions pt
+                    WHERE pt.transaction_type = 'Debit'
+                      AND g.provider_game_id IS NOT NULL
+                      AND pt.provider_game_id = g.provider_game_id), 0)
+        ) AS "betCount",
+        (
+          COALESCE((SELECT SUM(b.amount) FROM bets b WHERE b.game_id = g.id AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
+                    WHERE pt.transaction_type = 'Debit'
+                      AND g.provider_game_id IS NOT NULL
+                      AND pt.provider_game_id = g.provider_game_id), 0)
+        ) AS "totalWagered"
+      FROM games g
+      ORDER BY ${orderCol} DESC
+      LIMIT :limit`,
+      { replacements: { limit }, type: QueryTypes.SELECT }
+    );
+    return results.map(r => ({
+      id: r.id,
+      name: r.name,
+      isActive: r.isActive,
+      betCount: parseInt(String(r.betCount), 10) || 0,
+      totalWagered: parseFloat(String(r.totalWagered)) || 0
+    }));
+  }
+
+  async getTopProviders(
+    limit = 5,
+    sortBy: 'rounds' | 'wagered' = 'rounds'
+  ): Promise<Array<{ providerName: string; betCount: number; totalWagered: number }>> {
+    const db = GameModel.sequelize!;
+    const orderCol = sortBy === 'wagered' ? '"totalWagered"' : '"betCount"';
+    const results = await db.query<{ providerName: string; betCount: string; totalWagered: string }>(
+      `SELECT p.provider_name AS "providerName",
+        (
+          COALESCE((SELECT COUNT(*) FROM bets b JOIN games g2 ON g2.id = b.game_id
+                    WHERE g2.provider_name = p.provider_name AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT COUNT(DISTINCT pt.provider_game_round_id) FROM provider_transactions pt
+                    JOIN games g3 ON g3.provider_game_id = pt.provider_game_id
+                    WHERE pt.transaction_type = 'Debit' AND g3.provider_name = p.provider_name), 0)
+        ) AS "betCount",
+        (
+          COALESCE((SELECT SUM(b.amount) FROM bets b JOIN games g2 ON g2.id = b.game_id
+                    WHERE g2.provider_name = p.provider_name AND b.status <> 'CANCELLED'), 0) +
+          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
+                    JOIN games g3 ON g3.provider_game_id = pt.provider_game_id
+                    WHERE pt.transaction_type = 'Debit' AND g3.provider_name = p.provider_name), 0)
+        ) AS "totalWagered"
+      FROM (SELECT DISTINCT provider_name FROM games WHERE provider_name IS NOT NULL) p
+      ORDER BY ${orderCol} DESC
+      LIMIT :limit`,
+      { replacements: { limit }, type: QueryTypes.SELECT }
+    );
+    return results.map(r => ({
+      providerName: r.providerName,
+      betCount: parseInt(String(r.betCount), 10) || 0,
+      totalWagered: parseFloat(String(r.totalWagered)) || 0
+    }));
+  }
+
+  async findAll(activeOnly: boolean = false): Promise<Game[]> {
+    const where = activeOnly ? { isActive: true } : {};
+    const games = await GameModel.findAll({
+      where,
+      order: [
+        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ]
+    });
+    return games.map(g => this.mapToGame(g));
+  }
+
+  async findPaginated(
+    page: number,
+    limit: number,
+    activeOnly: boolean = false,
+    providerName?: string,
+    search?: string,
+    gameType?: string,
+    status?: 'active' | 'inactive' | 'all',
+    excludeGameTypes?: string[]
+  ): Promise<{ games: Game[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const where: Record<string, unknown> = {};
+    if (status === 'active' || (!status && activeOnly)) where['isActive'] = true;
+    else if (status === 'inactive') where['isActive'] = false;
+    if (providerName) where['providerName'] = providerName;
+    if (gameType) where['gameType'] = gameType;
+    else if (excludeGameTypes && excludeGameTypes.length > 0) where['gameType'] = { [Op.notIn]: excludeGameTypes };
+    if (search) where['name'] = { [Op.iLike]: `%${search}%` };
+    const { rows, count } = await GameModel.findAndCountAll({
+      where,
+      order: [
+        [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
+        [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
+        [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
+        ['name', 'ASC']
+      ],
+      limit,
+      offset
+    });
+    return { games: rows.map(g => this.mapToGame(g)), total: count };
+  }
+
+  async bulkSetStatus(ids: string[], isActive: boolean): Promise<number> {
+    const [affectedCount] = await GameModel.update(
+      { isActive },
+      { where: { id: { [Op.in]: ids } } }
+    );
+    return affectedCount;
+  }
+
+  async bulkSetStatusByFilter(
+    isActive: boolean,
+    providerName?: string,
+    gameType?: string,
+    currentStatus?: 'active' | 'inactive' | 'all'
+  ): Promise<number> {
+    const where: Record<string, unknown> = {};
+    if (currentStatus === 'active') where['isActive'] = true;
+    else if (currentStatus === 'inactive') where['isActive'] = false;
+    if (providerName) where['providerName'] = providerName;
+    if (gameType) where['gameType'] = gameType;
+    const [affectedCount] = await GameModel.update({ isActive }, { where });
+    return affectedCount;
+  }
+
+  async findDistinctProviders(): Promise<string[]> {
+    const rows = await GameModel.findAll({
+      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('provider_name')), 'providerName']],
+      where: { providerName: { [Op.ne]: null } },
+      raw: true
+    });
+    return (rows as unknown as Array<{ providerName: string }>)
+      .map(r => r.providerName)
+      .filter(Boolean)
+      .sort();
+  }
+
+  async findDistinctGameTypes(): Promise<string[]> {
+    const rows = await GameModel.findAll({
+      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('game_type')), 'gameType']],
+      where: { gameType: { [Op.ne]: null } },
+      raw: true
+    });
+    return (rows as unknown as Array<{ gameType: string }>)
+      .map(r => r.gameType)
+      .filter(Boolean)
+      .sort();
+  }
+
+  async findById(gameId: string): Promise<Game | null> {
+    const game = await GameModel.findByPk(gameId);
+    if (!game) return null;
+    return this.mapToGame(game);
+  }
+
+  async findByName(name: string): Promise<Game | null> {
+    const game = await GameModel.findOne({
+      where: { name }
+    });
+    if (!game) return null;
+    return this.mapToGame(game);
+  }
+
+  async update(
+    gameId: string,
+    updateData: UpdateGameDto,
+    transaction?: Transaction
+  ): Promise<Game> {
+    await GameModel.update(updateData, {
+      where: { id: gameId },
+      transaction
+    });
+
+    const updated = await GameModel.findByPk(gameId, { transaction });
+    if (!updated) {
+      throw new Error('Game not found after update');
+    }
+
+    return this.mapToGame(updated);
+  }
+
+  async delete(gameId: string, transaction?: Transaction): Promise<void> {
+    await GameModel.destroy({
+      where: { id: gameId },
+      transaction
+    });
+  }
+
+  async findByProviderGame(
+    providerName: string,
+    providerGameId: string
+  ): Promise<Game | null> {
+    const game = await GameModel.findOne({
+      where: { providerName, providerGameId }
+    });
+    if (!game) return null;
+    return this.mapToGame(game);
+  }
+
+  async upsertFromProvider(data: {
+    providerName: string;
+    providerGameId: string;
+    name: string;
+    gameType: string;
+    defaultLogo: string;
+  }): Promise<Game> {
+    const existing = await GameModel.findOne({
+      where: { providerName: data.providerName, providerGameId: data.providerGameId }
+    });
+
+    if (existing) {
+      await existing.update({
+        name: data.name,
+        gameType: data.gameType,
+        defaultLogo: data.defaultLogo
+      });
+      return this.mapToGame(existing);
+    }
+
+    const created = await GameModel.create({
+      name: data.name,
+      description: `${data.name} — synced from ${data.providerName}`,
+      isActive: true,
+      minBet: 1,
+      maxBet: 10000,
+      houseEdge: 0,
+      providerName: data.providerName,
+      providerGameId: data.providerGameId,
+      defaultLogo: data.defaultLogo,
+      gameType: data.gameType
+    });
+    return this.mapToGame(created);
+  }
+
+  async bulkUpdateSortOrder(items: { id: string; sortOrder: number }[]): Promise<void> {
+    if (!items.length) return;
+    const db = GameModel.sequelize!;
+    const binds: (string | number)[] = [];
+    const valuePlaceholders = items.map((item, i) => {
+      const base = i * 2;
+      binds.push(item.id, item.sortOrder);
+      return `($${base + 1}::uuid, $${base + 2}::int)`;
+    });
+    await db.query(
+      `UPDATE games SET sort_order = v.sort_order
+       FROM (VALUES ${valuePlaceholders.join(', ')}) AS v(id, sort_order)
+       WHERE games.id = v.id`,
+      { bind: binds, type: QueryTypes.UPDATE }
+    );
+  }
+
+  private mapToGame(model: GameModel): Game {
+    const plain = model.get({ plain: true });
+    return {
+      id: plain.id,
+      name: plain.name,
+      description: plain.description,
+      isActive: plain.isActive,
+      minBet: Number(plain.minBet),
+      maxBet: Number(plain.maxBet),
+      houseEdge: Number(plain.houseEdge),
+      providerId: plain.providerId ?? null,
+      providerGameId: plain.providerGameId ?? null,
+      providerName: plain.providerName ?? null,
+      defaultLogo: plain.defaultLogo ?? null,
+      customLogo: plain.customLogo ?? null,
+      gameType: plain.gameType ?? null,
+      sortOrder: plain.sortOrder ?? null,
+      createdAt: new Date(plain.createdAt),
+      updatedAt: new Date(plain.updatedAt)
+    };
+  }
+}
+
+export const gamesRepository = new GamesRepository();

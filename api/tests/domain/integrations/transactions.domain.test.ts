@@ -1,9 +1,9 @@
-import { transactionsDomain } from '../../../src/domain/integrations/21viral/transactions.domain';
-import { userProviderProfileRepository } from '../../../src/persistence/repositories/userProviderProfile.repository';
-import { balancesRepository } from '../../../src/persistence/repositories/balances.repository';
-import { usersRepository } from '../../../src/persistence/repositories/users.repository';
-import { providerTransactionRepository } from '../../../src/persistence/repositories/providerTransaction.repository';
-import { chipMovementsRepository } from '../../../src/persistence/repositories/chip-movements.repository';
+import { transactionsDomain } from '../../../src/features/integrations/21viral/transactions.domain';
+import { userProviderProfileRepository } from '../../../src/features/integrations/21viral/userProviderProfile.repository';
+import { balancesRepository } from '../../../src/features/chips/balances.repository';
+import { usersRepository } from '../../../src/features/users/users.repository';
+import { providerTransactionRepository } from '../../../src/features/integrations/21viral/providerTransaction.repository';
+import { chipMovementsRepository } from '../../../src/features/chips/chip-movements.repository';
 import { sequelize } from '../../../src/config/sequelize';
 import { TransactionType, BetType, GameRoundStatus, ViralErrorCode, UserRole, ChipMovementType } from 'helper';
 
@@ -12,26 +12,26 @@ jest.mock('../../../src/config', () => ({
     viral: { username: 'testuser', secretKey: 'a'.repeat(32), integratorUrl: 'https://api.stg.games-viral.com/' }
   }
 }));
-jest.mock('../../../src/persistence/repositories/userProviderProfile.repository', () => ({
+jest.mock('../../../src/features/integrations/21viral/userProviderProfile.repository', () => ({
   userProviderProfileRepository: { findByProviderPlayerId: jest.fn() }
 }));
-jest.mock('../../../src/persistence/repositories/balances.repository', () => ({
+jest.mock('../../../src/features/chips/balances.repository', () => ({
   balancesRepository: {
     findByUserIdWithLock: jest.fn(),
     updateChipBalance: jest.fn()
   }
 }));
-jest.mock('../../../src/persistence/repositories/users.repository', () => ({
+jest.mock('../../../src/features/users/users.repository', () => ({
   usersRepository: { findById: jest.fn() }
 }));
-jest.mock('../../../src/persistence/repositories/providerTransaction.repository', () => ({
+jest.mock('../../../src/features/integrations/21viral/providerTransaction.repository', () => ({
   providerTransactionRepository: {
     findByIdempotencyKey: jest.fn(),
     findOriginalForReversal: jest.fn(),
     create: jest.fn()
   }
 }));
-jest.mock('../../../src/persistence/repositories/chip-movements.repository', () => ({
+jest.mock('../../../src/features/chips/chip-movements.repository', () => ({
   chipMovementsRepository: { create: jest.fn() }
 }));
 jest.mock('../../../src/config/sequelize', () => ({

@@ -1,28 +1,28 @@
-import { BalanceDomain } from '../../../src/domain/integrations/21viral/balance.domain';
+import { BalanceDomain } from '../../../src/features/integrations/21viral/balance.domain';
 import { ViralErrorCode } from 'helper';
 
 // Mock repositories
-jest.mock('../../../src/persistence/repositories/userProviderProfile.repository', () => ({
+jest.mock('../../../src/features/integrations/21viral/userProviderProfile.repository', () => ({
   userProviderProfileRepository: {
     findByProviderPlayerId: jest.fn()
   }
 }));
 
-jest.mock('../../../src/persistence/repositories/balances.repository', () => ({
+jest.mock('../../../src/features/chips/balances.repository', () => ({
   balancesRepository: {
     findByUserId: jest.fn()
   }
 }));
 
-jest.mock('../../../src/persistence/repositories/users.repository', () => ({
+jest.mock('../../../src/features/users/users.repository', () => ({
   usersRepository: {
     findById: jest.fn()
   }
 }));
 
-import { userProviderProfileRepository } from '../../../src/persistence/repositories/userProviderProfile.repository';
-import { balancesRepository } from '../../../src/persistence/repositories/balances.repository';
-import { usersRepository } from '../../../src/persistence/repositories/users.repository';
+import { userProviderProfileRepository } from '../../../src/features/integrations/21viral/userProviderProfile.repository';
+import { balancesRepository } from '../../../src/features/chips/balances.repository';
+import { usersRepository } from '../../../src/features/users/users.repository';
 
 const domain = new BalanceDomain();
 

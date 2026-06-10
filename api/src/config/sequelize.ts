@@ -1,5 +1,5 @@
 import { Sequelize } from 'sequelize';
-import { config } from './index';
+import { config } from '.';
 import { addDbTiming } from '../utils/request-context';
 import { logger } from '../utils/logger';
 

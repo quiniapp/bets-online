@@ -1,4 +1,4 @@
-import { UserProviderProfileRepository } from '../../src/persistence/repositories/userProviderProfile.repository';
+import { UserProviderProfileRepository } from '../../src/features/integrations/21viral/userProviderProfile.repository';
 import { sequelize } from '../../src/config/sequelize';
 
 afterAll(() => sequelize.close());

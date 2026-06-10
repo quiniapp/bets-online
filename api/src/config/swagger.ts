@@ -1,5 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
-import { config } from './index';
+import { config } from '.';
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -96,7 +96,7 @@ const options: swaggerJsdoc.Options = {
       }
     ]
   },
-  apis: ['./src/routes/**/*.ts', './src/controllers/**/*.ts']
+  apis: ['./src/routes.ts', './src/features/**/*.ts']
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
