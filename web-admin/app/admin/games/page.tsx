@@ -300,59 +300,69 @@ export default function AdminGames() {
         </Card>
       ) : (
         <>
-          {/* Mobile: 3-column grid */}
-          <div className="grid grid-cols-3 gap-2 md:hidden">
+          {/* Mobile/tablet: row-cards (same pattern as Providers) */}
+          <div className="space-y-1.5 lg:hidden">
             {games.map((game) => {
               const isSelected = selected.has(game.id)
+              const logo = game.customLogo || game.defaultLogo
               return (
                 <div
                   key={game.id}
-                  className={`relative rounded-lg border overflow-hidden cursor-pointer transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}
+                  className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 cursor-pointer transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}
                   onClick={() => toggleSelect(game.id)}
                 >
-                  <div className="absolute top-1.5 left-1.5 z-10">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleSelect(game.id)}
-                      className="h-4 w-4 bg-white dark:bg-white border-gray-400"
-                      onClick={e => e.stopPropagation()}
-                    />
-                  </div>
-                  <div className="aspect-square w-full bg-muted flex items-center justify-center overflow-hidden">
-                    {game.defaultLogo ? (
-                      <img src={game.defaultLogo} alt={game.name} className="w-full h-full object-cover" />
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleSelect(game.id)}
+                    className="h-4 w-4 shrink-0 bg-white dark:bg-white border-gray-400"
+                    onClick={e => e.stopPropagation()}
+                  />
+                  <div className="h-11 w-11 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                    {logo ? (
+                      <img src={logo} alt={game.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Gamepad2 className="h-6 w-6 text-muted-foreground/40" />
+                      <Gamepad2 className="h-5 w-5 text-muted-foreground/40" />
                     )}
                   </div>
-                  <div className="p-1.5">
-                    <p className="text-[10px] font-medium leading-tight line-clamp-1 text-muted-foreground">
-                      {game.providerName ?? '—'}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-tight truncate">{game.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {game.providerName ?? '—'}{game.gameType ? ` · ${game.gameType}` : ''}
                     </p>
                   </div>
-                  <div className="flex border-t border-border divide-x divide-border">
-                    <button
-                      className="flex-1 text-[10px] text-muted-foreground py-1 hover:bg-muted/50 flex items-center justify-center gap-1"
-                      onClick={e => { e.stopPropagation(); openEditDialog(game) }}
-                    >
-                      <Edit className="h-2.5 w-2.5" />
-                      Editar
-                    </button>
-                    <button
-                      className="flex-1 text-[10px] text-muted-foreground py-1 hover:bg-muted/50 flex items-center justify-center gap-1"
+                  <Badge
+                    variant={game.isActive ? "default" : "secondary"}
+                    className="text-[10px] px-1.5 py-0 shrink-0"
+                  >
+                    {game.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
+                  <div className="flex items-center shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Imágenes"
                       onClick={e => { e.stopPropagation(); setImageManagerGame({ id: game.id, name: game.name, defaultLogo: game.defaultLogo ?? null }) }}
                     >
-                      <ImageIcon className="h-2.5 w-2.5" />
-                      Imágenes
-                    </button>
+                      <ImageIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Editar"
+                      onClick={e => { e.stopPropagation(); openEditDialog(game) }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Desktop: table */}
-          <div className="hidden md:block rounded-lg border border-border overflow-hidden">
+          {/* Wide desktop: table */}
+          <div className="hidden lg:block rounded-lg border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-base">
               <thead>
@@ -365,9 +375,9 @@ export default function AdminGames() {
                     />
                   </th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Juego</th>
-                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden md:table-cell">Proveedor</th>
-                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Tipo</th>
-                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Min / Max</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Proveedor</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Tipo</th>
+                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Min / Max</th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Edge</th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Estado</th>
                   <th className="px-4 py-3 text-right font-medium text-sm text-muted-foreground uppercase tracking-wide">Acciones</th>
@@ -400,17 +410,17 @@ export default function AdminGames() {
                           <span className="font-medium truncate max-w-[200px]">{game.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
+                      <td className="px-4 py-3">
                         {game.providerName ? (
                           <Badge variant="outline" className="text-xs px-2 py-0.5">{game.providerName}</Badge>
                         ) : (
                           <span className="text-muted-foreground/40">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {game.gameType || <span className="opacity-40">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell whitespace-nowrap">
+                      <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                         ${formatChips(game.minBet)} / ${formatChips(game.maxBet)}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
@@ -516,7 +526,7 @@ export default function AdminGames() {
                 value={formData.sortOrder}
                 onChange={(e) => setFormData({ ...formData, sortOrder: e.target.value })}
               />
-              <p className="text-xs text-muted-foreground mt-1">Número menor aparece primero. Vacío = orden alfabético.</p>
+              <p className="text-xs text-muted-foreground mt-1">Orden relativo dentro del proveedor y tipo. Vacío = al final, alfabético.</p>
             </div>
           </div>
           <DialogFooter>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
-import type { Game, CreateGameDto, UpdateGameDto } from 'helper';
+import { GAMES_PAGE_LIMIT, type Game, type CreateGameDto, type UpdateGameDto } from 'helper';
 
 interface UseGamesOptions {
   activeOnly?: boolean;
@@ -40,7 +40,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
       setError(null);
 
       try {
-        const qs = new URLSearchParams({ page: String(targetPage), limit: '24' });
+        const qs = new URLSearchParams({ page: String(targetPage), limit: String(GAMES_PAGE_LIMIT) });
         if (status && status !== 'all') qs.set('status', status);
         else if (activeOnly) qs.set('activeOnly', 'true');
         if (provider) qs.set('providerName', provider);
