@@ -21,6 +21,7 @@ const GameCard = ({ game, onClick }: GameCardProps) => {
             <img
               src={game.customLogo ?? game.defaultLogo!}
               alt={game.name}
+              loading="lazy"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
