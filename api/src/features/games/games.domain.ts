@@ -17,8 +17,8 @@ export class GamesDomain {
    * game list is sorted by provider sort_order.
    */
   refreshGamesCache(): void {
-    gamesCache.invalidateAndRefresh((activeOnly, gameType, limit) =>
-      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, undefined, undefined, gameType));
+    gamesCache.invalidateAndRefresh((activeOnly, gameType, providerName, limit) =>
+      gamesRepository.findPaginated(CACHE_PAGE, limit, activeOnly, providerName, undefined, gameType));
   }
 
   /**
@@ -87,8 +87,9 @@ export class GamesDomain {
   }
 
   /**
-   * Get paginated games. Page 1 with no providerName/search/excludeGameTypes/inactive-status
-   * is served from cache regardless of gameType or limit.
+   * Get paginated games. Page 1 with no search/excludeGameTypes/inactive-status
+   * is served from cache regardless of gameType, providerName or limit — every
+   * home/lobby section (category, provider or both) is a cacheable combo.
    */
   async getPaginatedGames(
     page: number,
@@ -103,7 +104,6 @@ export class GamesDomain {
     const resolvedActiveOnly = status === 'active' ? true : activeOnly;
     const isCacheable =
       page === CACHE_PAGE &&
-      !providerName &&
       !search &&
       !excludeGameTypes?.length &&
       status !== 'inactive' &&
@@ -113,8 +113,9 @@ export class GamesDomain {
       return gamesCache.getOrFetch(
         resolvedActiveOnly,
         gameType ?? undefined,
+        providerName ?? undefined,
         limit,
-        () => gamesRepository.findPaginated(page, limit, resolvedActiveOnly, undefined, undefined, gameType)
+        () => gamesRepository.findPaginated(page, limit, resolvedActiveOnly, providerName, undefined, gameType)
       );
     }
 
