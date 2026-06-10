@@ -5,3 +5,5 @@ export * from './common.validator';
 export * from './game.validator';
 export * from './bet.validator';
 export * from './provider.validator';
+export * from './provider-type-order.validator';
+export * from './casino-settings.validator';
