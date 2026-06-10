@@ -18,7 +18,9 @@ export default function PlayGamePage() {
   const { launchGame, loading, error } = useGameLaunch();
   const [gameStartUrl, setGameStartUrl] = useState<string | null>(null);
 
-  const lobbyUrl = `/user/games`;
+  // Exiting a game always lands on the site home (also what the provider's
+  // in-game "home" button uses via postMessage → GameIframe).
+  const lobbyUrl = `/`;
   const depositUrl = `/user/dashboard`;
 
   // Iframe captures all user events so the parent window sees no activity.
@@ -46,7 +48,8 @@ export default function PlayGamePage() {
       playerDeviceType: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
       gameMode: 'Real',
       lobbyUrl: `${window.location.origin}${lobbyUrl}`,
-      depositUrl: `${window.location.origin}${depositUrl}`
+      depositUrl: `${window.location.origin}${depositUrl}`,
+      exitUrl: `${window.location.origin}${lobbyUrl}`
     }).then(url => {
       if (url) setGameStartUrl(url);
     });
@@ -96,8 +99,8 @@ export default function PlayGamePage() {
       <div className="flex-1">
         <GameIframe
           gameStartUrl={gameStartUrl}
-          lobbyUrl={`${window.location.origin}${lobbyUrl}`}
-          depositUrl={`${window.location.origin}${depositUrl}`}
+          lobbyUrl={lobbyUrl}
+          depositUrl={depositUrl}
         />
       </div>
     </div>
