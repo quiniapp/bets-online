@@ -1,100 +1,78 @@
 "use client"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { useAuth } from "@/contexts/auth-context"
-import { UserRole } from "helper"
-import { useCasinoSettings } from "@/hooks/useCasinoSettings"
-import { HeaderCategoriesEditor } from "@/components/admin/casino-settings/header-categories-editor"
-import { LobbySlotEditor } from "@/components/admin/casino-settings/lobby-slots-editor"
-import { FooterLinksEditor } from "@/components/admin/casino-settings/footer-links-editor"
-import { GameOrderEditor } from "@/components/admin/casino-settings/game-order-editor"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
-import type { UpdateCasinoSettingsDto } from "helper"
+import { useOwnerGuard } from "@/hooks/useOwnerGuard"
+import { ChevronRight, PanelTop, LayoutGrid, Link2, Smartphone, Gamepad2, type LucideIcon } from "lucide-react"
 
-export default function CasinoSettingsPage() {
-  const { role } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
-  const { settings, loading, saving, save } = useCasinoSettings()
+interface SettingsItem {
+  href: string
+  title: string
+  description: string
+  icon: LucideIcon
+}
 
-  useEffect(() => {
-    if (role && role !== UserRole.OWNER) {
-      router.replace('/admin/dashboard')
-    }
-  }, [role, router])
+const ITEMS: SettingsItem[] = [
+  {
+    href: "/admin/settings/casino/header",
+    title: "Header",
+    description: "Categorías visibles y su orden en la barra superior",
+    icon: PanelTop,
+  },
+  {
+    href: "/admin/settings/casino/lobby",
+    title: "Lobby",
+    description: "Secciones del lobby: categorías, proveedores o ambos",
+    icon: LayoutGrid,
+  },
+  {
+    href: "/admin/settings/casino/navbar",
+    title: "Navbar mobile",
+    description: "Orden y visibilidad de la barra inferior en celulares",
+    icon: Smartphone,
+  },
+  {
+    href: "/admin/settings/casino/juegos",
+    title: "Juegos",
+    description: "Orden de tipos por proveedor y juego por juego",
+    icon: Gamepad2,
+  },
+  {
+    href: "/admin/settings/casino/footer",
+    title: "Footer",
+    description: "Enlaces del pie de página del casino",
+    icon: Link2,
+  },
+]
 
-  if (loading || !settings) {
-    return (
-      <DashboardLayout title="Configuración de Casino">
-        <div className="text-center py-8 text-muted-foreground">Cargando configuración...</div>
-      </DashboardLayout>
-    )
-  }
-
-  const handleSave = async (patch: UpdateCasinoSettingsDto) => {
-    const ok = await save(patch)
-    toast(ok
-      ? { title: "Guardado", description: "Configuración actualizada correctamente" }
-      : { title: "Error", description: "No se pudo guardar", variant: "destructive" }
-    )
-  }
+export default function CasinoSettingsIndexPage() {
+  useOwnerGuard()
 
   return (
-    <DashboardLayout title="Configuración de Casino">
-      <Tabs defaultValue="header" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="header">Header</TabsTrigger>
-          <TabsTrigger value="lobby">Lobby</TabsTrigger>
-          <TabsTrigger value="footer">Footer</TabsTrigger>
-          <TabsTrigger value="games">Juegos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="header" className="space-y-4">
-          <h2 className="text-lg font-semibold">Categorías del Header</h2>
-          <p className="text-sm text-muted-foreground">
-            Orden en que aparecen las categorías en la barra superior del casino.
-          </p>
-          <HeaderCategoriesEditor
-            categories={settings.headerCategories}
-            saving={saving}
-            onSave={cats => handleSave({ headerCategories: cats })}
-          />
-        </TabsContent>
-
-        <TabsContent value="lobby" className="space-y-4">
-          <h2 className="text-lg font-semibold">Slots del Lobby</h2>
-          <p className="text-sm text-muted-foreground">
-            Secciones visibles en el lobby. Máximo 10.
-          </p>
-          <LobbySlotEditor
-            slots={settings.lobbySlots}
-            saving={saving}
-            onSave={slots => handleSave({ lobbySlots: slots })}
-          />
-        </TabsContent>
-
-        <TabsContent value="footer" className="space-y-4">
-          <h2 className="text-lg font-semibold">Enlaces del Footer</h2>
-          <p className="text-sm text-muted-foreground">
-            Links que aparecen en el pie de página del casino.
-          </p>
-          <FooterLinksEditor
-            links={settings.footerLinks}
-            saving={saving}
-            onSave={links => handleSave({ footerLinks: links })}
-          />
-        </TabsContent>
-
-        <TabsContent value="games" className="space-y-4">
-          <h2 className="text-lg font-semibold">Orden de Juegos por Proveedor</h2>
-          <p className="text-sm text-muted-foreground">
-            Elegí un proveedor y reordenás sus juegos. El orden afecta cómo aparecen en el lobby.
-          </p>
-          <GameOrderEditor />
-        </TabsContent>
-      </Tabs>
+    <DashboardLayout title="Personalización del Casino">
+      <div className="mx-auto w-full max-w-2xl space-y-2">
+        <p className="text-sm text-muted-foreground pb-2">
+          Configurá cómo se ve el casino para los jugadores. Cada sección se edita por separado.
+        </p>
+        {ITEMS.map(item => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3 hover:bg-accent/50 active:bg-accent transition-colors"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Icon className="h-4.5 w-4.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+          )
+        })}
+      </div>
     </DashboardLayout>
   )
 }
