@@ -247,6 +247,7 @@ export class GamesRepository {
     name: string;
     gameType: string;
     defaultLogo: string;
+    rtp?: number | null;
   }): Promise<Game> {
     const existing = await GameModel.findOne({
       where: { providerName: data.providerName, providerGameId: data.providerGameId }
@@ -256,7 +257,8 @@ export class GamesRepository {
       await existing.update({
         name: data.name,
         gameType: data.gameType,
-        defaultLogo: data.defaultLogo
+        defaultLogo: data.defaultLogo,
+        rtp: data.rtp ?? null
       });
       return this.mapToGame(existing);
     }
@@ -271,7 +273,8 @@ export class GamesRepository {
       providerName: data.providerName,
       providerGameId: data.providerGameId,
       defaultLogo: data.defaultLogo,
-      gameType: data.gameType
+      gameType: data.gameType,
+      rtp: data.rtp ?? null
     });
     return this.mapToGame(created);
   }
@@ -309,6 +312,7 @@ export class GamesRepository {
       defaultLogo: plain.defaultLogo ?? null,
       customLogo: plain.customLogo ?? null,
       gameType: plain.gameType ?? null,
+      rtp: plain.rtp != null ? Number(plain.rtp) : null,
       sortOrder: plain.sortOrder ?? null,
       createdAt: new Date(plain.createdAt),
       updatedAt: new Date(plain.updatedAt)

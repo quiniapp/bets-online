@@ -73,6 +73,7 @@ export class FeaturedGamesRepository {
       providerName: plain.game.providerName ?? null,
       defaultLogo: plain.game.defaultLogo ?? null,
       gameType: plain.game.gameType ?? null,
+      rtp: plain.game.rtp != null ? Number(plain.game.rtp) : null,
       sortOrder: plain.game.sortOrder ?? null,
       createdAt: new Date(plain.game.createdAt),
       updatedAt: new Date(plain.game.updatedAt)
