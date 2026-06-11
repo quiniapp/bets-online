@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { UpdateGameDto, Game } from "helper"
+import { UserRole } from "helper"
 import { formatChips } from "@/lib/utils"
 import { apiService } from "@/services/api.service"
 import { GameImageManager } from "@/components/admin/game-image-manager"
@@ -38,8 +39,9 @@ import { GameImageManager } from "@/components/admin/game-image-manager"
 type StatusFilter = 'all' | 'active' | 'inactive'
 
 export default function AdminGames() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { toast } = useToast()
+  const isOwner = role === UserRole.OWNER
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [providerFilter, setProviderFilter] = useState<string>('all')
@@ -327,7 +329,7 @@ export default function AdminGames() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium leading-tight truncate">{game.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {game.providerName ?? '—'}{game.gameType ? ` · ${game.gameType}` : ''}
+                      {game.providerName ?? '—'}{game.gameType ? ` · ${game.gameType}` : ''}{isOwner && game.rtp != null ? ` · RTP ${game.rtp}%` : ''}
                     </p>
                   </div>
                   <Badge
@@ -379,6 +381,9 @@ export default function AdminGames() {
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Tipo</th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Min / Max</th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Edge</th>
+                  {isOwner && (
+                    <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">RTP</th>
+                  )}
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Estado</th>
                   <th className="px-4 py-3 text-right font-medium text-sm text-muted-foreground uppercase tracking-wide">Acciones</th>
                 </tr>
@@ -426,6 +431,11 @@ export default function AdminGames() {
                       <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
                         {game.houseEdge}%
                       </td>
+                      {isOwner && (
+                        <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                          {game.rtp != null ? `${game.rtp}%` : <span className="opacity-40">—</span>}
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <Badge
                           variant={game.isActive ? "default" : "secondary"}

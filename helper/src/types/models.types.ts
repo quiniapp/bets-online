@@ -259,6 +259,7 @@ export interface Game {
   defaultLogo?: string | null;      // thumbnail URL from Provider
   customLogo?: string | null;       // custom uploaded image, overrides defaultLogo in UI
   gameType?: string | null;         // e.g. "slot"
+  rtp?: number | null;              // return-to-player % from provider sync (e.g. 96.47)
   sortOrder?: number | null;
   createdAt: Date;
   updatedAt: Date;

@@ -38,7 +38,8 @@ class GameLaunchDomain {
         providerGameId: g.providerGameId,
         name: g.name,
         gameType: g.type,
-        defaultLogo: g.defaultLogo
+        defaultLogo: g.defaultLogo,
+        rtp: g.rtp ?? null
       });
     }
     gamesDomain.refreshGamesCache();
