@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useProviders } from "@/hooks/useProviders"
+import { apiService } from "@/services/api.service"
 import type { Provider } from "helper"
 
 function ProviderLogoUpload({
@@ -38,23 +39,30 @@ function ProviderLogoUpload({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const { toast } = useToast()
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (!file) return
 
+    // Backend expects the multipart field to be named "logo".
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('logo', file)
     setUploading(true)
     try {
-      const res = await fetch(`/api/admin/providers/${encodeURIComponent(providerName)}/logo`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      })
-      const json = await res.json()
-      if (json.success) onUploaded()
+      const json = await apiService.postForm<{ logoUrl: string }>(
+        `/admin/providers/${encodeURIComponent(providerName)}/logo`,
+        formData
+      )
+      if (json.success) {
+        toast({ title: "Logo subido", description: `Logo de ${providerName} actualizado` })
+        onUploaded()
+      } else {
+        toast({ title: "Error", description: json.error?.message ?? "No se pudo subir el logo", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "No se pudo subir el logo", variant: "destructive" })
     } finally {
       setUploading(false)
     }

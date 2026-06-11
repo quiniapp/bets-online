@@ -54,11 +54,23 @@ class ApiService {
     return authErrorCodes.includes(code || '');
   }
 
+  // Un 401 de estos endpoints es definitivo (credenciales malas / sesión
+  // muerta): jamás disparar el ciclo refresh+retry+redirect para ellos.
+  // Hacerlo causaba loops infinitos de llamadas cuando quedaban cookies viejas.
+  private isFinalAuthEndpoint(endpoint: string): boolean {
+    return ['/auth/login', '/auth/refresh', '/auth/logout', '/auth/change-password']
+      .some(p => endpoint.startsWith(p));
+  }
+
+  private redirectingToLogin = false;
+
   private handleAuthError(): void {
     this.setSessionActive(false);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
+    if (typeof window === 'undefined' || this.redirectingToLogin) return;
+    // Ya estamos en el login: redirigir de nuevo recargaría la página en loop.
+    if (window.location.pathname === '/login') return;
+    this.redirectingToLogin = true;
+    window.location.href = '/login';
   }
 
   private async request<T>(
@@ -99,6 +111,11 @@ class ApiService {
       const isAuthFailure =
         response.status === 401 ||
         (!data.success && this.isAuthError(data.error?.code));
+
+      // 401 definitivo (login fallido, refresh muerto, etc.): devolver tal cual.
+      if (isAuthFailure && this.isFinalAuthEndpoint(endpoint)) {
+        return data;
+      }
 
       if (isAuthFailure && !isRetry) {
         // Compartir la promise entre requests concurrentes del mismo tab (fix 2):
@@ -223,7 +240,12 @@ class ApiService {
         this.setSessionActive(true);
         return true;
       }
+
+      // Respuesta definitiva del servidor (sesión vencida/inválida): limpiar el
+      // flag para que ningún caller siga reintentando con un refresh muerto.
+      this.setSessionActive(false);
     } catch (error) {
+      // Error de red transitorio: conservar el flag y dejar reintentar.
       console.error('Token refresh failed:', error);
     }
 

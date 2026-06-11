@@ -244,6 +244,24 @@ export class UsersRepository {
       .map(r => ({ id: r.id, role: r.role as User['role'], username: r.username }));
   }
 
+  /** True if targetId is anywhere in ancestorId's subtree (single EXISTS query). */
+  async isDescendant(ancestorId: string, targetId: string): Promise<boolean> {
+    const query = `
+      WITH RECURSIVE descendants AS (
+        SELECT id FROM users WHERE id = :ancestorId
+        UNION ALL
+        SELECT u.id FROM users u
+        INNER JOIN descendants d ON u.parent_user_id = d.id
+      )
+      SELECT 1 AS found FROM descendants WHERE id = :targetId AND id != :ancestorId LIMIT 1
+    `;
+    const rows = await sequelize.query<{ found: number }>(query, {
+      replacements: { ancestorId, targetId },
+      type: QueryTypes.SELECT
+    });
+    return rows.length > 0;
+  }
+
   async findDescendants(userId: string): Promise<User[]> {
     const query = `
       WITH RECURSIVE descendants AS (

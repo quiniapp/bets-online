@@ -97,6 +97,21 @@ export class SessionsRepository {
     return this.mapToSession(session);
   }
 
+  // Sliding inactivity window: extends a live session's expiry and keeps the
+  // stored access token in sync with the one the middleware just re-issued.
+  // No-op when the session is gone or already expired.
+  async slideByToken(oldToken: string, newToken: string, expiresAt: Date): Promise<void> {
+    await SessionModel.update(
+      { token: newToken, expiresAt },
+      {
+        where: {
+          token: oldToken,
+          expiresAt: { [Op.gt]: new Date() }
+        }
+      }
+    );
+  }
+
   async deleteByToken(token: string): Promise<void> {
     await SessionModel.destroy({
       where: { token }

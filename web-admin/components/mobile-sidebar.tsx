@@ -51,7 +51,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
         <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
         <div className="flex h-full flex-col overflow-hidden">
           <div className="flex h-16 shrink-0 items-center border-b px-6">
-            <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
+            <img src="/logo-small.png" alt="Logo" className="h-12 w-auto max-w-[180px]" />
           </div>
 
           {/* Navigation */}
