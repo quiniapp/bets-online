@@ -329,15 +329,22 @@ export default function AdminGames() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium leading-tight truncate">{game.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {game.providerName ?? '—'}{game.gameType ? ` · ${game.gameType}` : ''}{isOwner && game.rtp != null ? ` · RTP ${game.rtp}%` : ''}
+                      {game.providerName ?? '—'}{game.gameType ? ` · ${game.gameType}` : ''}
                     </p>
                   </div>
-                  <Badge
-                    variant={game.isActive ? "default" : "secondary"}
-                    className="text-[10px] px-1.5 py-0 shrink-0"
-                  >
-                    {game.isActive ? "Activo" : "Inactivo"}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    <Badge
+                      variant={game.isActive ? "default" : "secondary"}
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {game.isActive ? "Activo" : "Inactivo"}
+                    </Badge>
+                    {isOwner && (
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        RTP {game.rtp != null ? `${game.rtp}%` : '—'}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center shrink-0">
                     <Button
                       variant="ghost"
