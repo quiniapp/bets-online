@@ -4,6 +4,7 @@ import { authDomain } from './auth.domain';
 import { usersRepository } from '../users/users.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { setAuthCookies, clearAuthCookies } from '../../utils/auth-cookies';
+import { AppError } from '../../middleware/error.middleware';
 
 export class AuthController {
   /**
@@ -60,6 +61,7 @@ export class AuthController {
       const refreshToken = req.cookies['refresh-token'];
 
       if (!refreshToken) {
+        clearAuthCookies(res);
         return res.status(401).json(
           ApiResponseBuilder.error('UNAUTHORIZED', 'No refresh token provided')
         );
@@ -69,6 +71,14 @@ export class AuthController {
       setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
       return res.json(ApiResponseBuilder.success({}));
     } catch (error) {
+      // Refresh definitivamente muerto (sesión vencida/inválida, usuario
+      // bloqueado o inexistente): revocar las cookies para que el browser deje
+      // de presentar una sesión muerta — el middleware del frontend chequea la
+      // existencia de la cookie `session` para dejar pasar a rutas protegidas.
+      // Errores transitorios (5xx) NO limpian cookies.
+      if (error instanceof AppError && [401, 403, 404].includes(error.statusCode)) {
+        clearAuthCookies(res);
+      }
       return next(error);
     }
   }

@@ -29,6 +29,11 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
   });
 }
 
+/** Revokes only the access-token cookie (keeps refresh-token so a silent renewal can still happen). */
+export function clearSessionCookie(res: Response): void {
+  res.clearCookie('session', cookieBase());
+}
+
 export function clearAuthCookies(res: Response): void {
   const base = cookieBase();
   res.clearCookie('session', base);
