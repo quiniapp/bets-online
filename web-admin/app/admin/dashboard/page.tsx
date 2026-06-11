@@ -144,22 +144,12 @@ export default function AdminDashboard() {
     return null
   }
 
-  // Demo chart data (fallback while real data loads)
-  const dailyRevenue = [
-    { day: "Lun", loaded: 2400, withdrawn: 45 },
-    { day: "Mar", loaded: 1398, withdrawn: 32 },
-    { day: "Mié", loaded: 9800, withdrawn: 78 },
-    { day: "Jue", loaded: 3908, withdrawn: 56 },
-    { day: "Vie", loaded: 4800, withdrawn: 89 },
-    { day: "Sáb", loaded: 3800, withdrawn: 67 },
-    { day: "Dom", loaded: 4300, withdrawn: 72 },
-  ]
-
+  // Real data only — the API zero-fills the last 7 days, never show demo numbers.
   const weeklyData = adminStats?.weeklyChipFlow?.map(d => ({
-    day: new Date(d.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short' }),
+    day: new Date(d.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }),
     loaded: d.loaded,
     withdrawn: d.withdrawn,
-  })) ?? dailyRevenue
+  })) ?? []
 
   const userActivity = [
     { hour: "00", users: 12 },
@@ -380,17 +370,21 @@ export default function AdminDashboard() {
             <CardDescription>Fichas cargadas y retiradas por día</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="day" />
-                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                <Tooltip />
-                <Bar yAxisId="left" dataKey="loaded" fill="#8884d8" name="Cargadas" />
-                <Bar yAxisId="right" dataKey="withdrawn" fill="#82ca9d" name="Retiradas" />
-              </BarChart>
-            </ResponsiveContainer>
+            {loadingAdminStats ? (
+              <Skeleton className="h-[250px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                  <Tooltip />
+                  <Bar yAxisId="left" dataKey="loaded" fill="#8884d8" name="Cargadas" />
+                  <Bar yAxisId="right" dataKey="withdrawn" fill="#82ca9d" name="Retiradas" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
