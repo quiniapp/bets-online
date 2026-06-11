@@ -83,7 +83,8 @@ app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions))
 
 // CSRF token endpoint — sets the csrf-token cookie and returns the value.
 // Must be called before any state-changing request that uses cookie auth.
-app.get('/api/csrf-token', (_req: Request, res: Response) => {
+// Registered before the /api router, so it needs its own rate limiter.
+app.get('/api/csrf-token', globalLimiter, (_req: Request, res: Response) => {
   const token = crypto.randomBytes(32).toString('hex');
   const isProd = config.server.env === 'production';
   res.cookie(CSRF_COOKIE, token, {

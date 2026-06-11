@@ -24,6 +24,10 @@ function newSlotId() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+// Desktop column layout shared by the header row and every slot row so the
+// selects line up vertically: tipo | proveedor | categoría | etiqueta | trash.
+const SLOT_GRID_COLS = "md:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_2rem]";
+
 interface CategoryOption {
   value: string;
   label: string;
@@ -63,9 +67,9 @@ function LobbySlotRow({
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+    <div className={`flex items-center gap-2 flex-wrap flex-1 min-w-0 md:grid md:gap-2 ${SLOT_GRID_COLS}`}>
       <Select value={slot.kind} onValueChange={v => handleKindChange(v as LobbySlotKind)}>
-        <SelectTrigger className="w-32">
+        <SelectTrigger className="w-32 md:w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -75,9 +79,9 @@ function LobbySlotRow({
         </SelectContent>
       </Select>
 
-      {(slot.kind === 'provider' || slot.kind === 'both') && (
+      {(slot.kind === 'provider' || slot.kind === 'both') ? (
         <Select value={slot.providerName ?? ''} onValueChange={handleProviderChange}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-40 md:w-full">
             <SelectValue placeholder="Proveedor" />
           </SelectTrigger>
           <SelectContent>
@@ -90,15 +94,17 @@ function LobbySlotRow({
             )}
           </SelectContent>
         </Select>
+      ) : (
+        <div className="hidden md:flex items-center justify-center text-xs text-muted-foreground/50 select-none">—</div>
       )}
 
-      {(slot.kind === 'category' || slot.kind === 'both') && (
+      {(slot.kind === 'category' || slot.kind === 'both') ? (
         <Select
           value={slot.categoryType ?? ''}
           onValueChange={v => onChange({ ...slot, categoryType: v })}
           disabled={categoryDisabled}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-40 md:w-full">
             <SelectValue placeholder={
               slot.kind === 'both' && !slot.providerName
                 ? 'Elegí proveedor primero'
@@ -111,10 +117,12 @@ function LobbySlotRow({
             ))}
           </SelectContent>
         </Select>
+      ) : (
+        <div className="hidden md:flex items-center justify-center text-xs text-muted-foreground/50 select-none">—</div>
       )}
 
       <Input
-        className="w-36"
+        className="w-36 md:w-full"
         placeholder="Etiqueta"
         value={slot.label}
         onChange={e => onChange({ ...slot, label: e.target.value })}
@@ -124,7 +132,7 @@ function LobbySlotRow({
         type="button"
         variant="ghost"
         size="icon"
-        className="h-8 w-8 text-red-500 hover:text-red-700 flex-shrink-0"
+        className="h-8 w-8 text-red-500 hover:text-red-700 flex-shrink-0 md:justify-self-end"
         onClick={onRemove}
       >
         <Trash2 className="h-4 w-4" />
@@ -220,6 +228,20 @@ export function LobbySlotEditor({ slots, saving, onSave }: LobbySlotEditorProps)
           {saving ? 'Guardando...' : 'Guardar slots'}
         </Button>
       </div>
+
+      {items.length > 0 && (
+        <div className="hidden md:flex items-center gap-2 px-3">
+          {/* spacer mirroring the drag handle inside DraggableItem */}
+          <span className="w-4 flex-shrink-0" />
+          <div className={`flex-1 grid gap-2 ${SLOT_GRID_COLS} text-xs font-medium text-muted-foreground`}>
+            <span>Tipo</span>
+            <span>Proveedor</span>
+            <span>Categoría</span>
+            <span>Etiqueta</span>
+            <span />
+          </div>
+        </div>
+      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items.map(s => s.id)} strategy={verticalListSortingStrategy}>

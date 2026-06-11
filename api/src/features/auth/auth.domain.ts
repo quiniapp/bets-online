@@ -7,7 +7,8 @@ import {
   User,
   UserRole,
   ErrorCode,
-  BCRYPT_ROUNDS
+  BCRYPT_ROUNDS,
+  SESSION_IDLE_MS
 } from 'helper';
 import { config } from '../../config';
 import { usersRepository } from '../users/users.repository';
@@ -145,7 +146,10 @@ export class AuthDomain {
       config.jwt.refreshSecret as jwt.Secret,
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Sliding inactivity window: the DB row is the source of truth. If the
+    // user was idle past the window, rotateTokens() below finds no live row
+    // and the refresh fails → client logs out.
+    const expiresAt = new Date(Date.now() + SESSION_IDLE_MS);
 
     // Rotar sesión: 1 DB op (UPDATE con validación de expiresAt incluida)
     const session = await sessionsRepository.rotateTokens(
@@ -253,7 +257,9 @@ export class AuthDomain {
       { expiresIn: config.jwt.refreshExpiresIn } as jwt.SignOptions
     );
 
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Session row expires after the inactivity window; every authenticated
+    // request / refresh / activity ping slides it forward.
+    const expiresAt = new Date(Date.now() + SESSION_IDLE_MS);
 
     // Save session
     await sessionsRepository.create(user.id, accessToken, refreshToken, expiresAt);

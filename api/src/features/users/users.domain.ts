@@ -303,29 +303,43 @@ export class UsersDomain {
     await authDomain.resetPassword(userId, newPassword);
   }
 
+  // Whole subtree in 2 queries (recursive CTE + bulk balances) assembled in
+  // memory. The previous per-node recursion issued 3 queries per descendant
+  // and made /users/me/tree take seconds with a few hundred users.
   private async buildUserTree(userId: string): Promise<UserTreeNode> {
-    const user = await usersRepository.findById(userId);
-    if (!user) {
+    const rootUser = await usersRepository.findById(userId);
+    if (!rootUser) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
     }
 
-    const balance = await balancesRepository.findByUserId(userId);
-    // For tree view, get all children without pagination
-    const { users: children } = await usersRepository.findByParentId(userId, { limit: 1000 });
+    const descendants = await usersRepository.findDescendants(userId);
+    const allUsers = [rootUser, ...descendants];
+    const balances = await balancesRepository.findByUserIds(allUsers.map(u => u.id));
+    const balanceByUserId = new Map(balances.map(b => [b.userId, b]));
 
-    const childNodes = await Promise.all(
-      children.map(child => this.buildUserTree(child.id))
-    );
+    const childrenByParent = new Map<string, User[]>();
+    for (const u of descendants) {
+      if (!u.parentUserId) continue;
+      const siblings = childrenByParent.get(u.parentUserId);
+      if (siblings) siblings.push(u);
+      else childrenByParent.set(u.parentUserId, [u]);
+    }
 
-    // Remove password hash
-     
-    const { passwordHash: _passwordHash3, ...userWithoutPassword } = user;
+    const build = (user: User): UserTreeNode => {
 
-    return {
-      user: userWithoutPassword as User,
-      balance: balance || { id: '', userId, chipBalance: 0, lastUpdatedAt: new Date() },
-      children: childNodes
+      const { passwordHash: _passwordHash3, ...userWithoutPassword } = user;
+      const children = (childrenByParent.get(user.id) ?? [])
+        .slice()
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return {
+        user: userWithoutPassword as User,
+        balance: balanceByUserId.get(user.id) ??
+          { id: '', userId: user.id, chipBalance: 0, lastUpdatedAt: new Date() },
+        children: children.map(build)
+      };
     };
+
+    return build(rootUser);
   }
 
   private async canViewUser(requesterId: string, targetId: string): Promise<boolean> {
@@ -334,8 +348,7 @@ export class UsersDomain {
     }
 
     // Check if target is in requester's subtree
-    const descendants = await usersRepository.findDescendants(requesterId);
-    return descendants.some(d => d.id === targetId);
+    return usersRepository.isDescendant(requesterId, targetId);
   }
 }
 

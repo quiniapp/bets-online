@@ -53,7 +53,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
         <div className="flex h-full flex-col overflow-hidden">
           <div className="flex h-16 shrink-0 items-center border-b px-6">
             <Link href="/" aria-label="Ir al inicio" onClick={() => setOpen(false)}>
-              <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[140px]" />
+              <img src="/logo-small.png" alt="Logo" className="h-12 w-auto max-w-[180px]" />
             </Link>
           </div>
 
