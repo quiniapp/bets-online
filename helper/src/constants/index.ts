@@ -49,6 +49,13 @@ export const ACCESS_TOKEN_EXPIRY = '15m';
 export const REFRESH_TOKEN_EXPIRY = '7d';
 
 /**
+ * Session inactivity window (sliding). A session ends when the user has no
+ * activity for this long; any activity inside the window extends it. Shared
+ * by the API (sessions.expires_at) and both frontends (idle timers).
+ */
+export const SESSION_IDLE_MS = 30 * 60 * 1000;
+
+/**
  * Password
  */
 export const MIN_PASSWORD_LENGTH = 8;

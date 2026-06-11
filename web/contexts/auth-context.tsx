@@ -4,15 +4,19 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { apiService } from "@/services/api.service"
-import type { User, UserRole } from "helper"
+import { SESSION_IDLE_MS, type User, type UserRole } from "helper"
 import ROUTER from "@/routes"
 import { getSiteType, isRoleAllowedForSite, SITE_ACCESS_ERROR } from "@/lib/site-config"
 
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000
-const INACTIVITY_SECONDS = 30 * 60
+const INACTIVITY_TIMEOUT = SESSION_IDLE_MS
+const INACTIVITY_SECONDS = SESSION_IDLE_MS / 1000
 const LAST_ACTIVE_COOKIE = 'last-active'
-// Watchdog runs every 2 min: if cookie gone → logout; piggybacks token refresh every ~10 min.
+// Watchdog runs every 2 min: if the last-active cookie expired → force logout.
 const SESSION_WATCHDOG_INTERVAL = 2 * 60 * 1000
+// While the user is genuinely active, ping the server at most this often so the
+// server-side inactivity window (sessions.expires_at) keeps sliding even during
+// long stretches of UI-only activity without API calls.
+const ACTIVITY_PING_INTERVAL = 5 * 60 * 1000
 
 const setLastActiveCookie = () => {
   const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : ''
@@ -158,10 +162,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Resets the inactivity timer and renews the last-active cookie.
   // Extracted so keepAlive can call it without re-registering event listeners.
+  const lastPingRef = useRef(Date.now())
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current)
     setLastActiveCookie()
     inactivityTimerRef.current = setTimeout(logout, INACTIVITY_TIMEOUT)
+
+    // Real user activity also slides the SERVER inactivity window (throttled).
+    // API calls already slide it via the auth middleware; this covers long
+    // stretches of reading/scrolling without requests.
+    const now = Date.now()
+    if (now - lastPingRef.current > ACTIVITY_PING_INTERVAL) {
+      lastPingRef.current = now
+      apiService.refreshToken().then(ok => {
+        // Refresh definitivamente muerto (no error de red): la sesión server-side
+        // expiró → cerrar la sesión local de inmediato.
+        if (!ok && !apiService.hasSession()) logout()
+      }).catch(() => {})
+    }
   }, [logout])
 
   // Exposed for game pages where the iframe swallows all activity events.
@@ -196,24 +214,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, resetInactivityTimer])
 
-  // Session watchdog: runs every 2 min.
-  // - If last-active cookie is gone → user was inactive > 30 min → force logout.
-  // - If cookie alive → piggyback token refresh every 5 cycles (~10 min).
-  //   (Backend sliding window already keeps the cookie fresh while active; this
-  //    is a fallback for background-throttled tabs.)
-  // This is the primary fallback for when setTimeout gets throttled in background tabs.
+  // Session watchdog: every 2 min, if the last-active cookie expired (>30 min
+  // without activity) → force logout. Primary fallback for background-throttled
+  // tabs where setTimeout doesn't fire. NOTE: it must NOT refresh tokens here —
+  // refreshing without real activity would keep dead-idle sessions alive forever.
   useEffect(() => {
     if (!user) return
 
-    let cycles = 0
     const check = async () => {
       if (!hasLastActiveCookie() && apiService.hasSession()) {
         await logout()
-        return
-      }
-      cycles++
-      if (cycles % 5 === 0) {
-        apiService.refreshToken().catch(() => {})
       }
     }
 

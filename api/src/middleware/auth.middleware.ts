@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { ApiResponseBuilder, ErrorCode, UserRole, JwtPayload } from 'helper';
+import { ApiResponseBuilder, ErrorCode, UserRole, JwtPayload, SESSION_IDLE_MS } from 'helper';
 import { config } from '../config';
 import { AppError } from './error.middleware';
 import { userCache } from '../persistence/cache/user.cache';
 import { setSessionCookie } from '../utils/auth-cookies';
+import { sessionsRepository } from '../features/auth/sessions.repository';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -48,6 +49,11 @@ export const authMiddleware = async (
           { expiresIn: config.jwt.expiresIn } as jwt.SignOptions
         );
         setSessionCookie(res, fresh);
+        // Slide the server-side inactivity window too (fire-and-forget: one
+        // indexed UPDATE at most every half token-lifetime per session).
+        sessionsRepository
+          .slideByToken(token, fresh, new Date(Date.now() + SESSION_IDLE_MS))
+          .catch(() => { /* sliding must never break the request */ });
       }
     }
 
