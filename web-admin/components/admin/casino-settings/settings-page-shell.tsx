@@ -14,7 +14,7 @@ interface SettingsPageShellProps {
  */
 export function SettingsPageShell({ title, description, children }: SettingsPageShellProps) {
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-4">
+    <div className="mx-auto w-full max-w-2xl lg:max-w-4xl space-y-4">
       <Link
         href="/admin/settings/casino"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
