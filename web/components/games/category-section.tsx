@@ -13,7 +13,7 @@ interface CategorySectionProps {
   gameType?: string | null
   providerName?: string | null
   limit?: number
-  onShowAll?: (gameType: string) => void
+  onShowAll?: () => void
 }
 
 const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, onShowAll }: CategorySectionProps) => {
@@ -54,9 +54,9 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
           {emoji && <span className="text-xl">{emoji}</span>}
           <span className="font-bold text-lg">{title}</span>
         </div>
-        {onShowAll && gameType && (
+        {onShowAll && (
           <button
-            onClick={() => onShowAll(gameType)}
+            onClick={onShowAll}
             className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
           >
             Mostrar todo

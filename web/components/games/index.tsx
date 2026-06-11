@@ -7,6 +7,7 @@ import { useGames } from "@/hooks/useGames"
 import ROUTER from "@/routes"
 import GameCard from "./game-card"
 import { Loader2, Gamepad2 } from "lucide-react"
+import { SECTION_GRID as GRID } from "@/lib/two-row-grid"
 
 interface GamesListProps {
     providerName?: string | null;
@@ -14,8 +15,6 @@ interface GamesListProps {
     search?: string;
     excludeGameTypes?: string | null;
 }
-
-const GRID = "grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-1.5 sm:gap-2"
 
 const GamesList = ({ providerName = null, gameType = null, search = '', excludeGameTypes = null }: GamesListProps) => {
     const { games, loading, loadingMore, loadMore } = useGames({ activeOnly: true, providerName, gameType, search, excludeGameTypes })
@@ -49,9 +48,9 @@ const GamesList = ({ providerName = null, gameType = null, search = '', excludeG
 
     if (loading) {
         return (
-            <div className={`max-w-[1440px] w-full ${GRID}`}>
-                {[...Array(12)].map((_, i) => (
-                    <div key={i} className="aspect-[3/4] bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 animate-pulse rounded-md" />
+            <div className={`w-full ${GRID}`}>
+                {[...Array(16)].map((_, i) => (
+                    <div key={i} className="aspect-square bg-accent animate-pulse rounded-xl" />
                 ))}
             </div>
         )
@@ -59,7 +58,7 @@ const GamesList = ({ providerName = null, gameType = null, search = '', excludeG
 
     if (games.length === 0) {
         return (
-            <div className="max-w-[1440px] w-full flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
+            <div className="w-full flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
                 <Gamepad2 className="h-12 w-12 opacity-40" />
                 <p className="text-sm font-medium">No hay juegos disponibles</p>
             </div>
@@ -67,7 +66,7 @@ const GamesList = ({ providerName = null, gameType = null, search = '', excludeG
     }
 
     return (
-        <div className="max-w-[1440px] w-full">
+        <div className="w-full">
             <div className={GRID}>
                 {games.map((game) => (
                     <GameCard key={game.id} game={game} onClick={() => handleGameClick(game.id)} />

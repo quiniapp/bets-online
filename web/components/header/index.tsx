@@ -76,7 +76,7 @@ const HeaderIndex = () => {
                     <img
                         src="/logo-small.png"
                         alt="Logo"
-                        className="h-8 w-auto max-w-[120px]"
+                        className="h-10 w-auto max-w-[160px]"
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                 </button>
@@ -129,7 +129,7 @@ const HeaderIndex = () => {
                             aria-label="Ir al inicio"
                             className="flex items-center"
                         >
-                            <img src="/logo-small.png" alt="Logo" className="h-8 w-auto max-w-[130px]" />
+                            <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[160px]" />
                         </button>
                     </div>
 
@@ -159,7 +159,7 @@ const HeaderIndex = () => {
                                                     if (item.type === null) {
                                                         router.push('/')
                                                     } else {
-                                                        router.push(`/?type=${item.type}`)
+                                                        router.push(`/?category=${item.type}`)
                                                     }
                                                 }}
                                             >
