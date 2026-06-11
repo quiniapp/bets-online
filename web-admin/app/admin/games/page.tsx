@@ -387,7 +387,6 @@ export default function AdminGames() {
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Proveedor</th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Tipo</th>
                   <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">Min / Max</th>
-                  <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Edge</th>
                   {isOwner && (
                     <th className="px-4 py-3 text-left font-medium text-sm text-muted-foreground uppercase tracking-wide">RTP</th>
                   )}
@@ -434,9 +433,6 @@ export default function AdminGames() {
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                         ${formatChips(game.minBet)} / ${formatChips(game.maxBet)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
-                        {game.houseEdge}%
                       </td>
                       {isOwner && (
                         <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
