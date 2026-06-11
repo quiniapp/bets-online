@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { gamesController } from './games.controller';
 import { gameLaunchController } from '../integrations/21viral/gameLaunch.controller';
-import { authMiddleware, requireRole } from '../../middleware/auth.middleware';
+import { authMiddleware, optionalAuth, requireRole } from '../../middleware/auth.middleware';
 import { validate, validateParams } from '../../middleware/validation.middleware';
 import { UserRole } from 'helper';
 import {
@@ -22,14 +22,16 @@ const launchGameSchema = z.object({
 
 const router = Router();
 
-// Public routes (no authentication required)
-router.get('/', gamesController.getAll.bind(gamesController));
+// Public routes (no authentication required).
+// optionalAuth: rtp is owner-only — the controller needs the role (when logged
+// in) to decide whether to include it in the response.
+router.get('/', optionalAuth, gamesController.getAll.bind(gamesController));
 router.get('/types', gamesController.getTypes.bind(gamesController));
 router.get('/providers', gamesController.getProviders.bind(gamesController));
 router.get('/stats', gamesController.stats.bind(gamesController));
 router.get('/top-played', gamesController.topPlayed.bind(gamesController));
 router.get('/top-providers', gamesController.topProviders.bind(gamesController));
-router.get('/:id', validateParams(idParamSchema), gamesController.getById.bind(gamesController));
+router.get('/:id', validateParams(idParamSchema), optionalAuth, gamesController.getById.bind(gamesController));
 
 // Protected routes (authentication required)
 router.use(authMiddleware);

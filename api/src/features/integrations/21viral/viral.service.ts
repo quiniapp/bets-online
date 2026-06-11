@@ -10,6 +10,7 @@ export interface ViralGame {
   defaultLogo: string;
   providerName: string;
   providerGameId: string;
+  rtp?: number;
 }
 
 export interface CreateGameSessionParams {

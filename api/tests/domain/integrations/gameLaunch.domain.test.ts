@@ -149,9 +149,23 @@ describe('gameLaunchDomain', () => {
         providerGameId: 'vs25wolfgold',
         name: 'Wolf Gold',
         gameType: 'slot',
-        defaultLogo: 'https://img/wolf.png'
+        defaultLogo: 'https://img/wolf.png',
+        rtp: null
       });
       expect(result).toEqual({ synced: 1 });
+    });
+
+    it('passes the optional rtp through to the upsert when the provider sends it', async () => {
+      mockViralService.getGames.mockResolvedValue([
+        { id: 2, name: 'Madame Luck', type: 'Slot', defaultLogo: 'https://img/luck.png', providerName: 'rubyplay', providerGameId: 'rp_1', rtp: 96.47 }
+      ]);
+      mockGamesRepo.upsertFromProvider.mockResolvedValue(mockGame);
+
+      await gameLaunchDomain.syncGames();
+
+      expect(mockGamesRepo.upsertFromProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ providerGameId: 'rp_1', rtp: 96.47 })
+      );
     });
   });
 

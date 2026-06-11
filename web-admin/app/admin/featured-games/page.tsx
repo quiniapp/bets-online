@@ -39,6 +39,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useFeaturedGames } from "@/hooks/useFeaturedGames"
 import { useGames } from "@/hooks/useGames"
 import type { FeaturedGameWithGame, Game } from "helper"
+import { UserRole } from "helper"
+import { useAuth } from "@/contexts/auth-context"
 
 function FeaturedRow({
   item,
@@ -130,6 +132,8 @@ function AddGameDialog({
   existingGameIds: Set<string>
 }) {
   const [search, setSearch] = useState("")
+  const { role } = useAuth()
+  const isOwner = role === UserRole.OWNER
   const { games, loading, loadMore, hasMore, loadingMore } = useGames({ activeOnly: true, search })
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -185,7 +189,7 @@ function AddGameDialog({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{game.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{game.providerName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{game.providerName}{isOwner && game.rtp != null ? ` · RTP ${game.rtp}%` : ''}</p>
                   </div>
                   {already && <Badge variant="secondary" className="text-xs shrink-0">Ya agregado</Badge>}
                 </button>

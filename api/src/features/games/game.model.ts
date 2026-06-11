@@ -15,6 +15,7 @@ export class GameModel extends Model {
   declare defaultLogo: string | null;
   declare customLogo: string | null;
   declare gameType: string | null;
+  declare rtp: number | null;
   declare sortOrder: number | null;
   declare createdAt: Date;
   declare updatedAt: Date;
@@ -100,6 +101,11 @@ GameModel.init(
       type: DataTypes.STRING(50),
       allowNull: true,
       field: 'game_type'
+    },
+    rtp: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      field: 'rtp'
     },
     sortOrder: {
       type: DataTypes.INTEGER,

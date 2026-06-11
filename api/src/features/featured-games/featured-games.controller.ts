@@ -1,21 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiResponseBuilder } from 'helper';
+import { ApiResponseBuilder, FeaturedGameWithGame, UserRole } from 'helper';
 import { featuredGamesDomain } from './featured-games.domain';
+
+// rtp is owner-only data — strip it before sending to anyone else
+const hideRtp = (items: FeaturedGameWithGame[]): FeaturedGameWithGame[] =>
+  items.map(f => ({ ...f, game: { ...f.game, rtp: undefined } }));
 
 export class FeaturedGamesController {
   async getActive(_req: Request, res: Response, next: NextFunction) {
     try {
       const featured = await featuredGamesDomain.getActive();
-      return res.json(ApiResponseBuilder.success(featured));
+      return res.json(ApiResponseBuilder.success(hideRtp(featured)));
     } catch (error) {
       return next(error);
     }
   }
 
-  async getAll(_req: Request, res: Response, next: NextFunction) {
+  async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const featured = await featuredGamesDomain.getAll();
-      return res.json(ApiResponseBuilder.success(featured));
+      const isOwner = req.user?.role === UserRole.OWNER;
+      return res.json(ApiResponseBuilder.success(isOwner ? featured : hideRtp(featured)));
     } catch (error) {
       return next(error);
     }

@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiResponseBuilder, SUCCESS_MESSAGES } from 'helper';
+import { ApiResponseBuilder, SUCCESS_MESSAGES, UserRole, Game } from 'helper';
 import { gamesDomain } from './games.domain';
+
+// rtp is owner-only data — strip it from responses for any other requester
+// (anonymous players included). JSON.stringify drops undefined keys.
+const hideRtpUnlessOwner = (game: Game, req: Request): Game =>
+  req.user?.role === UserRole.OWNER ? game : { ...game, rtp: undefined };
 
 export class GamesController {
   /**
@@ -33,7 +38,7 @@ export class GamesController {
       const excludeGameTypes = rawExclude ? rawExclude.split(',').map(t => t.trim()).filter(Boolean) : undefined;
       const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType, status, excludeGameTypes);
 
-      return res.json(ApiResponseBuilder.paginated(games, page, limit, total));
+      return res.json(ApiResponseBuilder.paginated(games.map(g => hideRtpUnlessOwner(g, req)), page, limit, total));
     } catch (error) {
       return next(error);
     }
@@ -165,7 +170,7 @@ export class GamesController {
       const { id } = req.params;
       const game = await gamesDomain.getGameById(id);
 
-      return res.json(ApiResponseBuilder.success({ game }));
+      return res.json(ApiResponseBuilder.success({ game: hideRtpUnlessOwner(game, req) }));
     } catch (error) {
       return next(error);
     }
