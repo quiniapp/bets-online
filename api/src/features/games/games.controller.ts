@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder, SUCCESS_MESSAGES, UserRole, Game } from 'helper';
 import { gamesDomain } from './games.domain';
+import { setPublicCache } from '../../utils/http-cache';
 
 // rtp is owner-only data — strip it from responses for any other requester
 // (anonymous players included). JSON.stringify drops undefined keys.
@@ -38,6 +39,7 @@ export class GamesController {
       const excludeGameTypes = rawExclude ? rawExclude.split(',').map(t => t.trim()).filter(Boolean) : undefined;
       const { games, total } = await gamesDomain.getPaginatedGames(page, limit, activeOnly, providerName, search, gameType, status, excludeGameTypes);
 
+      setPublicCache(req, res, 60);
       return res.json(ApiResponseBuilder.paginated(games.map(g => hideRtpUnlessOwner(g, req)), page, limit, total));
     } catch (error) {
       return next(error);
@@ -78,6 +80,7 @@ export class GamesController {
   async getTypes(req: Request, res: Response, next: NextFunction) {
     try {
       const types = await gamesDomain.getDistinctGameTypes();
+      setPublicCache(req, res, 300);
       return res.json(ApiResponseBuilder.success({ types }));
     } catch (error) {
       return next(error);
@@ -87,6 +90,7 @@ export class GamesController {
   async getProviders(req: Request, res: Response, next: NextFunction) {
     try {
       const providers = await gamesDomain.getDistinctProviders();
+      setPublicCache(req, res, 300);
       return res.json(ApiResponseBuilder.success({ providers }));
     } catch (error) {
       return next(error);

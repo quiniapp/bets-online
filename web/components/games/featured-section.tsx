@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useLobby } from "@/contexts/lobby-context"
 import { apiService } from "@/services/api.service"
 import type { FeaturedGameWithGame } from "helper"
 import GameCard from "./game-card"
@@ -14,21 +15,34 @@ interface FeaturedSectionProps {
 }
 
 const FeaturedSection = ({ onShowAll }: FeaturedSectionProps) => {
-  const [items, setItems] = useState<FeaturedGameWithGame[]>([])
-  const [loading, setLoading] = useState(true)
+  // Under LobbyProvider the featured list comes with the aggregated /lobby
+  // payload — no own request unless the lobby fetch failed.
+  const lobby = useLobby()
+  const lobbyActive = !!lobby && (lobby.loading || lobby.data !== null)
+
+  const [ownItems, setOwnItems] = useState<FeaturedGameWithGame[]>([])
+  const [ownLoading, setOwnLoading] = useState(true)
   const { user } = useAuth()
   const router = useRouter()
 
   const fetchFeatured = useCallback(async () => {
-    setLoading(true)
+    setOwnLoading(true)
     const res = await apiService.get<FeaturedGameWithGame[]>('/featured-games')
     if (res.success && res.data) {
-      setItems(res.data.filter(f => f.isActive && f.game))
+      setOwnItems(res.data.filter(f => f.isActive && f.game))
     }
-    setLoading(false)
+    setOwnLoading(false)
   }, [])
 
-  useEffect(() => { fetchFeatured() }, [fetchFeatured])
+  useEffect(() => {
+    if (lobbyActive) return
+    fetchFeatured()
+  }, [fetchFeatured, lobbyActive])
+
+  const items = lobbyActive
+    ? (lobby!.data?.featured ?? []).filter(f => f.isActive && f.game)
+    : ownItems
+  const loading = lobbyActive ? lobby!.loading : ownLoading
 
   const handleGameClick = (gameId: string) => {
     const playUrl = `${ROUTER.USER_GAME_PLAY}/${gameId}/play`

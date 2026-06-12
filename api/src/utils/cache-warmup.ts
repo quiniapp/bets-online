@@ -1,4 +1,4 @@
-import { GAMES_PAGE_LIMIT } from 'helper';
+import { GAMES_PAGE_LIMIT, LOBBY_SECTION_LIMIT } from 'helper';
 import { gamesDomain } from '../features/games/games.domain';
 import { providersDomain } from '../features/providers/providers.domain';
 import { featuredGamesDomain } from '../features/featured-games/featured-games.domain';
@@ -20,10 +20,13 @@ export async function warmLobbySections(): Promise<void> {
     if (!gameType && !providerName) continue;
     combos.set(`${gameType ?? ''}:${providerName ?? ''}`, { gameType, providerName });
   }
+  // Warm both cache keys per combo: the home section request (16) and the
+  // "Mostrar todo"/filtered list request (30) — limit is part of the key.
   await Promise.all(
-    [...combos.values()].map(({ gameType, providerName }) =>
-      gamesDomain.getPaginatedGames(CACHE_PAGE, GAMES_PAGE_LIMIT, true, providerName, undefined, gameType)
-    )
+    [...combos.values()].flatMap(({ gameType, providerName }) => [
+      gamesDomain.getPaginatedGames(CACHE_PAGE, LOBBY_SECTION_LIMIT, true, providerName, undefined, gameType),
+      gamesDomain.getPaginatedGames(CACHE_PAGE, GAMES_PAGE_LIMIT, true, providerName, undefined, gameType),
+    ])
   );
 }
 

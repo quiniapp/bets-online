@@ -37,6 +37,13 @@ export const MAX_LIMIT = 100;
 export const GAMES_PAGE_LIMIT = 30;
 
 /**
+ * Home lobby sections render at most 16 games (2 full rows at every
+ * breakpoint), so they request exactly that. Part of the server cache key
+ * (`active:type:provider:limit`) — the warmup must warm this limit too.
+ */
+export const LOBBY_SECTION_LIMIT = 16;
+
+/**
  * Casino layout constraints
  */
 export const MAX_LOBBY_SLOTS = 10;

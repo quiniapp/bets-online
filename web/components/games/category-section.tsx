@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
+import { useLobby } from "@/contexts/lobby-context"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, twoRowItemClass } from "@/lib/two-row-grid"
@@ -13,11 +14,19 @@ interface CategorySectionProps {
   gameType?: string | null
   providerName?: string | null
   limit?: number
+  /** When set and under LobbyProvider, games come from the aggregated /lobby payload */
+  slotId?: string
   onShowAll?: () => void
 }
 
-const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, onShowAll }: CategorySectionProps) => {
-  const { games, loading } = useGames({ activeOnly: true, gameType: gameType ?? null, providerName: providerName ?? null })
+const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, slotId, onShowAll }: CategorySectionProps) => {
+  const lobby = useLobby()
+  const lobbyActive = slotId !== undefined && !!lobby && (lobby.loading || lobby.data !== null)
+  const fetched = useGames({ activeOnly: true, gameType: gameType ?? null, providerName: providerName ?? null, limit, skip: lobbyActive })
+  const games = lobbyActive
+    ? (lobby!.data?.slots.find(s => s.id === slotId)?.games ?? [])
+    : fetched.games
+  const loading = lobbyActive ? lobby!.loading : fetched.loading
   const { user } = useAuth()
   const router = useRouter()
 

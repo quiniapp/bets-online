@@ -9,6 +9,10 @@ interface UseGamesOptions {
   gameType?: string | null;
   excludeGameTypes?: string | null;
   status?: 'all' | 'active' | 'inactive';
+  /** Page size. Home sections request only what they render (16). */
+  limit?: number;
+  /** Don't fetch — the caller already has the games (e.g. from /lobby). */
+  skip?: boolean;
 }
 
 export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false, providerName: string | null = null) {
@@ -22,9 +26,11 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
   const gameType = options.gameType ?? null;
   const excludeGameTypes = options.excludeGameTypes ?? null;
   const status = options.status ?? null;
+  const limit = options.limit ?? GAMES_PAGE_LIMIT;
+  const skip = options.skip ?? false;
 
   const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!skip);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -40,7 +46,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
       setError(null);
 
       try {
-        const qs = new URLSearchParams({ page: String(targetPage), limit: String(GAMES_PAGE_LIMIT) });
+        const qs = new URLSearchParams({ page: String(targetPage), limit: String(limit) });
         if (status && status !== 'all') qs.set('status', status);
         else if (activeOnly) qs.set('activeOnly', 'true');
         if (provider) qs.set('providerName', provider);
@@ -65,15 +71,16 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
         else setLoadingMore(false);
       }
     },
-    [activeOnly, provider, search, gameType, excludeGameTypes, status]
+    [activeOnly, provider, search, gameType, excludeGameTypes, status, limit]
   );
 
   useEffect(() => {
+    if (skip) return;
     setGames([]);
     setPage(1);
     setTotalPages(1);
     fetchPage(1, true);
-  }, [activeOnly, provider, search, gameType, excludeGameTypes, status, fetchPage]);
+  }, [activeOnly, provider, search, gameType, excludeGameTypes, status, limit, skip, fetchPage]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {

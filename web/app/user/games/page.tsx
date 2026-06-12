@@ -17,7 +17,7 @@ import { useChips } from "@/hooks/useChips"
 import { useProviders } from "@/hooks/useProviders"
 import { useToast } from "@/hooks/use-toast"
 import { useFavorites } from "@/contexts/favorites-context"
-import { apiService } from "@/services/api.service"
+import { useGameTypes } from "@/hooks/useGameTypes"
 import type { Game } from "helper"
 import { cn, formatChips } from "@/lib/utils"
 
@@ -36,7 +36,7 @@ function UserGamesContent() {
   // Local-only state
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [gameTypes, setGameTypes] = useState<string[]>([])
+  const { types: gameTypes } = useGameTypes()
 
   const updateUrl = useCallback((params: { provider?: string | null; type?: string | null }) => {
     const qs = new URLSearchParams()
@@ -60,7 +60,8 @@ function UserGamesContent() {
   const { games, loading, loadingMore, hasMore, loadMore } = useGames({
     activeOnly: true,
     providerName: selectedProvider,
-    search: debouncedSearch,
+    // ILIKE '%t%' with 1 char scans half the catalog — wait for 2+ chars
+    search: debouncedSearch.trim().length >= 2 ? debouncedSearch : "",
     gameType: isOtros ? null : selectedType,
     excludeGameTypes: isOtros ? 'videoSlots,LiveGames,Roulette' : null,
   })
@@ -84,13 +85,6 @@ function UserGamesContent() {
     const t = setTimeout(() => setDebouncedSearch(search), 400)
     return () => clearTimeout(t)
   }, [search])
-
-  // Load game types once
-  useEffect(() => {
-    apiService.get<{ types: string[] }>("/games/types").then(res => {
-      if (res.success && res.data) setGameTypes(res.data.types)
-    })
-  }, [])
 
   useEffect(() => {
     if (user) {
