@@ -144,8 +144,10 @@ class ApiService {
           throw new Error('Session expired');
         }
 
-        // Sin indicador de sesión: devolver la respuesta de error para que
-        // el caller decida (ej: loadUser redirige sin llamar handleAuthError)
+        // Refresh definitivamente muerto y sin flag de sesión: redirigir a
+        // /login (no-op si ya estamos ahí). Antes devolvíamos el error sin
+        // redirigir y la página quedaba rota mostrando "sesión expirada".
+        this.handleAuthError();
         return data;
       }
 

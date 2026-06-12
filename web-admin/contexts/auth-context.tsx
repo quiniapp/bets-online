@@ -78,11 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const isPublicPage = window.location.pathname === ROUTER.SITE
-
+    // En web-admin NO hay landing pública: "/" redirige a /admin/dashboard,
+    // así que mandar una sesión muerta a ROUTER.SITE creaba un loop infinito
+    // (/ → /admin → loadUser falla → / → …). Siempre redirigir a /login.
     if (apiService.hasSession() && !hasLastActiveCookie()) {
       clearSession()
-      if (!isPublicPage) router.push(ROUTER.SITE)
+      router.push(ROUTER.LOGIN)
       setIsLoading(false)
       return
     }
@@ -109,12 +110,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLastActiveCookie()
       } else {
         clearSession()
-        if (!isPublicPage) router.push(ROUTER.SITE)
+        router.push(ROUTER.LOGIN)
       }
     } catch (error) {
       console.error('Failed to load user:', error)
       clearSession()
-      if (!isPublicPage) router.push(ROUTER.SITE)
+      router.push(ROUTER.LOGIN)
     } finally {
       setIsLoading(false)
     }
