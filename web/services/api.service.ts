@@ -62,15 +62,17 @@ class ApiService {
       .some(p => endpoint.startsWith(p));
   }
 
-  private redirectingToLogin = false;
+  private redirectingHome = false;
 
   private handleAuthError(): void {
     this.setSessionActive(false);
-    if (typeof window === 'undefined' || this.redirectingToLogin) return;
-    // Ya estamos en el login: redirigir de nuevo recargaría la página en loop.
-    if (window.location.pathname === '/login') return;
-    this.redirectingToLogin = true;
-    window.location.href = '/login';
+    if (typeof window === 'undefined' || this.redirectingHome) return;
+    // Sitio de jugadores: el inicio es el lobby público "/". Si ya estamos
+    // ahí (o en /login), no redirigir — recargaría la página en loop.
+    const { pathname } = window.location;
+    if (pathname === '/' || pathname === '/login') return;
+    this.redirectingHome = true;
+    window.location.href = '/';
   }
 
   private async request<T>(
@@ -144,8 +146,10 @@ class ApiService {
           throw new Error('Session expired');
         }
 
-        // Sin indicador de sesión: devolver la respuesta de error para que
-        // el caller decida (ej: loadUser redirige sin llamar handleAuthError)
+        // Refresh definitivamente muerto y sin flag de sesión: redirigir al
+        // lobby (no-op si ya estamos en "/" o /login). Antes devolvíamos el
+        // error sin redirigir y la página quedaba rota en "sesión expirada".
+        this.handleAuthError();
         return data;
       }
 
