@@ -4,7 +4,7 @@ import { ApiResponseBuilder, ErrorCode, UserRole, JwtPayload, SESSION_IDLE_MS } 
 import { config } from '../config';
 import { AppError } from './error.middleware';
 import { userCache } from '../persistence/cache/user.cache';
-import { setSessionCookie } from '../utils/auth-cookies';
+import { setSessionCookie, clearSessionCookie } from '../utils/auth-cookies';
 import { sessionsRepository } from '../features/auth/sessions.repository';
 
 declare global {
@@ -75,6 +75,11 @@ export const authMiddleware = async (
     }
 
     if (error instanceof jwt.JsonWebTokenError) {
+      // Token malformado o con firma inválida: irrecuperable. Revocar la
+      // cookie para que el browser no la siga presentando (el frontend
+      // chequea su existencia para acceder a rutas protegidas). Un token
+      // meramente EXPIRADO no entra acá: se recupera vía /auth/refresh.
+      clearSessionCookie(res);
       return res.status(401).json(
         ApiResponseBuilder.error(
           ErrorCode.INVALID_TOKEN,
