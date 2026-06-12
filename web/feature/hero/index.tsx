@@ -56,13 +56,17 @@ const HeroBannerIndex = () => {
         className="w-full"
       >
         <CarouselContent>
-          {banners.map(banner => (
+          {banners.map((banner, index) => (
             <CarouselItem key={banner.id}>
               <div className="relative h-40 sm:h-56 md:h-72 w-full rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-primary/20">
+                {/* First banner is the LCP — fetch it ASAP; the rest can wait */}
                 <img
                   src={banner.imageUrl ?? undefined}
                   alt="Banner"
                   className="w-full h-full object-cover"
+                  decoding="async"
+                  fetchPriority={index === 0 ? "high" : "auto"}
+                  loading={index === 0 ? "eager" : "lazy"}
                 />
               </div>
             </CarouselItem>

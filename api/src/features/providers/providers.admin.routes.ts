@@ -7,6 +7,7 @@ import { supabaseStorage } from '../../services/supabase-storage.service';
 import { ProviderModel } from './provider.model';
 import { providersMemCache } from '../../utils/games-cache';
 import { safeImageFileName, safeKeySegment } from '../../utils/storage-key.utils';
+import { processImageUpload } from '../../utils/image-processing';
 
 const router = Router();
 
@@ -33,12 +34,13 @@ router.post(
           .status(404)
           .json(ApiResponseBuilder.error('NOT_FOUND', 'Provider not found'));
       }
-      const filePath = `providers/${safeKeySegment(name)}/${safeImageFileName(req.file.originalname)}`;
+      const processed = await processImageUpload(req.file, 'logo');
+      const filePath = `providers/${safeKeySegment(name)}/${safeImageFileName(processed.originalname)}`;
       const logoUrl = await supabaseStorage.uploadFile(
         'provider-logos',
         filePath,
-        req.file.buffer,
-        req.file.mimetype
+        processed.buffer,
+        processed.mimetype
       );
       await provider.update({ logoUrl });
       providersMemCache.invalidate();
