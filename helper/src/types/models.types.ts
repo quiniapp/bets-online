@@ -512,6 +512,25 @@ export interface UpdateCasinoSettingsDto {
 }
 
 /**
+ * Aggregated public lobby payload (GET /api/lobby) — everything the home
+ * needs in a single response instead of ~10 requests after hydration.
+ */
+export interface LobbySlotGames {
+  /** LobbySlot.id this section belongs to */
+  id: string
+  games: Game[]
+  total: number
+}
+
+export interface LobbyData {
+  settings: CasinoSettings
+  types: string[]
+  providers: Provider[]
+  featured: FeaturedGameWithGame[]
+  slots: LobbySlotGames[]
+}
+
+/**
  * Per-provider game-type ordering rule. Games of a provider are grouped by
  * type following these sort orders; types without a rule fall back to the
  * global GameType.sortOrder.

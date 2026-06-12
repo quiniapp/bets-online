@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import swaggerUi from 'swagger-ui-express';
@@ -24,6 +25,10 @@ app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
+
+// gzip responses — traffic through the Vercel edge is compressed there, but
+// direct hits to the Railway domain were going out uncompressed
+app.use(compression());
 
 // CORS configuration
 app.use(

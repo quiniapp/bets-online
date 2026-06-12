@@ -12,6 +12,7 @@ import favoritesRoutes from './features/favorites/favorites.routes';
 import featuredGamesRoutes from './features/featured-games/featured-games.routes';
 import bannersRoutes from './features/game-banners/game-banners.routes';
 import settingsRoutes from './features/settings/settings.routes';
+import lobbyRoutes from './features/lobby/lobby.routes';
 
 const router = Router();
 
@@ -50,5 +51,6 @@ router.use('/favorites', favoritesRoutes);
 router.use('/featured-games', featuredGamesRoutes);
 router.use('/banners', bannersRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/lobby', lobbyRoutes);
 
 export default router;

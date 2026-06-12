@@ -2,6 +2,7 @@ import { GameBanner, UpdateGameBannerDto } from 'helper';
 import { gameBannersRepository } from './game-banners.repository';
 import { supabaseStorage } from '../../services/supabase-storage.service';
 import { safeImageFileName } from '../../utils/storage-key.utils';
+import { processImageUpload } from '../../utils/image-processing';
 
 const BUCKET = 'banner-images';
 
@@ -21,11 +22,12 @@ export class GameBannersDomain {
   }
 
   async createWithImage(file: BannerImageFile, sortOrder?: number): Promise<GameBanner> {
+    const processed = await processImageUpload(file, 'banner');
     const banner = await gameBannersRepository.create({ sortOrder });
-    const filePath = `banners/${banner.id}/${safeImageFileName(file.originalname)}`;
+    const filePath = `banners/${banner.id}/${safeImageFileName(processed.originalname)}`;
     let uploaded = false;
     try {
-      const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, file.buffer, file.mimetype);
+      const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, processed.buffer, processed.mimetype);
       uploaded = true;
       await gameBannersRepository.setImageUrl(banner.id, imageUrl);
       return { ...banner, imageUrl };
@@ -46,8 +48,9 @@ export class GameBannersDomain {
   async replaceImage(id: string, file: BannerImageFile): Promise<GameBanner | null> {
     const banner = await gameBannersRepository.findById(id);
     if (!banner) return null;
-    const filePath = `banners/${id}/${safeImageFileName(file.originalname)}`;
-    const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, file.buffer, file.mimetype);
+    const processed = await processImageUpload(file, 'banner');
+    const filePath = `banners/${id}/${safeImageFileName(processed.originalname)}`;
+    const imageUrl = await supabaseStorage.uploadFile(BUCKET, filePath, processed.buffer, processed.mimetype);
     await gameBannersRepository.setImageUrl(id, imageUrl);
     await this.deleteStoredImage(banner.imageUrl);
     return { ...banner, imageUrl };

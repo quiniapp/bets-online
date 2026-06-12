@@ -17,16 +17,24 @@ jest.mock('../../src/services/supabase-storage.service', () => ({
   }
 }));
 
+import sharp from 'sharp';
 import { gameBannersDomain } from '../../src/features/game-banners/game-banners.domain';
 import { gameBannersRepository } from '../../src/features/game-banners/game-banners.repository';
 import { supabaseStorage } from '../../src/services/supabase-storage.service';
 
-const file = { buffer: Buffer.from('x'), originalname: 'a.png', mimetype: 'image/png' };
+// Uploads now run through sharp (resize + WebP), so the buffer must be a real image
+let file: { buffer: Buffer; originalname: string; mimetype: string };
+beforeAll(async () => {
+  const buffer = await sharp({
+    create: { width: 4, height: 4, channels: 3, background: '#fff' }
+  }).png().toBuffer();
+  file = { buffer, originalname: 'a.png', mimetype: 'image/png' };
+});
 
 describe('GameBannersDomain', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('createWithImage creates a banner, uploads the file, and stores the url', async () => {
+  it('createWithImage creates a banner, uploads the processed webp, and stores the url', async () => {
     (gameBannersRepository.create as jest.Mock).mockResolvedValue({
       id: 'b1', gameId: null, sortOrder: 1, isActive: true, imageUrl: null
     });
@@ -37,8 +45,8 @@ describe('GameBannersDomain', () => {
     expect(supabaseStorage.uploadFile).toHaveBeenCalledWith(
       'banner-images',
       expect.stringContaining('banners/b1/'),
-      file.buffer,
-      'image/png'
+      expect.any(Buffer),
+      'image/webp'
     );
     expect(gameBannersRepository.setImageUrl).toHaveBeenCalledWith(
       'b1', 'http://x/banner-images/banners/b1/1-a.png'

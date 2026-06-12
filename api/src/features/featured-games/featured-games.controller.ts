@@ -1,15 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder, FeaturedGameWithGame, UserRole } from 'helper';
 import { featuredGamesDomain } from './featured-games.domain';
+import { setPublicCache } from '../../utils/http-cache';
 
 // rtp is owner-only data — strip it before sending to anyone else
 const hideRtp = (items: FeaturedGameWithGame[]): FeaturedGameWithGame[] =>
   items.map(f => ({ ...f, game: { ...f.game, rtp: undefined } }));
 
 export class FeaturedGamesController {
-  async getActive(_req: Request, res: Response, next: NextFunction) {
+  async getActive(req: Request, res: Response, next: NextFunction) {
     try {
       const featured = await featuredGamesDomain.getActive();
+      setPublicCache(req, res, 60);
       return res.json(ApiResponseBuilder.success(hideRtp(featured)));
     } catch (error) {
       return next(error);

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder } from 'helper';
 import { providersDomain } from './providers.domain';
+import { setPublicCache } from '../../utils/http-cache';
 
 export class ProvidersController {
   /**
@@ -13,9 +14,10 @@ export class ProvidersController {
    *       200:
    *         description: List of providers
    */
-  async getAll(_req: Request, res: Response, next: NextFunction) {
+  async getAll(req: Request, res: Response, next: NextFunction) {
     try {
       const providers = await providersDomain.getAll();
+      setPublicCache(req, res, 300);
       return res.json(ApiResponseBuilder.success(providers));
     } catch (error) {
       return next(error);

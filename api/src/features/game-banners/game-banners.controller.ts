@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder } from 'helper';
 import { gameBannersDomain } from './game-banners.domain';
+import { setPublicCache } from '../../utils/http-cache';
 
 export class GameBannersController {
-  async getActive(_req: Request, res: Response, next: NextFunction) {
+  async getActive(req: Request, res: Response, next: NextFunction) {
     try {
       const banners = await gameBannersDomain.getActive();
+      setPublicCache(req, res, 300);
       return res.json(ApiResponseBuilder.success(banners));
     } catch (error) {
       return next(error);
