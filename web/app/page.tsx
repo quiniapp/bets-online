@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FlexCol } from "@/components/flex";
 import Box from "@/components/box";
@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { HomeBottomNav } from "@/components/home-bottom-nav";
 import { useCasinoSettings } from "@/hooks/useCasinoSettings";
-import { apiService } from "@/services/api.service";
+import { useGameTypes } from "@/hooks/useGameTypes";
+import { LobbyProvider } from "@/contexts/lobby-context";
 import type { LobbySlot } from "helper";
 
 interface FilterUpdates {
@@ -34,15 +35,11 @@ function LandingContent() {
   const selectedCategory = searchParams.get("category") ?? searchParams.get("type");
 
   const [search, setSearch] = useState("");
-  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-  const debouncedSearch = useDebounce(search, 350);
+  const { types: availableTypes } = useGameTypes();
+  const rawDebouncedSearch = useDebounce(search, 350);
+  // ILIKE '%t%' with 1 char scans half the catalog — wait for 2+ chars
+  const debouncedSearch = rawDebouncedSearch.trim().length >= 2 ? rawDebouncedSearch : "";
   const { lobbySlots, headerCategories, bottomNavItems } = useCasinoSettings();
-
-  useEffect(() => {
-    apiService.get<{ types: string[] }>('/games/types').then(res => {
-      if (res.success && res.data) setAvailableTypes(res.data.types);
-    });
-  }, []);
 
   const applyFilters = useCallback((updates: FilterUpdates) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -101,6 +98,7 @@ function LandingContent() {
               <CategorySection
                 key={slot.id}
                 title={slot.label}
+                slotId={slot.id}
                 gameType={slot.kind === 'provider' ? null : (slot.categoryType ?? null)}
                 providerName={slot.kind === 'category' ? null : (slot.providerName ?? null)}
                 onShowAll={() => handleSlotShowAll(slot)}
@@ -125,7 +123,9 @@ function LandingContent() {
 export default function LandingPage() {
   return (
     <Suspense fallback={null}>
-      <LandingContent />
+      <LobbyProvider>
+        <LandingContent />
+      </LobbyProvider>
     </Suspense>
   );
 }

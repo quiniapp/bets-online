@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { apiService } from '@/services/api.service';
 import { useCasinoSettings } from '@/hooks/useCasinoSettings';
+import { useGameTypes } from '@/hooks/useGameTypes';
 import { Flex } from '../flex';
 import {
     Gamepad2,
@@ -42,21 +41,8 @@ interface CategoriesBarProps {
 }
 
 const CategoriesBar = ({ selected, onSelect }: CategoriesBarProps) => {
-    const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { types: availableTypes, loading } = useGameTypes();
     const { headerCategories, loading: settingsLoading } = useCasinoSettings();
-
-    useEffect(() => {
-        const fetchTypes = async () => {
-            setLoading(true);
-            const response = await apiService.get<{ types: string[] }>('/games/types');
-            if (response.success && response.data) {
-                setAvailableTypes(response.data.types);
-            }
-            setLoading(false);
-        };
-        fetchTypes();
-    }, []);
 
     const pillClass = (active: boolean) =>
         `shrink-0 flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer ${
