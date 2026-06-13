@@ -67,7 +67,7 @@ export const SESSION_IDLE_MS = 30 * 60 * 1000;
  */
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 100;
-export const BCRYPT_ROUNDS = 10;
+export const BCRYPT_ROUNDS = 12;
 
 /**
  * User Constraints

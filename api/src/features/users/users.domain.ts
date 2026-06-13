@@ -15,6 +15,7 @@ import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
 import { chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
+import { writeAudit } from '../../utils/audit';
 
 export class UsersDomain {
   async createUser(
@@ -62,6 +63,13 @@ export class UsersDomain {
       await chipsDomain.sellChips(creatorId, user.id, userData.initialBalance, 'Balance inicial');
     }
 
+    writeAudit({
+      requesterId: creatorId,
+      action: 'user.create',
+      entityType: 'user',
+      entityId: user.id,
+      newValues: { username: user.username, role: user.role, initialBalance: userData.initialBalance ?? 0 }
+    });
     return user;
   }
 
@@ -236,14 +244,26 @@ export class UsersDomain {
     // Update user
     const updatedUser = await usersRepository.update(userId, updateData);
 
-    // Si cambió el status: invalidar caché siempre (datos desactualizados)
-    // y terminar todas las sesiones activas si fue bloqueado
+    // Si cambió el status: refrescar caché siempre (authMiddleware la consulta
+    // para revocar BLOCKED al instante) y terminar todas las sesiones activas
     if ('status' in updateData) {
-      userCache.invalidate(userId);
+      const { passwordHash: _ph, ...cacheable } = updatedUser;
+      userCache.set(cacheable as User);
       if (updateData.status === UserStatus.BLOCKED) {
         await sessionsRepository.deleteByUserId(userId);
       }
     }
+
+    writeAudit({
+      requesterId,
+      action: updateData.status === UserStatus.BLOCKED ? 'user.block'
+        : updateData.status === UserStatus.ACTIVE && user.status === UserStatus.BLOCKED ? 'user.unblock'
+        : 'user.update',
+      entityType: 'user',
+      entityId: userId,
+      oldValues: { status: user.status, role: user.role },
+      newValues: updateData as object
+    });
 
     // Remove password hash
 
@@ -301,6 +321,13 @@ export class UsersDomain {
 
     // Reset password
     await authDomain.resetPassword(userId, newPassword);
+
+    writeAudit({
+      requesterId,
+      action: 'user.resetPassword',
+      entityType: 'user',
+      entityId: userId
+    });
   }
 
   // Whole subtree in 2 queries (recursive CTE + bulk balances) assembled in

@@ -6,9 +6,7 @@ const ALLOWED_IMAGE_EXTENSIONS = new Set([
   '.jpg',
   '.jpeg',
   '.webp',
-  '.gif',
-  '.svg',
-  '.avif'
+  '.gif'
 ]);
 
 /**

@@ -10,6 +10,7 @@ import { balancesRepository } from './balances.repository';
 import { chipMovementsRepository } from './chip-movements.repository';
 import { AppError } from '../../middleware/error.middleware';
 import { sequelize } from '../../config/sequelize';
+import { writeAudit } from '../../utils/audit';
 
 export class ChipsDomain {
   /**
@@ -96,6 +97,13 @@ export class ChipsDomain {
       }
 
       await t.commit();
+      writeAudit({
+        requesterId: sellerId,
+        action: 'chips.sell',
+        entityType: 'chips',
+        entityId: playerId,
+        newValues: { amount, movementId: movement.id, newBalance: movement.newBalance }
+      });
       return movement;
     } catch (error) {
       await t.rollback();
@@ -177,6 +185,13 @@ export class ChipsDomain {
       }
 
       await t.commit();
+      writeAudit({
+        requesterId: cashierId,
+        action: 'chips.payPrize',
+        entityType: 'chips',
+        entityId: playerId,
+        newValues: { amount, movementId: movement.id, newBalance: movement.newBalance }
+      });
       return movement;
     } catch (error) {
       await t.rollback();
@@ -258,6 +273,13 @@ export class ChipsDomain {
       }
 
       await t.commit();
+      writeAudit({
+        requesterId: cashierId,
+        action: 'chips.registerLoss',
+        entityType: 'chips',
+        entityId: playerId,
+        newValues: { amount, movementId: movement.id, newBalance: movement.newBalance }
+      });
       return movement;
     } catch (error) {
       await t.rollback();
@@ -348,6 +370,13 @@ export class ChipsDomain {
       }
 
       await t.commit();
+      writeAudit({
+        requesterId,
+        action: 'chips.withdraw',
+        entityType: 'chips',
+        entityId: playerId,
+        newValues: { amount, movementId: movement.id, newBalance: movement.newBalance }
+      });
       return movement;
     } catch (error) {
       await t.rollback();
