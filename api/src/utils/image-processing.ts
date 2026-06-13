@@ -1,4 +1,6 @@
 import sharp from 'sharp';
+import { ErrorCode } from 'helper';
+import { AppError } from '../middleware/error.middleware';
 
 export interface UploadImage {
   buffer: Buffer;
@@ -18,19 +20,24 @@ export type ImagePreset = keyof typeof IMAGE_PRESETS;
 /**
  * Downscale + convert an uploaded image to WebP before storing it.
  * - Never enlarges smaller images.
- * - SVGs pass through untouched (already tiny and resolution-independent).
  * - Animated GIF/WebP keep their animation.
+ * - Doubles as content validation: the multer filter only checks the
+ *   client-declared mimetype; here sharp must actually decode the bytes,
+ *   so a renamed non-image is rejected with a 400.
  */
 export async function processImageUpload(file: UploadImage, preset: ImagePreset): Promise<UploadImage> {
-  if (file.mimetype === 'image/svg+xml') return file;
-
   const { maxWidth, quality } = IMAGE_PRESETS[preset];
   const animated = file.mimetype === 'image/gif' || file.mimetype === 'image/webp';
-  const buffer = await sharp(file.buffer, { animated })
-    .rotate() // honor EXIF orientation before it's stripped
-    .resize({ width: maxWidth, withoutEnlargement: true })
-    .webp({ quality })
-    .toBuffer();
+  let buffer: Buffer;
+  try {
+    buffer = await sharp(file.buffer, { animated })
+      .rotate() // honor EXIF orientation before it's stripped
+      .resize({ width: maxWidth, withoutEnlargement: true })
+      .webp({ quality })
+      .toBuffer();
+  } catch {
+    throw new AppError(400, ErrorCode.INVALID_INPUT, 'File is not a valid image');
+  }
 
   return {
     buffer,

@@ -4,6 +4,7 @@ import { usersRepository } from '../users/users.repository';
 import { AppError } from '../../middleware/error.middleware';
 import { casinoSettingsMemCache } from '../../utils/games-cache';
 import { warmLobbySections } from '../../utils/cache-warmup';
+import { writeAudit } from '../../utils/audit';
 
 export class SettingsDomain {
   async getCasinoSettings(requesterId?: string): Promise<CasinoSettings> {
@@ -41,6 +42,13 @@ export class SettingsDomain {
     }
     const updated = await casinoSettingsRepository.patch(requesterId, patch);
     casinoSettingsMemCache.invalidate();
+    writeAudit({
+      requesterId,
+      action: 'settings.update',
+      entityType: 'settings',
+      entityId: updated.id || null,
+      newValues: { changedKeys: Object.keys(patch) }
+    });
     if (patch.lobbySlots) {
       // The home renders one games section per lobby slot — warm the new
       // combos right away so the first visitor is served from cache.
