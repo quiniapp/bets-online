@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { ApiResponseBuilder, ErrorCode, UserRole, JwtPayload, SESSION_IDLE_MS } from 'helper';
+import { ApiResponseBuilder, ErrorCode, UserRole, UserStatus, JwtPayload, SESSION_IDLE_MS } from 'helper';
 import { config } from '../config';
 import { AppError } from './error.middleware';
 import { userCache } from '../persistence/cache/user.cache';
@@ -33,6 +33,19 @@ export const authMiddleware = async (
     }
 
     const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload & { exp?: number };
+
+    // Immediate revocation for blocked users: the access token is stateless
+    // (valid up to 15 min after issue), but blocking refreshes the user cache,
+    // so a cache hit with status BLOCKED dies here instead of riding out the
+    // token. Zero cost: in-memory Map, single instance.
+    const cached = userCache.get(decoded.userId);
+    if (cached && cached.status === UserStatus.BLOCKED) {
+      clearSessionCookie(res);
+      return res.status(403).json(
+        ApiResponseBuilder.error(ErrorCode.FORBIDDEN, 'User is blocked')
+      );
+    }
+
     req.user = decoded;
 
     // Sliding window (real): once the access token is past half its lifetime,

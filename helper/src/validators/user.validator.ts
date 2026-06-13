@@ -13,10 +13,11 @@ const passwordSchema = z.string()
   .regex(/[A-Z]/, 'La contraseña debe contener al menos una mayúscula')
   .regex(/[0-9]/, 'La contraseña debe contener al menos un número');
 
-/**
- * Create User Schema
- */
-export const createUserSchema = z.object({
+/** Elevated accounts can do the most damage if compromised — longer minimum. */
+const ELEVATED_PASSWORD_MIN = 12;
+const ELEVATED_ROLES: UserRole[] = [UserRole.OWNER, UserRole.ADMIN];
+
+const createUserBaseSchema = z.object({
   parentUserId: z.string().uuid().optional(),
   role: z.nativeEnum(UserRole),
   username: z.string().min(3).max(50),
@@ -25,6 +26,19 @@ export const createUserSchema = z.object({
   lastName: z.string().max(100).optional().or(z.literal('')),
   password: passwordSchema,
   initialBalance: z.number().min(0).optional()
+});
+
+/**
+ * Create User Schema
+ */
+export const createUserSchema = createUserBaseSchema.superRefine((data, ctx) => {
+  if (ELEVATED_ROLES.includes(data.role) && data.password.length < ELEVATED_PASSWORD_MIN) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['password'],
+      message: `Las cuentas ${data.role} requieren contraseña de al menos ${ELEVATED_PASSWORD_MIN} caracteres`
+    });
+  }
 });
 
 /**
@@ -79,7 +93,7 @@ export const blockUserSchema = z.object({
 /**
  * Create Cashier Schema (extends create user)
  */
-export const createCashierSchema = createUserSchema.extend({
+export const createCashierSchema = createUserBaseSchema.extend({
   role: z.literal(UserRole.CASHIER),
   compensationType: z.enum(['PERCENTAGE', 'PANEL']),
   percentage: z.number().min(0).max(100).optional(),

@@ -16,6 +16,7 @@ import { startGameSyncJob } from './cron/gameSyncJob';
 import { startCacheSyncJob } from './cron/cacheSyncJob';
 import { warmupCache } from './utils/cache-warmup';
 import { requestTiming } from './middleware/request-timing.middleware';
+import { auditContext } from './utils/audit';
 import { logger } from './utils/logger';
 
 const app = express();
@@ -40,9 +41,9 @@ app.use(
   })
 );
 
-// Request parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Request parsing — JSON only (multipart goes through multer); the 100kb
+// limit is the express default, made explicit on purpose
+app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser()); // lgtm[js/missing-token-validation] -- CSRF is protected by csrfMiddleware (double-submit cookie pattern) applied via app.use('/api', csrfMiddleware, routes). cookieParser is needed for JWT session cookie reads.
 
 // CSRF protection — double-submit cookie pattern.
@@ -83,8 +84,14 @@ if (config.server.env !== 'test') {
   app.use(requestTiming);
 }
 
-// Swagger documentation
-app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+// Capture IP/user-agent for the audit trail (utils/audit.ts)
+app.use(auditContext);
+
+// Swagger documentation — full API surface (routes, params, schemas), so
+// never expose it on the public production URL
+if (config.server.env !== 'production') {
+  app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+}
 
 // CSRF token endpoint — sets the csrf-token cookie and returns the value.
 // Must be called before any state-changing request that uses cookie auth.
@@ -92,9 +99,11 @@ app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions))
 app.get('/api/csrf-token', globalLimiter, (_req: Request, res: Response) => {
   const token = crypto.randomBytes(32).toString('hex');
   const isProd = config.server.env === 'production';
+  // Same-origin via the Next.js /api rewrites (like the auth cookies, which
+  // are already sameSite strict) — 'none' was laxer than needed.
   res.cookie(CSRF_COOKIE, token, {
     httpOnly: false,
-    sameSite: isProd ? 'none' : 'strict',
+    sameSite: 'strict',
     secure: isProd,
     path: '/'
   });
@@ -113,7 +122,7 @@ app.get('/', (_req, res) => {
   res.json({
     message: 'Casino Management Platform API',
     version: '1.0.1',
-    documentation: `${config.server.apiUrl}/doc`
+    ...(config.server.env !== 'production' && { documentation: `${config.server.apiUrl}/doc` })
   });
 });
 

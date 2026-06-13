@@ -1,7 +1,9 @@
 import pino from 'pino';
 import { config } from '../config';
 
-const env = config.server.env;
+// Defensive reads: unit tests mock '../config' partially (e.g. only
+// config.viral) and the logger must still load.
+const env = config.server?.env ?? process.env.NODE_ENV ?? 'development';
 const isProd = env === 'production';
 const isTest = env === 'test';
 
@@ -14,7 +16,7 @@ const isTest = env === 'test';
  * can be turned on in production without a code change.
  */
 export const logger = pino({
-  level: isTest ? 'silent' : config.logging.level,
+  level: isTest ? 'silent' : (config.logging?.level ?? 'info'),
   base: undefined, // drop pid/hostname noise
   ...(isProd || isTest
     ? {}

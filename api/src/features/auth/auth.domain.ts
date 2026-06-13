@@ -15,6 +15,7 @@ import { usersRepository } from '../users/users.repository';
 import { sessionsRepository } from './sessions.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { AppError } from '../../middleware/error.middleware';
+import { assertLoginAllowed, registerLoginFailure, clearLoginFailures } from '../../utils/login-throttle';
 
 // Window during which a just-rotated refresh token's predecessor is still
 // honoured, to absorb concurrent refreshes from multiple tabs sharing a cookie.
@@ -22,10 +23,15 @@ const REFRESH_GRACE_MS = 60_000;
 
 export class AuthDomain {
   async login(username: string, password: string): Promise<{ user: User; tokens: AuthTokens }> {
+    // Per-account throttle with exponential backoff (the per-IP authLimiter
+    // alone is evaded by distributed attacks and punishes CGNAT users)
+    assertLoginAllowed(username);
+
     // Find user
     const user = await usersRepository.findByUsernameForAuth(username);
 
     if (!user) {
+      registerLoginFailure(username);
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
@@ -36,8 +42,11 @@ export class AuthDomain {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash!);
 
     if (!isPasswordValid) {
+      registerLoginFailure(username);
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
+
+    clearLoginFailures(username);
 
     // Update last connection and last activity
     await usersRepository.updateLastConnection(user.id);
