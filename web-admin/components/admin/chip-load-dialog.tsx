@@ -160,7 +160,7 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess, preselectedUser 
       const op = confirmAction === 'sell' ? sellChips : withdraw;
       const res = await op(selectedUser.id, num);
       if (res.success) {
-        toast({ title: 'Operación exitosa', description: `${confirmAction === 'sell' ? 'Carga' : 'Débito'} de $${formatChips(num)} realizado` });
+        toast({ title: 'Operación exitosa', description: `${confirmAction === 'sell' ? 'Carga' : 'Descargato'} de $${formatChips(num)} realizado` });
         setAmount('');
         setConfirmAction(null);
         setRefreshMovements(Date.now());
@@ -343,7 +343,7 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess, preselectedUser 
       <Dialog open={!!confirmAction} onOpenChange={open => { if (!open) setConfirmAction(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{confirmAction === 'sell' ? 'Confirmar carga' : 'Confirmar débito'}</DialogTitle>
+            <DialogTitle>{confirmAction === 'sell' ? 'Confirmar carga' : 'Confirmar descargato'}</DialogTitle>
           </DialogHeader>
           <div className="py-2 space-y-1">
             <p className="text-sm">
