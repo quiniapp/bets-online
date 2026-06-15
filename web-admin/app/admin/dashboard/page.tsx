@@ -178,11 +178,12 @@ export default function AdminDashboard() {
               <div>
                 <div className="flex items-center justify-between gap-4 mb-3 cursor-pointer" onClick={() => router.push(ROUTER.ADMIN_USERS)}>
                   <div>
-                    <div className="text-4xl font-bold text-green-600">{userStats?.active ?? 0}</div>
-                    <p className="text-sm text-muted-foreground">activos (7d)</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {userStats?.total ?? 0} total · {userStats?.blocked ?? 0} bloqueados
+                    <div className="text-5xl font-bold text-foreground leading-none">{userStats?.total ?? 0}</div>
+                    <p className="text-sm text-muted-foreground mt-1">usuarios totales</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      <span className="font-semibold text-green-600">{userStats?.active ?? 0}</span> activos en últimos 7 días
                     </p>
+                    <p className="text-sm text-muted-foreground">{userStats?.blocked ?? 0} bloqueados</p>
                   </div>
                   <div className="flex flex-col gap-1 text-right">
                     <div className="flex items-center justify-end gap-1.5">
