@@ -89,7 +89,7 @@ export default function UserProfileFeature() {
         {/* Personal info */}
         <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-zinc-800">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
               {t("profile.personalInfo")}
             </p>
           </div>
@@ -103,7 +103,7 @@ export default function UserProfileFeature() {
         {/* Account settings */}
         <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-zinc-800">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <p className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
               {t("profile.accountSettings")}
             </p>
           </div>
@@ -133,7 +133,7 @@ function InfoRow({
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-zinc-500">{label}</p>
+        <p className="text-xs text-zinc-300">{label}</p>
         <p className={`text-sm font-medium text-white truncate mt-0.5 ${capitalize ? "capitalize" : ""}`}>
           {value}
         </p>
