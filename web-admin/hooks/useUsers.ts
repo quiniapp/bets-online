@@ -119,7 +119,7 @@ export function useUsers(options: UseUsersOptions = {}) {
     }
   };
 
-  const getUserTree = async () => {
+  const getUserTree = useCallback(async () => {
     try {
       const response = await apiService.get<UserTreeNode>('/users/me/tree');
       return response;
@@ -127,7 +127,7 @@ export function useUsers(options: UseUsersOptions = {}) {
       console.error('Failed to load user tree:', error);
       throw error;
     }
-  };
+  }, []);
 
   const resetPassword = async (userId: string, newPassword: string) => {
     try {
