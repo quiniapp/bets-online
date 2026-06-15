@@ -45,7 +45,7 @@ const LoginForm = () => {
               <h1 className="text-xl sm:text-2xl font-medium">Ingresar</h1>
             </CardTitle>
             <CardContent className="p-0 hidden sm:block">
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-300">
                 Ingresa con tu nombre de usuario y contraseña para poder administrar tu cuenta.
               </p>
             </CardContent>
