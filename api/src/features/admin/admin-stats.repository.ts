@@ -1,5 +1,6 @@
 import { QueryTypes } from 'sequelize';
 import { UserModel } from '../../persistence/models';
+import { config } from '../../config';
 
 interface WeeklyChipFlowEntry {
   date: string;
@@ -28,7 +29,12 @@ export class AdminStatsRepository {
         SELECT u.id FROM users u
         INNER JOIN descendants d ON u.parent_user_id = d.id
       )`;
-    const bind = { replacements: { requesterId }, type: QueryTypes.SELECT } as const;
+    // Calendar days are computed in the business timezone (config.timezone) so
+    // "today" and the daily buckets match what users see, independent of the DB
+    // server tz (usually UTC). `(ts AT TIME ZONE :tz)::date` converts a
+    // timestamptz to its local calendar date.
+    const tz = config.timezone;
+    const bind = { replacements: { requesterId, tz }, type: QueryTypes.SELECT } as const;
 
     const [onlineNowResult, newUsersTodayResult, activeUsersTodayResult, weeklyChipFlowResult] =
       await Promise.all([
@@ -45,7 +51,7 @@ export class AdminStatsRepository {
            SELECT COUNT(*) AS count
            FROM users
            WHERE id IN (SELECT id FROM descendants)
-             AND created_at >= CURRENT_DATE
+             AND (created_at AT TIME ZONE :tz)::date = (NOW() AT TIME ZONE :tz)::date
              AND role = 'PLAYER'`,
           bind
         ),
@@ -54,7 +60,7 @@ export class AdminStatsRepository {
            SELECT COUNT(*) AS count
            FROM users
            WHERE id IN (SELECT id FROM descendants)
-             AND last_activity >= CURRENT_DATE`,
+             AND (last_activity AT TIME ZONE :tz)::date = (NOW() AT TIME ZONE :tz)::date`,
           bind
         ),
         // Always returns exactly 7 rows (today and the 6 previous days),
@@ -66,10 +72,13 @@ export class AdminStatsRepository {
              TO_CHAR(d.day::date, 'YYYY-MM-DD') AS date,
              COALESCE(SUM(CASE WHEN cm.type = 'SELL_TO_PLAYER' THEN cm.amount ELSE 0 END), 0) AS loaded,
              COALESCE(SUM(CASE WHEN cm.type = 'WITHDRAWAL' THEN cm.amount ELSE 0 END), 0) AS withdrawn
-           FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
+           FROM generate_series(
+                  (NOW() AT TIME ZONE :tz)::date - INTERVAL '6 days',
+                  (NOW() AT TIME ZONE :tz)::date,
+                  INTERVAL '1 day'
+                ) AS d(day)
            LEFT JOIN chip_movements cm
-             ON cm.created_at >= d.day::date
-            AND cm.created_at < d.day::date + INTERVAL '1 day'
+             ON (cm.created_at AT TIME ZONE :tz)::date = d.day::date
             AND cm.type IN ('SELL_TO_PLAYER', 'WITHDRAWAL')
             AND cm.user_id IN (SELECT id FROM descendants)
            GROUP BY d.day

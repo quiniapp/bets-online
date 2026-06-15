@@ -54,6 +54,13 @@ router.get(
   chipsController.getBalance.bind(chipsController)
 );
 
+// Current user's own movements. Declared before '/movements/:id' so the literal
+// "me" is matched here instead of failing the uuid param validation below.
+router.get('/movements/me', (req, res, next) => {
+  (req.params as Record<string, string>).id = req.user!.userId;
+  return chipsController.getMovements(req, res, next);
+});
+
 router.get(
   '/movements/:id',
   validateParams(idParamSchema),
