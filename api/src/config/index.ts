@@ -31,7 +31,8 @@ export const config = {
   admin: envs.admin,
   supabase: envs.supabase,
   viral: envs.viral,
-  logging: envs.logging
+  logging: envs.logging,
+  timezone: envs.timezone
 };
 
 // Re-exportar envs para uso directo

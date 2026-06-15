@@ -112,7 +112,12 @@ const envSchema = z.object({
 
   // Logging — pino level. Overridable in prod to enable per-query debug logs
   // without a redeploy. Defaults: production=info, otherwise debug.
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional()
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
+
+  // Business timezone. All day-bucketed reports (dashboard charts, "today"
+  // counters) compute calendar days in this zone so backend/db/front agree,
+  // regardless of the DB server's own timezone (usually UTC).
+  APP_TIMEZONE: z.string().default('America/Argentina/Buenos_Aires')
 });
 
 /**
@@ -225,7 +230,10 @@ export const envs = {
   // Logging
   logging: {
     level: envVars.LOG_LEVEL ?? (envVars.NODE_ENV === Environment.PRODUCTION ? 'info' : 'debug')
-  }
+  },
+
+  // Business timezone for day-bucketed reports
+  timezone: envVars.APP_TIMEZONE
 } as const;
 
 // Log de configuración actual
