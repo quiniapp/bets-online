@@ -347,7 +347,7 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess, preselectedUser 
           </DialogHeader>
           <div className="py-2 space-y-1">
             <p className="text-sm">
-              {confirmAction === 'sell' ? 'Cargar' : 'Debitar'}{' '}
+              {confirmAction === 'sell' ? 'Cargar' : 'Descargar'}{' '}
               <span className="font-bold text-primary">${formatChips(parsedAmount || 0)}</span>{' '}
               {confirmAction === 'sell' ? 'a' : 'de'}{' '}
               <span className="font-bold">{selectedUser?.username}</span>

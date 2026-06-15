@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useChips } from "@/hooks/useChips";
+import { useAuth } from "@/contexts/auth-context";
+import { UserRole } from "helper";
 
 const PRESET_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
@@ -20,6 +22,8 @@ export default function CreateAdminPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { balance, loadBalance } = useChips();
+  const { role: myRole } = useAuth();
+  const isOwner = myRole === UserRole.OWNER;
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -62,7 +66,7 @@ export default function CreateAdminPage() {
 
   const parsedBalance = parseFloat(formData.initialBalance) || 0;
   const maxBalance = balance?.chipBalance ?? 0;
-  const balanceExceeds = parsedBalance > maxBalance;
+  const balanceExceeds = !isOwner && parsedBalance > maxBalance;
 
   const isFormValid =
     usernameValidation.state === 'valid' &&
@@ -193,7 +197,7 @@ export default function CreateAdminPage() {
             <div className="space-y-2">
               <Label>
                 Saldo inicial (opcional)
-                {balance && (
+                {!isOwner && balance && (
                   <span className="ml-2 text-xs text-muted-foreground">Tu saldo: ${balance.chipBalance.toLocaleString('es-AR')}</span>
                 )}
               </Label>
