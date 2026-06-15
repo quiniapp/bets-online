@@ -151,16 +151,6 @@ export default function AdminDashboard() {
     withdrawn: d.withdrawn,
   })) ?? []
 
-  const userActivity = [
-    { hour: "00", users: 12 },
-    { hour: "04", users: 8 },
-    { hour: "08", users: 25 },
-    { hour: "12", users: 45 },
-    { hour: "16", users: 38 },
-    { hour: "20", users: 52 },
-    { hour: "24", users: 28 },
-  ]
-
   return (
     <DashboardLayout title="Inicio">
       {/* Stats Cards */}
@@ -363,7 +353,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 mb-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Flujo de Fichas Semanal</CardTitle>
@@ -385,24 +375,6 @@ export default function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Actividad de Usuarios</CardTitle>
-            <CardDescription>Actividad por hora — próximamente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={userActivity}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="users" fill="#82ca9d" />
-              </BarChart>
-            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

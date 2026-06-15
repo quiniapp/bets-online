@@ -63,7 +63,7 @@ const HeroBannerIndex = () => {
                 <img
                   src={banner.imageUrl ?? undefined}
                   alt="Banner"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-center"
                   decoding="async"
                   fetchPriority={index === 0 ? "high" : "auto"}
                   loading={index === 0 ? "eager" : "lazy"}

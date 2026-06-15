@@ -13,10 +13,6 @@ const passwordSchema = z.string()
   .regex(/[A-Z]/, 'La contraseña debe contener al menos una mayúscula')
   .regex(/[0-9]/, 'La contraseña debe contener al menos un número');
 
-/** Elevated accounts can do the most damage if compromised — longer minimum. */
-const ELEVATED_PASSWORD_MIN = 12;
-const ELEVATED_ROLES: UserRole[] = [UserRole.OWNER, UserRole.ADMIN];
-
 const createUserBaseSchema = z.object({
   parentUserId: z.string().uuid().optional(),
   role: z.nativeEnum(UserRole),
@@ -30,16 +26,9 @@ const createUserBaseSchema = z.object({
 
 /**
  * Create User Schema
+ * All roles share the same password policy: min 8 chars + 1 uppercase + 1 number.
  */
-export const createUserSchema = createUserBaseSchema.superRefine((data, ctx) => {
-  if (ELEVATED_ROLES.includes(data.role) && data.password.length < ELEVATED_PASSWORD_MIN) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['password'],
-      message: `Las cuentas ${data.role} requieren contraseña de al menos ${ELEVATED_PASSWORD_MIN} caracteres`
-    });
-  }
-});
+export const createUserSchema = createUserBaseSchema;
 
 /**
  * Update User Schema
