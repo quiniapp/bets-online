@@ -191,7 +191,7 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess, preselectedUser 
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="w-[95vw] max-w-xl max-h-[95dvh] flex flex-col overflow-hidden p-3 sm:p-6">
           <DialogHeader className="shrink-0">
-            <DialogTitle className="text-base">Cargar / Debitar Fichas</DialogTitle>
+            <DialogTitle className="text-base">Cargar / DescargarFichas</DialogTitle>
           </DialogHeader>
 
           {/* Search section */}
@@ -323,7 +323,7 @@ export function ChipLoadDialog({ open, onOpenChange, onSuccess, preselectedUser 
                   onClick={() => setConfirmAction('withdraw')}
                   className="w-full text-sm"
                 >
-                  Debitar Fichas
+                  DescargarFichas
                 </Button>
                 <Button
                   size="sm"

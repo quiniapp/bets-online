@@ -3,16 +3,13 @@
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { UserRole } from "helper"
 import { Users, DollarSign, Loader2, UserPlus } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from "recharts"
 import ROUTER from "@/routes"
 import { useChips } from "@/hooks/useChips"
 import { formatChips } from "@/lib/utils"
@@ -74,16 +71,6 @@ export default function CashierDashboard() {
   if (role !== UserRole.CASHIER) {
     return null
   }
-
-  const userActivity = [
-    { hour: "00", users: 12 },
-    { hour: "04", users: 8 },
-    { hour: "08", users: 25 },
-    { hour: "12", users: 45 },
-    { hour: "16", users: 38 },
-    { hour: "20", users: 52 },
-    { hour: "24", users: 28 },
-  ]
 
   return (
     <DashboardLayout title="Inicio">
@@ -161,24 +148,6 @@ export default function CashierDashboard() {
         </Card>
 
       </div>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base">Actividad de Usuarios</CardTitle>
-          <CardDescription>Usuarios activos por hora (Demo)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={userActivity}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="users" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
 
       <ChipLoadDialog
         open={loadBalanceOpen}
