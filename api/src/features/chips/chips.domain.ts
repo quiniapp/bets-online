@@ -396,6 +396,7 @@ export class ChipsDomain {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      types?: ChipMovementType[];
       compact?: boolean;
       includeDescendants?: boolean;
     }
@@ -429,6 +430,7 @@ export class ChipsDomain {
         startDate: options?.startDate,
         endDate: options?.endDate,
         type: options?.type,
+        types: options?.types,
       });
       return { movements: result.movements, total: result.total, page, limit };
     }
@@ -439,6 +441,7 @@ export class ChipsDomain {
       startDate: options?.startDate,
       endDate: options?.endDate,
       type: options?.type,
+      types: options?.types,
       compact: options?.compact,
     });
 

@@ -24,9 +24,16 @@ export default function TransactionsPage() {
 
   const canShowDescendants = role === UserRole.OWNER || role === UserRole.ADMIN || role === UserRole.CASHIER
 
+  // Only chip load/unload movements (cargas y descargas) — bets (LOSS/PRIZE) excluded.
+  const CHIP_FLOW_TYPES = [ChipMovementType.SELL_TO_PLAYER, ChipMovementType.WITHDRAWAL]
+
   useEffect(() => {
     if (user) {
-      loadTransactions({ limit: 200, includeDescendants: canShowDescendants && includeDescendants })
+      loadTransactions({
+        limit: 200,
+        types: CHIP_FLOW_TYPES,
+        includeDescendants: canShowDescendants && includeDescendants
+      })
     }
   }, [user, includeDescendants])
 
@@ -79,18 +86,12 @@ export default function TransactionsPage() {
     }
   }
 
-  // Calculate totals
-  const deposits = transactions.filter(
-    (t) => t.type === ChipMovementType.DEPOSIT || t.type === ChipMovementType.SELL_TO_PLAYER
-  )
+  // Calculate totals — cargas (ventas de fichas) y descargas (retiros)
+  const deposits = transactions.filter((t) => t.type === ChipMovementType.SELL_TO_PLAYER)
   const withdrawals = transactions.filter((t) => t.type === ChipMovementType.WITHDRAWAL)
-  const losses = transactions.filter((t) => t.type === ChipMovementType.LOSS)
-  const prizes = transactions.filter((t) => t.type === ChipMovementType.PRIZE)
 
   const totalDeposits = deposits.reduce((sum, t) => sum + t.amount, 0)
   const totalWithdrawals = withdrawals.reduce((sum, t) => sum + t.amount, 0)
-  const totalLosses = losses.reduce((sum, t) => sum + t.amount, 0)
-  const totalPrizes = prizes.reduce((sum, t) => sum + t.amount, 0)
 
   return (
     <DashboardLayout title="Transacciones">
@@ -116,10 +117,10 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Depósitos</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Cargas</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">${formatChips(totalDeposits)}</div>
@@ -128,29 +129,11 @@ export default function TransactionsPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Retiros</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Descargas</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-red-600">${formatChips(totalWithdrawals)}</div>
                   <p className="text-xs text-muted-foreground">{withdrawals.length} transacciones</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Apuestas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">${formatChips(totalLosses)}</div>
-                  <p className="text-xs text-muted-foreground">{losses.length} transacciones</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Premios</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-600">${formatChips(totalPrizes)}</div>
-                  <p className="text-xs text-muted-foreground">{prizes.length} transacciones</p>
                 </CardContent>
               </Card>
             </div>
@@ -179,12 +162,8 @@ export default function TransactionsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas</SelectItem>
-                      <SelectItem value={ChipMovementType.DEPOSIT}>Depósitos</SelectItem>
-                      <SelectItem value={ChipMovementType.WITHDRAWAL}>Retiros</SelectItem>
-                      <SelectItem value={ChipMovementType.LOSS}>Apuestas</SelectItem>
-                      <SelectItem value={ChipMovementType.PRIZE}>Premios</SelectItem>
-                      <SelectItem value={ChipMovementType.SELL_TO_PLAYER}>Venta Fichas</SelectItem>
-                      <SelectItem value={ChipMovementType.ADJUSTMENT}>Ajustes</SelectItem>
+                      <SelectItem value={ChipMovementType.SELL_TO_PLAYER}>Cargas</SelectItem>
+                      <SelectItem value={ChipMovementType.WITHDRAWAL}>Descargas</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button variant="outline">
