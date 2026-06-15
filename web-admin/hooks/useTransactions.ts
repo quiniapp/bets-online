@@ -8,6 +8,7 @@ interface TransactionOptions {
   startDate?: Date;
   endDate?: Date;
   type?: ChipMovementType;
+  types?: ChipMovementType[];
   includeDescendants?: boolean;
 }
 
@@ -35,6 +36,8 @@ export function useTransactions(userId?: string) {
       if (options?.endDate)
         params.append('endDate', options.endDate.toISOString());
       if (options?.type) params.append('type', options.type);
+      if (options?.types && options.types.length > 0)
+        params.append('types', options.types.join(','));
       if (options?.includeDescendants) params.append('includeDescendants', 'true');
 
       const endpoint = userId

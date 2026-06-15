@@ -49,12 +49,15 @@ export class ChipMovementsRepository {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      types?: ChipMovementType[];
       compact?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number }> {
     const where: Record<string, unknown> = { userId };
 
-    if (options?.type) {
+    if (options?.types && options.types.length > 0) {
+      where.type = { [Op.in]: options.types };
+    } else if (options?.type) {
       where.type = options.type;
     }
 
@@ -101,13 +104,18 @@ export class ChipMovementsRepository {
       startDate?: Date;
       endDate?: Date;
       type?: ChipMovementType;
+      types?: ChipMovementType[];
     }
   ): Promise<{ movements: ChipMovement[]; total: number }> {
     const where: Record<string | symbol, unknown> = {
       userId: { [Op.in]: userIds }
     };
 
-    if (options?.type) where.type = options.type;
+    if (options?.types && options.types.length > 0) {
+      where.type = { [Op.in]: options.types };
+    } else if (options?.type) {
+      where.type = options.type;
+    }
 
     if (options?.startDate || options?.endDate) {
       const createdAtFilter: Record<symbol, Date> = {};
