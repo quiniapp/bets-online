@@ -18,6 +18,9 @@ interface GameImageManagerProps {
   defaultLogo: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // Notifica al padre el nuevo logo activo (null = imagen del proveedor)
+  // para refrescar la miniatura en la lista sin recargar todo.
+  onActiveChange?: (customLogo: string | null) => void;
 }
 
 export function GameImageManager({
@@ -26,6 +29,7 @@ export function GameImageManager({
   defaultLogo,
   open,
   onOpenChange,
+  onActiveChange,
 }: GameImageManagerProps) {
   const { data, loading, uploading, load, uploadImage, selectImage, resetToDefault, deleteImage } =
     useGameImages(gameId);
@@ -58,6 +62,7 @@ export function GameImageManager({
     try {
       const ok = await resetToDefault();
       if (ok) {
+        onActiveChange?.(null);
         toast({ title: 'Imagen del proveedor', description: 'Se restauró la imagen del proveedor.' });
       } else {
         toast({ title: 'Error', description: 'No se pudo restaurar la imagen.', variant: 'destructive' });
@@ -71,7 +76,10 @@ export function GameImageManager({
     setSelectingId(imageId);
     try {
       const ok = await selectImage(imageId);
-      if (!ok) {
+      if (ok) {
+        const url = data?.images.find(i => i.id === imageId)?.url ?? null;
+        onActiveChange?.(url);
+      } else {
         toast({ title: 'Error', description: 'No se pudo seleccionar la imagen.', variant: 'destructive' });
       }
     } finally {
@@ -81,10 +89,13 @@ export function GameImageManager({
 
   const handleDelete = async (imageId: string) => {
     if (!confirm('¿Eliminar esta imagen? Esta acción no se puede deshacer.')) return;
+    const wasActive = data?.images.find(i => i.id === imageId)?.url === data?.activeImageUrl;
     setDeletingId(imageId);
     try {
       const ok = await deleteImage(imageId);
       if (ok) {
+        // El backend resetea custom_logo a null si la imagen borrada era la activa.
+        if (wasActive) onActiveChange?.(null);
         toast({ title: 'Imagen eliminada' });
       } else {
         toast({ title: 'Error', description: 'No se pudo eliminar la imagen.', variant: 'destructive' });

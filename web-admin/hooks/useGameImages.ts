@@ -28,15 +28,10 @@ export function useGameImages(gameId: string) {
     formData.append('image', file);
     setUploading(true);
     try {
-      const token = document.cookie.match(/accessToken=([^;]+)/)?.[1];
-      const res = await fetch(`/api/admin/games/${gameId}/images`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: 'include',
-        body: formData,
-      });
-      const json = await res.json();
-      if (json.success) { await load(); return true; }
+      // postForm adjunta x-csrf-token (el backend exige CSRF en toda mutación).
+      // El fetch crudo previo no enviaba el header y devolvía 403 CSRF_INVALID.
+      const res = await apiService.postForm<GameImage>(`/admin/games/${gameId}/images`, formData);
+      if (res.success) { await load(); return true; }
       return false;
     } finally {
       setUploading(false);
