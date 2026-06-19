@@ -60,7 +60,7 @@ export default function AdminGames() {
 
   const {
     games: rawGames, loading, loadingMore, hasMore, total,
-    loadMore, updateGame, bulkSetStatus
+    loadMore, updateGame, bulkSetStatus, setGameCustomLogo
   } = useGames({
     status: statusFilter,
     providerName: providerFilter === 'all' ? null : providerFilter,
@@ -397,6 +397,7 @@ export default function AdminGames() {
               <tbody className="divide-y divide-border">
                 {games.map((game) => {
                   const isSelected = selected.has(game.id)
+                  const logo = game.customLogo || game.defaultLogo
                   return (
                     <tr
                       key={game.id}
@@ -412,8 +413,8 @@ export default function AdminGames() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-11 h-11 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
-                            {game.defaultLogo ? (
-                              <img src={game.defaultLogo} alt={game.name} className="w-full h-full object-cover" />
+                            {logo ? (
+                              <img src={logo} alt={game.name} className="w-full h-full object-cover" />
                             ) : (
                               <Gamepad2 className="h-5 w-5 text-muted-foreground/50" />
                             )}
@@ -500,6 +501,7 @@ export default function AdminGames() {
           defaultLogo={imageManagerGame.defaultLogo}
           open={!!imageManagerGame}
           onOpenChange={open => !open && setImageManagerGame(null)}
+          onActiveChange={customLogo => setGameCustomLogo(imageManagerGame.id, customLogo)}
         />
       )}
 
