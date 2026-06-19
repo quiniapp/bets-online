@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Upload, Trash2, Check, ImageIcon } from 'lucide-react';
 import { useGameImages } from '@/hooks/useGameImages';
 import { useToast } from '@/hooks/use-toast';
+import { ImageCropDialog } from './image-crop-dialog';
 
 interface GameImageManagerProps {
   gameId: string;
@@ -38,20 +39,24 @@ export function GameImageManager({
   const [resetting, setResetting] = useState(false);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (open) load();
   }, [open, load]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Elegir archivo abre el recortador 1:1 (formato de la card) en vez de subir directo.
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!fileInputRef.current) return;
     fileInputRef.current.value = '';
-    if (!file) return;
+    if (file) setCropFile(file);
+  };
 
-    const ok = await uploadImage(file);
+  const handleCropped = async (blob: Blob) => {
+    const ok = await uploadImage(blob, `${gameName}.webp`);
     if (ok) {
-      toast({ title: 'Imagen subida', description: 'La imagen fue cargada correctamente.' });
+      toast({ title: 'Imagen subida', description: 'La imagen fue recortada y cargada correctamente.' });
     } else {
       toast({ title: 'Error', description: 'No se pudo subir la imagen.', variant: 'destructive' });
     }
@@ -108,6 +113,7 @@ export function GameImageManager({
   const activeUrl = data?.activeImageUrl ?? defaultLogo;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -265,5 +271,13 @@ export function GameImageManager({
         </div>
       </DialogContent>
     </Dialog>
+
+    <ImageCropDialog
+      file={cropFile}
+      open={!!cropFile}
+      onOpenChange={o => !o && setCropFile(null)}
+      onCropped={handleCropped}
+    />
+    </>
   );
 }
