@@ -90,6 +90,12 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
     [totalPages, fetchPage]
   );
 
+  // Actualiza el logo activo de un juego en memoria, sin recargar toda la lista
+  // (evita perder el scroll/paginación al volver del gestor de imágenes).
+  const setGameCustomLogo = useCallback((gameId: string, customLogo: string | null) => {
+    setGames(prev => prev.map(g => (g.id === gameId ? { ...g, customLogo } : g)));
+  }, []);
+
   const reload = useCallback(() => {
     setGames([]);
     setPage(1);
@@ -168,6 +174,7 @@ export function useGames(activeOnlyOrOptions: boolean | UseGamesOptions = false,
     loadMore,
     goToPage,
     reload,
+    setGameCustomLogo,
     createGame,
     updateGame,
     toggleGameStatus,
