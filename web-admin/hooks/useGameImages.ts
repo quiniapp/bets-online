@@ -23,9 +23,9 @@ export function useGameImages(gameId: string) {
     }
   }, [gameId]);
 
-  const uploadImage = async (file: File): Promise<boolean> => {
+  const uploadImage = async (file: Blob, filename = 'image.webp'): Promise<boolean> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', file, filename);
     setUploading(true);
     try {
       // postForm adjunta x-csrf-token (el backend exige CSRF en toda mutación).
