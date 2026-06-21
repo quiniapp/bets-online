@@ -1,0 +1,27 @@
+# gitleaks configuration — bets-online
+# Extends the default ruleset. Allowlists DOCUMENTATION and EXAMPLE files that
+# legitimately contain PLACEHOLDER credentials (sequential demo keys, user:password
+# connection strings, generated example secrets). All real source files, configs
+# and future commits are still fully scanned for leaked secrets.
+title = "bets-online gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholder credentials in env documentation and example files (no real secrets)"
+paths = [
+  '''(^|/)\.env\.[^/]*example[^/]*$''',
+  '''(^|/)ENVIRONMENT_VARIABLES\.md$''',
+  '''(^|/)RAILWAY_ENV_VARS\.md$''',
+  '''(^|/)RAILWAY_SETUP\.md$''',
+  '''(^|/)VERCEL_ENV_VARS\.md$''',
+  '''(^|/)PREVIEW_DEPLOYMENTS\.md$''',
+  '''(^|/)DEPLOYMENT_URLS\.md$''',
+  '''(^|/)INTEGRATION\.md$''',
+  '''(^|/)QUICK_START\.md$''',
+  '''(^|/)ENV_SETUP\.md$''',
+  '''(^|/)COMPLETION_SUMMARY\.md$''',
+  '''(^|/)config/README\.md$''',
+  '''pnpm-lock\.yaml$''',
+]

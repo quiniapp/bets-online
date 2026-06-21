@@ -1,0 +1,67 @@
+# Security scanning — ISO/IEC 27001:2022 A.8.8 (technical vulnerabilities) and
+# secret-leak detection. Runs on PRs, pushes to protected branches, and weekly
+# (the schedule catches CVEs disclosed after a dependency was last changed).
+name: Security
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Blocking gate: fail on any *production* CRITICAL vulnerability.
+      # Baseline 2026-06: 0 prod-critical (18 prod-high, 24 moderate). As the
+      # backlog is remediated (Dependabot PRs), ratchet this down to --audit-level high.
+      - name: Audit production dependencies (blocking on critical)
+        run: pnpm audit --prod --audit-level critical
+
+      # Full visibility across all deps/levels — reported in the job log, never blocks.
+      - name: Full audit report (non-blocking)
+        if: always()
+        run: pnpm audit || true
+
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so gitleaks can scan past commits
+
+      # Official gitleaks image (license-free, unlike gitleaks-action for orgs).
+      # --redact hides secret values in logs; --exit-code 1 fails the build on any finding.
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:latest detect \
+            --source /repo --config /repo/.gitleaks.toml \
+            --redact --no-banner --exit-code 1

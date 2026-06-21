@@ -1,0 +1,38 @@
+# CodeQL static analysis (SAST) — ISO/IEC 27001:2022 A.8.25/A.8.28.
+# Scans JS/TS for injection, auth, and data-flow vulnerabilities on every PR,
+# every push to protected branches, and weekly (catches newly-added queries).
+name: CodeQL
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: "27 3 * * 1" # Mondays 03:27 UTC
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # security-extended adds higher-signal security queries beyond the
+          # default set; JS/TS needs no build step (interpreted).
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

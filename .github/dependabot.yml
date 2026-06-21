@@ -1,0 +1,32 @@
+# Dependabot — automated dependency-vulnerability surfacing & updates.
+# ISO/IEC 27001:2022 A.8.8 (Management of technical vulnerabilities).
+# Opens weekly PRs per workspace package; grouped to keep PR noise low.
+version: 2
+updates:
+  - package-ecosystem: "npm" # pnpm is supported under the npm ecosystem
+    directories:
+      - "/"
+      - "/api"
+      - "/web"
+      - "/web-admin"
+      - "/helper"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "chore(ci)"

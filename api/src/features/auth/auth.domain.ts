@@ -16,6 +16,7 @@ import { sessionsRepository } from './sessions.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { AppError } from '../../middleware/error.middleware';
 import { assertLoginAllowed, registerLoginFailure, clearLoginFailures } from '../../utils/login-throttle';
+import { writeAudit } from '../../utils/audit';
 
 // Window during which a just-rotated refresh token's predecessor is still
 // honoured, to absorb concurrent refreshes from multiple tabs sharing a cookie.
@@ -32,10 +33,24 @@ export class AuthDomain {
 
     if (!user) {
       registerLoginFailure(username);
+      writeAudit({
+        requesterId: null,
+        action: 'auth.loginFailed',
+        entityType: 'user',
+        entityId: null,
+        newValues: { username, reason: 'user_not_found' }
+      });
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
     if (user.status === 'BLOCKED') {
+      writeAudit({
+        requesterId: user.id,
+        action: 'auth.loginBlocked',
+        entityType: 'user',
+        entityId: user.id,
+        newValues: { username }
+      });
       throw new AppError(403, ErrorCode.USER_BLOCKED, 'User is blocked');
     }
 
@@ -43,6 +58,13 @@ export class AuthDomain {
 
     if (!isPasswordValid) {
       registerLoginFailure(username);
+      writeAudit({
+        requesterId: user.id,
+        action: 'auth.loginFailed',
+        entityType: 'user',
+        entityId: user.id,
+        newValues: { username, reason: 'bad_password' }
+      });
       throw new AppError(401, ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials');
     }
 
@@ -60,6 +82,13 @@ export class AuthDomain {
 
     // Poblar caché para que el primer refresh no vaya a DB
     userCache.set(loggedInUser);
+
+    writeAudit({
+      requesterId: user.id,
+      action: 'auth.login',
+      entityType: 'user',
+      entityId: user.id
+    });
 
     return { user: loggedInUser, tokens };
   }
@@ -191,6 +220,13 @@ export class AuthDomain {
 
   async logout(token: string): Promise<void> {
     await sessionsRepository.deleteByToken(token);
+    const decoded = jwt.decode(token) as { userId?: string } | null;
+    writeAudit({
+      requesterId: decoded?.userId ?? null,
+      action: 'auth.logout',
+      entityType: 'user',
+      entityId: decoded?.userId ?? null
+    });
   }
 
   async logoutAll(userId: string): Promise<void> {
@@ -222,6 +258,13 @@ export class AuthDomain {
     // Invalidate user cache and all sessions
     userCache.invalidate(userId);
     await sessionsRepository.deleteByUserId(userId);
+
+    writeAudit({
+      requesterId: userId,
+      action: 'auth.passwordChange',
+      entityType: 'user',
+      entityId: userId
+    });
   }
 
   async resetPassword(userId: string, newPassword: string): Promise<void> {
