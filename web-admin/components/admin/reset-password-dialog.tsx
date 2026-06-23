@@ -65,7 +65,7 @@ export function ResetPasswordDialog({
     }
 
     try {
-      await resetPassword(user.id, password);
+      await resetPassword(user.id, password.trim());
 
       toast({
         title: 'Éxito',

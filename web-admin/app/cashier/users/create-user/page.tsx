@@ -79,8 +79,8 @@ export default function CashierCreateUserPage() {
     setIsLoading(true);
     try {
       const payload: Record<string, unknown> = {
-        username: formData.username,
-        password: formData.password,
+        username: formData.username.trim(),
+        password: formData.password.trim(),
         role: 'PLAYER',
       };
       if (formData.email.trim()) payload.email = formData.email;
