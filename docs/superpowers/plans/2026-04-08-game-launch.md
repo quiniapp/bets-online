@@ -58,7 +58,7 @@ If missing, add them manually.
 Open `.env.local` and confirm these keys exist (values should already be there from provider-callbacks work):
 ```
 VIRAL_USERNAME=arenabet
-VIRAL_SECRET_KEY=961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4d
+VIRAL_SECRET_KEY=<your-dev-secret-key>
 INTEGRATOR_URL=https://api.stg.games-viral.com/
 ```
 

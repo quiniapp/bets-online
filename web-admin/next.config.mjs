@@ -17,6 +17,23 @@ const csp = [
   "object-src 'none'",
 ].join('; ');
 
+// Security headers applied to every response (ISO/IEC 27001:2022 A.8.26).
+// The admin embeds no third-party iframes, scripts, fonts or CDNs, so the CSP
+// is ENFORCED here (not Report-Only) — verified: no external resources.
+const securityHeaders = [
+  { key: 'Content-Security-Policy', value: csp },
+  // Force HTTPS for 2 years incl. subdomains; eligible for the preload list.
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // Block MIME-sniffing.
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  // The admin must never be framed (CSP frame-ancestors 'none' + legacy header).
+  { key: 'X-Frame-Options', value: 'DENY' },
+  // Don't leak full URLs/tokens in the Referer to cross-origin destinations.
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Disable powerful browser features the admin does not use.
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -26,7 +43,7 @@ const nextConfig = {
     return [
       {
         source: '/:path*',
-        headers: [{ key: 'Content-Security-Policy-Report-Only', value: csp }],
+        headers: securityHeaders,
       },
     ];
   },
