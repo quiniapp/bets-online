@@ -102,7 +102,7 @@ function EditUserForm() {
       else payload.firstName = null
       if (formData.lastName.trim()) payload.lastName = formData.lastName
       else payload.lastName = null
-      if (formData.password) payload.password = formData.password
+      if (formData.password) payload.password = formData.password.trim()
 
       const response = await apiService.patch(`/users/${userId}`, payload)
       if (response.success) {
