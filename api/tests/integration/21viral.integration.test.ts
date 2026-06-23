@@ -5,7 +5,7 @@ import crypto from 'crypto';
 // The HMAC middleware uses config.viral.username / secretKey.
 // We use the same values in makeAuthHeader() so they match.
 const TEST_VIRAL_USERNAME = 'test-integrator';
-const TEST_VIRAL_SECRET = '961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4d';
+const TEST_VIRAL_SECRET = 'dev-test-viral-secret-placeholder-not-a-real-key';
 process.env.VIRAL_USERNAME = TEST_VIRAL_USERNAME;
 process.env.VIRAL_SECRET_KEY = TEST_VIRAL_SECRET;
 

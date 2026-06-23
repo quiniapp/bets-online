@@ -25,3 +25,19 @@ paths = [
   '''(^|/)config/README\.md$''',
   '''pnpm-lock\.yaml$''',
 ]
+# Secret VALUES that are non-production placeholders / test fixtures. Matched
+# against the detected secret so historical commits (which still contain the
+# pre-redaction values) don't fail the full-history scan. The current tree is
+# already redacted; these only exist in past commits or as CI/test dummies.
+regexes = [
+  # Non-production 21viral dev/staging HMAC secret. It leaked into planning docs
+  # and the integration-test fixture; it is NOT a production credential. The
+  # working tree is redacted — this allowlists the value left in older commits.
+  '''961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4d''',
+  # CI placeholder secrets — env values in .github/workflows/ci.yml, never real.
+  '''test-(secret|refresh-secret|session-secret|viral-secret)[A-Za-z0-9-]*''',
+]
+# Any detected secret containing one of these substrings is treated as a non-secret.
+stopwords = [
+  "placeholder",
+]
