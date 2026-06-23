@@ -37,8 +37,8 @@ const useLogin = () => {
 
     try {
       const user = await login({
-        username: data.email,
-        password: data.password
+        username: data.email.trim(),
+        password: data.password.trim()
       });
 
       if (user) {

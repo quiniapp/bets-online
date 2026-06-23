@@ -23,6 +23,11 @@ const REFRESH_GRACE_MS = 60_000;
 
 export class AuthDomain {
   async login(username: string, password: string): Promise<{ user: User; tokens: AuthTokens }> {
+    // Normalize: strip accidental leading/trailing whitespace (mobile keyboards,
+    // copy-paste) so credentials match what was stored at creation/reset time.
+    username = username.trim();
+    password = password.trim();
+
     // Per-account throttle with exponential backoff (the per-IP authLimiter
     // alone is evaded by distributed attacks and punishes CGNAT users)
     assertLoginAllowed(username);
@@ -73,6 +78,10 @@ export class AuthDomain {
     firstName?: string,
     lastName?: string
   ): Promise<User> {
+    // Trim so the stored username/password matches the trimmed values sent at login.
+    username = username.trim();
+    password = password.trim();
+
     // Check if username exists
     const existingUsername = await usersRepository.findByUsername(username);
     if (existingUsername) {
@@ -202,6 +211,9 @@ export class AuthDomain {
     currentPassword: string,
     newPassword: string
   ): Promise<void> {
+    currentPassword = currentPassword.trim();
+    newPassword = newPassword.trim();
+
     // Get user
     const user = await usersRepository.findByIdForAuth(userId);
     if (!user) {
@@ -225,6 +237,8 @@ export class AuthDomain {
   }
 
   async resetPassword(userId: string, newPassword: string): Promise<void> {
+    newPassword = newPassword.trim();
+
     // Get user
     const user = await usersRepository.findById(userId);
     if (!user) {

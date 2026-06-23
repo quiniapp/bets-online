@@ -108,8 +108,8 @@ export default function CreateAdminFeature() {
 
     try {
       const payload: Record<string, unknown> = {
-        username: formData.username,
-        password: formData.password,
+        username: formData.username.trim(),
+        password: formData.password.trim(),
         role: formData.role
       }
 
