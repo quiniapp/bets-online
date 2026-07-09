@@ -145,10 +145,11 @@ export default function AdminDashboard() {
   }
 
   // Real data only — the API zero-fills the last 7 days, never show demo numbers.
+  // WITHDRAWAL amounts come signed negative from the API; the chart shows magnitudes.
   const weeklyData = adminStats?.weeklyChipFlow?.map(d => ({
     day: new Date(d.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }),
     loaded: d.loaded,
-    withdrawn: d.withdrawn,
+    withdrawn: Math.abs(d.withdrawn),
   })) ?? []
 
   return (
@@ -368,11 +369,10 @@ export default function AdminDashboard() {
                 <BarChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
-                  <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
+                  <YAxis />
                   <Tooltip />
-                  <Bar yAxisId="left" dataKey="loaded" fill="#8884d8" name="Cargadas" />
-                  <Bar yAxisId="right" dataKey="withdrawn" fill="#82ca9d" name="Retiradas" />
+                  <Bar dataKey="loaded" fill="#8884d8" name="Cargadas" />
+                  <Bar dataKey="withdrawn" fill="#82ca9d" name="Retiradas" />
                 </BarChart>
               </ResponsiveContainer>
             )}
