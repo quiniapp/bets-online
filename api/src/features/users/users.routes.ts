@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { usersController } from './users.controller';
-import { authMiddleware } from '../../middleware/auth.middleware';
+import { authMiddleware, requireRole } from '../../middleware/auth.middleware';
+import { UserRole } from 'helper';
 import { validate, validateParams } from '../../middleware/validation.middleware';
 import {
   createUserSchema,
@@ -60,6 +61,15 @@ router.post(
   '/:id/unblock',
   validateParams(idParamSchema),
   usersController.unblock.bind(usersController)
+);
+
+// Promote cashier → admin. Role also re-checked in the domain against the DB
+// (the JWT role could be stale); this middleware is the cheap first gate.
+router.post(
+  '/:id/promote',
+  requireRole(UserRole.OWNER, UserRole.ADMIN),
+  validateParams(idParamSchema),
+  usersController.promote.bind(usersController)
 );
 
 router.post(

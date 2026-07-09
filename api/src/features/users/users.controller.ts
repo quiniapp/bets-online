@@ -418,6 +418,46 @@ export class UsersController {
 
   /**
    * @swagger
+   * /api/users/{id}/promote:
+   *   post:
+   *     summary: Promote a cashier to admin (OWNER/ADMIN only)
+   *     tags: [Users]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: User promoted to admin successfully
+   *       400:
+   *         description: Target user is not a cashier
+   *       403:
+   *         description: Insufficient permissions
+   */
+  async promote(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        return res.status(401).json(
+          ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required')
+        );
+      }
+
+      const user = await usersDomain.promoteToAdmin(req.user.userId, req.params.id);
+
+      return res.json(
+        ApiResponseBuilder.success({ user, message: 'Usuario promovido a administrador' })
+      );
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * @swagger
    * /api/users/{id}/reset-password:
    *   post:
    *     summary: Reset user password
