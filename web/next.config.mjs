@@ -18,6 +18,24 @@ const csp = [
   "object-src 'none'",
 ].join('; ');
 
+// Security headers applied to every response (ISO/IEC 27001:2022 A.8.26).
+// CSP stays Report-Only on the players site until vendor iframe domains are
+// pinned in frame-src; the rest are safe to enforce now.
+const securityHeaders = [
+  { key: 'Content-Security-Policy-Report-Only', value: csp },
+  // Force HTTPS for 2 years incl. subdomains; eligible for the preload list.
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  // Block MIME-sniffing.
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  // The players site must not be framed by third parties (CSP frame-ancestors
+  // 'self' already enforces this; X-Frame-Options covers legacy browsers).
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  // Don't leak full URLs/tokens in the Referer to cross-origin destinations.
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Disable powerful features the app doesn't use (fullscreen left enabled for games).
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -27,7 +45,7 @@ const nextConfig = {
     return [
       {
         source: '/:path*',
-        headers: [{ key: 'Content-Security-Policy-Report-Only', value: csp }],
+        headers: securityHeaders,
       },
     ];
   },

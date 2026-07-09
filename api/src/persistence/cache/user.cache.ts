@@ -1,6 +1,15 @@
 import { User } from 'helper';
 
-// Debe ser mayor que la vida del accessToken (15 min) para que los refreshes
+// ⚠️ ARCHITECTURAL CONSTRAINT (ISO 27001 A.8.5 / A.5.18 — access revocation):
+// This is an IN-MEMORY, PER-PROCESS cache. Immediate revocation of a BLOCKED
+// user (auth.middleware checks this cache) and the password-change session kill
+// only work because the API runs as a SINGLE instance. If the API is ever
+// scaled horizontally, a blocked user could keep passing auth on other nodes
+// until their stateless access token expires (≤15 min). Before scaling, move
+// this cache / a revocation list to a shared store (e.g. Redis) or add a
+// per-user token version checked on each request.
+//
+// TTL debe ser mayor que la vida del accessToken (15 min) para que los refreshes
 // encuentren el usuario en caché sin ir a DB mientras el usuario está activo.
 const TTL_MS = 20 * 60 * 1000; // 20 minutes
 

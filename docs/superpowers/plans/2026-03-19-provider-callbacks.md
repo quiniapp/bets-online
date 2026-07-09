@@ -32,11 +32,11 @@ Open `.env` and rename:
 ```
 # Before:
 USERNAME=arenabet
-SECRET_KEY=961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4d
+SECRET_KEY=<your-dev-secret-key>
 
 # After:
 VIRAL_USERNAME=arenabet
-VIRAL_SECRET_KEY=961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4d
+VIRAL_SECRET_KEY=<your-dev-secret-key>
 INTEGRATOR_URL=https://api.stg.games-viral.com/
 ```
 
@@ -2175,7 +2175,7 @@ function canonicalize(value: unknown): string {
 
 function makeAuthHeader(body: object): string {
   const username = process.env.VIRAL_USERNAME ?? 'arenabet';
-  const secret = process.env.VIRAL_SECRET_KEY ?? '961b4ec6c03ef309663ad3f840fa527e283a3ac5479b994913a721dc30a78f4d';
+  const secret = process.env.VIRAL_SECRET_KEY ?? '<your-dev-secret-key>';
   const sig = crypto.createHmac('sha256', secret).update(canonicalize(body), 'utf8').digest('hex');
   return `HMAC-SHA256 ${username}:${sig}`;
 }
