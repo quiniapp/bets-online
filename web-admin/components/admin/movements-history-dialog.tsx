@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { useChips } from '@/hooks/useChips';
 import { ChipMovementsTable } from './chip-movements-table';
 import { useToast } from '@/hooks/use-toast';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import type { User, ChipMovementType } from 'helper';
 import { ChipMovementType as MovementType } from 'helper';
 
@@ -128,8 +128,9 @@ export function MovementsHistoryDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
+          {/* Rango + Tipo en el mismo renglón; exportar como tercer elemento (icono en mobile) */}
+          <div className="flex items-end gap-2 sm:gap-4">
+            <div className="flex-1 min-w-0 space-y-2">
               <Label>Rango de Fechas</Label>
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as DateRangeOption)}>
                 <SelectTrigger>
@@ -143,38 +144,9 @@ export function MovementsHistoryDialog({
                   <SelectItem value="all">Todos</SelectItem>
                 </SelectContent>
               </Select>
-              {dateRange === 'sinceLastLoad' && lastLoadChecked && (
-                <p className="text-xs text-muted-foreground">
-                  {lastLoadDate
-                    ? `Última carga: ${lastLoadDate.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                    : 'Sin cargas manuales — se muestran todos los movimientos'}
-                </p>
-              )}
             </div>
 
-            {dateRange === 'custom' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Fecha Inicio</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fecha Fin</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
+            <div className="flex-1 min-w-0 space-y-2">
               <Label>Tipo de Movimiento</Label>
               <Select value={movementType} onValueChange={(value) => setMovementType(value as ChipMovementType | 'ALL')}>
                 <SelectTrigger>
@@ -195,14 +167,52 @@ export function MovementsHistoryDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="flex justify-end">
-            <Button onClick={handleExport} disabled={exporting} variant="outline">
+            <Button
+              onClick={handleExport}
+              disabled={exporting}
+              variant="outline"
+              size="icon"
+              className="shrink-0 sm:hidden"
+              title="Exportar CSV"
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            </Button>
+            <Button onClick={handleExport} disabled={exporting} variant="outline" className="shrink-0 hidden sm:inline-flex">
               <Download className="h-4 w-4 mr-2" />
               {exporting ? 'Exportando...' : 'Exportar CSV'}
             </Button>
           </div>
+
+          {dateRange === 'custom' && (
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <div className="space-y-2">
+                <Label>Fecha Inicio</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Fecha Fin</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {dateRange === 'sinceLastLoad' && lastLoadChecked && (
+            <p className="text-xs text-muted-foreground">
+              {lastLoadDate
+                ? `Última carga: ${lastLoadDate.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                : 'Sin cargas manuales — se muestran todos los movimientos'}
+            </p>
+          )}
 
           {dateRange === 'sinceLastLoad' && !lastLoadChecked ? (
             <p className="text-center text-sm text-muted-foreground py-4">Cargando movimientos...</p>
