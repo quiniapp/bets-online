@@ -28,6 +28,16 @@ export class UsersDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Creator not found');
     }
 
+    // Un cajero solo puede crear jugadores — regla de negocio explícita,
+    // independiente de la jerarquía genérica de roles.
+    if (creator.role === UserRole.CASHIER && userData.role !== UserRole.PLAYER) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Los cajeros solo pueden crear jugadores'
+      );
+    }
+
     // Validate that creator can create this type of user
     if (!canManageUser(creator.role, userData.role)) {
       throw new AppError(
@@ -269,6 +279,64 @@ export class UsersDomain {
 
     const { passwordHash: _passwordHash2, ...userWithoutPassword } = updatedUser;
 
+    return userWithoutPassword as User;
+  }
+
+  // Promueve un CASHIER a ADMIN. Único camino para cambiar el rol de un
+  // usuario: PATCH /users/:id no acepta `role` (updateUserSchema lo excluye).
+  async promoteToAdmin(requesterId: string, userId: string): Promise<User> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Requester not found');
+    }
+
+    if (requester.role !== UserRole.OWNER && requester.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Solo un administrador puede promover cajeros'
+      );
+    }
+
+    const user = await usersRepository.findById(userId);
+    if (!user) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
+    }
+
+    if (user.role !== UserRole.CASHIER) {
+      throw new AppError(
+        400,
+        ErrorCode.VALIDATION_ERROR,
+        'Solo se puede promover a un cajero'
+      );
+    }
+
+    // Un admin solo puede promover cajeros de su propio subárbol
+    if (requester.role !== UserRole.OWNER) {
+      const canModify = await this.canViewUser(requesterId, userId);
+      if (!canModify) {
+        throw new AppError(403, ErrorCode.FORBIDDEN, 'Cannot modify this user');
+      }
+    }
+
+    const updatedUser = await usersRepository.updateRole(userId, UserRole.ADMIN);
+
+    // El rol viaja en el JWT: refrescar caché y cerrar sesiones activas para
+    // que el promovido re-ingrese con permisos de admin desde el primer request.
+    const { passwordHash: _ph, ...cacheable } = updatedUser;
+    userCache.set(cacheable as User);
+    await sessionsRepository.deleteByUserId(userId);
+
+    writeAudit({
+      requesterId,
+      action: 'user.promote',
+      entityType: 'user',
+      entityId: userId,
+      oldValues: { role: user.role },
+      newValues: { role: UserRole.ADMIN }
+    });
+
+    const { passwordHash: _passwordHash4, ...userWithoutPassword } = updatedUser;
     return userWithoutPassword as User;
   }
 

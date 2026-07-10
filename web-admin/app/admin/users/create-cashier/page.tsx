@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,17 @@ export default function CreateCashierPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { balance, loadBalance } = useChips();
-  const { role } = useAuth();
+  const { role, isLoading: authLoading } = useAuth();
   const isOwner = role === UserRole.OWNER;
   const [isLoading, setIsLoading] = useState(false);
+
+  // Solo OWNER/ADMIN dan de alta cajeros; un cajero solo crea jugadores.
+  const canCreateCashier = role === UserRole.OWNER || role === UserRole.ADMIN;
+  useEffect(() => {
+    if (!authLoading && !canCreateCashier) {
+      router.replace("/admin/users");
+    }
+  }, [authLoading, canCreateCashier, router]);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -41,6 +49,8 @@ export default function CreateCashierPage() {
   useState(() => { loadBalance(); });
 
   const handleBlur = (field: string) => setTouched(prev => ({ ...prev, [field]: true }));
+
+  const handlePasswordValidation = useCallback((v: boolean) => setPasswordValid(v), []);
 
   const validateUsername = (v: string) => {
     if (!v.trim()) return { state: 'invalid' as const, message: 'El nombre de usuario es requerido' };
@@ -109,6 +119,10 @@ export default function CreateCashierPage() {
     }
   };
 
+  if (!authLoading && !canCreateCashier) {
+    return null;
+  }
+
   return (
     <DashboardLayout title="Alta de Cajero">
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -176,7 +190,7 @@ export default function CreateCashierPage() {
                 onBlur={() => handleBlur('password')}
                 placeholder="Contraseña segura"
                 showRequirements
-                onValidationChange={useCallback((v: boolean) => setPasswordValid(v), [])}
+                onValidationChange={handlePasswordValidation}
               />
             </div>
 

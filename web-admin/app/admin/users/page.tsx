@@ -16,22 +16,25 @@ import { useDebounce } from "@/hooks/useDebounce"
 import {
   Search, Edit, TreePine, Table,
   ChevronDown, ChevronRight, ChevronLeft,
-  Lock, Unlock, DollarSign, Key, UserPlus
+  Lock, Unlock, DollarSign, Key, UserPlus, History, UserCog
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus, UserRole } from "helper"
 import type { User, UserTreeNode } from "helper"
 import ROUTER from "@/routes"
-import { cn } from "@/lib/utils"
+import { cn, formatChips } from "@/lib/utils"
 import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog"
 import { UserDetailDialog } from "@/components/admin/user-detail-dialog"
 import { ChipLoadDialog } from "@/components/admin/chip-load-dialog"
+import { MovementsHistoryDialog } from "@/components/admin/movements-history-dialog"
 
 const ITEMS_PER_PAGE = 10
 type ViewMode = 'table' | 'tree'
+// El árbol trae el balance de cada nodo; se conserva al aplanar para mostrarlo en la lista.
+type UserWithBalance = User & { chipBalance: number }
 
 const ROLE_LABELS: Record<string, string> = { OWNER: 'Propietario', ADMIN: 'Admin', CASHIER: 'Cajero', PLAYER: 'Jugador' }
 const STATUS_LABELS: Record<string, string> = { ACTIVE: 'Activo', BLOCKED: 'Bloqueado' }
@@ -49,16 +52,19 @@ function formatDate(date: Date | string | null | undefined, withTime = false) {
 
 interface ActionButtonsProps {
   user: User
+  canPromote?: boolean
   onEdit: (id: string) => void
   onWallet: (user: User) => void
+  onMovements: (user: User) => void
+  onPromote?: (user: User) => void
   onResetPassword: (user: User) => void
   onToggleBlock: (user: User) => void
 }
 
-function ActionButtons({ user, onEdit, onWallet, onResetPassword, onToggleBlock }: ActionButtonsProps) {
+function ActionButtons({ user, canPromote, onEdit, onWallet, onMovements, onPromote, onResetPassword, onToggleBlock }: ActionButtonsProps) {
   const isBlocked = user.status === UserStatus.BLOCKED
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 flex-wrap">
       <Button
         variant="outline" size="sm"
         onClick={() => onWallet(user)}
@@ -67,6 +73,19 @@ function ActionButtons({ user, onEdit, onWallet, onResetPassword, onToggleBlock 
       >
         <DollarSign className="h-3.5 w-3.5" />
       </Button>
+      <Button variant="outline" size="sm" onClick={() => onMovements(user)} title="Ver movimientos">
+        <History className="h-3.5 w-3.5" />
+      </Button>
+      {canPromote && user.role === UserRole.CASHIER && onPromote && (
+        <Button
+          variant="outline" size="sm"
+          onClick={() => onPromote(user)}
+          title="Promover a Admin"
+          className="text-blue-600 border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+        >
+          <UserCog className="h-3.5 w-3.5" />
+        </Button>
+      )}
       <Button variant="outline" size="sm" onClick={() => onResetPassword(user)} title="Cambiar contraseña">
         <Key className="h-3.5 w-3.5" />
       </Button>
@@ -86,17 +105,20 @@ function ActionButtons({ user, onEdit, onWallet, onResetPassword, onToggleBlock 
 }
 
 interface UserRowProps {
-  user: User
+  user: UserWithBalance
   level?: number
-  allUsers?: User[]
+  allUsers?: UserWithBalance[]
+  canPromote?: boolean
   onEdit: (id: string) => void
   onWallet: (user: User) => void
+  onMovements: (user: User) => void
+  onPromote?: (user: User) => void
   onResetPassword: (user: User) => void
   onViewDetail: (user: User) => void
   onToggleBlock: (user: User) => void
 }
 
-function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onResetPassword, onViewDetail, onToggleBlock }: UserRowProps) {
+function CollapsibleRow({ user, level = 0, allUsers = [], canPromote, onEdit, onWallet, onMovements, onPromote, onResetPassword, onViewDetail, onToggleBlock }: UserRowProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
   const directChildren = allUsers.filter(u => u.parentUserId === user.id)
   const hasChildren = directChildren.length > 0
@@ -112,7 +134,7 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
         style={{ paddingLeft: `${16 + level * 24}px` }}
       >
         {/* Usuario */}
-        <div className="col-span-3 flex items-center gap-1.5 min-w-0">
+        <div className="col-span-2 flex items-center gap-1.5 min-w-0">
           {hasChildren ? (
             <button onClick={() => setIsExpanded(!isExpanded)} className="p-0.5 rounded hover:bg-muted flex-shrink-0">
               {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -142,6 +164,11 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
           </Badge>
         </div>
 
+        {/* Saldo */}
+        <div className="col-span-1 text-sm font-semibold text-green-600 tabular-nums truncate" title={`$${formatChips(user.chipBalance)}`}>
+          ${formatChips(user.chipBalance)}
+        </div>
+
         {/* Registro */}
         <div className="col-span-2 text-sm text-muted-foreground">
           {formatDate(user.createdAt)}
@@ -156,8 +183,11 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
         <div className="col-span-3">
           <ActionButtons
             user={user}
+            canPromote={canPromote}
             onEdit={onEdit}
             onWallet={onWallet}
+            onMovements={onMovements}
+            onPromote={onPromote}
             onResetPassword={onResetPassword}
             onToggleBlock={onToggleBlock}
           />
@@ -170,8 +200,11 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
           user={child}
           level={level + 1}
           allUsers={allUsers}
+          canPromote={canPromote}
           onEdit={onEdit}
           onWallet={onWallet}
+          onMovements={onMovements}
+          onPromote={onPromote}
           onResetPassword={onResetPassword}
           onViewDetail={onViewDetail}
           onToggleBlock={onToggleBlock}
@@ -181,8 +214,11 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onRe
   )
 }
 
-function flattenTreeNode(node: UserTreeNode): User[] {
-  return [node.user, ...node.children.flatMap(flattenTreeNode)]
+function flattenTreeNode(node: UserTreeNode): UserWithBalance[] {
+  return [
+    { ...node.user, chipBalance: node.balance?.chipBalance ?? 0 },
+    ...node.children.flatMap(flattenTreeNode)
+  ]
 }
 
 function UsersPageContent() {
@@ -194,16 +230,21 @@ function UsersPageContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [dialogType, setDialogType] = useState<'wallet' | 'reset-password' | 'detail' | null>(null)
+  const [dialogType, setDialogType] = useState<'wallet' | 'movements' | 'reset-password' | 'detail' | null>(null)
   const [blockConfirmUser, setBlockConfirmUser] = useState<User | null>(null)
   const [blockLoading, setBlockLoading] = useState(false)
+  const [promoteConfirmUser, setPromoteConfirmUser] = useState<User | null>(null)
+  const [promoteLoading, setPromoteLoading] = useState(false)
+
+  // Solo OWNER/ADMIN pueden promover cajeros a admin
+  const canPromote = role === UserRole.OWNER || role === UserRole.ADMIN
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
 
   const { getUserTree } = useUsers({ autoLoad: false })
 
-  const [allDescendants, setAllDescendants] = useState<User[]>([])
+  const [allDescendants, setAllDescendants] = useState<UserWithBalance[]>([])
   const [userTree, setUserTree] = useState<UserTreeNode | null>(null)
   const [loadingTree, setLoadingTree] = useState(false)
 
@@ -255,6 +296,25 @@ function UsersPageContent() {
     }
   }
 
+  const handleConfirmPromote = async () => {
+    if (!promoteConfirmUser) return
+    setPromoteLoading(true)
+    try {
+      const response = await apiService.post(`/users/${promoteConfirmUser.id}/promote`, {})
+      if (response.success) {
+        toast({ title: "Usuario promovido", description: `${promoteConfirmUser.username} ahora es administrador. Deberá iniciar sesión nuevamente.` })
+        loadTree()
+      } else {
+        toast({ variant: "destructive", title: "Error", description: response.error?.message || "No se pudo promover el usuario" })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Error inesperado" })
+    } finally {
+      setPromoteLoading(false)
+      setPromoteConfirmUser(null)
+    }
+  }
+
   const getCreateUserHref = () => {
     if (role === UserRole.CASHIER) return ROUTER.CASHIER_CREATE_USER
     return ROUTER.CREATE_USER
@@ -274,14 +334,18 @@ function UsersPageContent() {
 
   const handleEditUser = (userId: string) => router.push(`${ROUTER.EDIT_USER}?id=${userId}`)
   const handleWallet = (user: User) => { setSelectedUser(user); setDialogType('wallet') }
+  const handleMovements = (user: User) => { setSelectedUser(user); setDialogType('movements') }
   const handleResetPassword = (user: User) => { setSelectedUser(user); setDialogType('reset-password') }
   const handleViewDetail = (user: User) => { setSelectedUser(user); setDialogType('detail') }
   const handleCloseDialog = () => { setSelectedUser(null); setDialogType(null) }
   const handleToggleBlock = (user: User) => setBlockConfirmUser(user)
 
   const sharedRowProps = {
+    canPromote,
     onEdit: handleEditUser,
     onWallet: handleWallet,
+    onMovements: handleMovements,
+    onPromote: (user: User) => setPromoteConfirmUser(user),
     onResetPassword: handleResetPassword,
     onViewDetail: handleViewDetail,
     onToggleBlock: handleToggleBlock,
@@ -319,45 +383,65 @@ function UsersPageContent() {
             </Button>
           </div>
 
-          <Button onClick={() => router.push(getCreateUserHref())} className="ml-auto">
-            <UserPlus className="h-4 w-4 mr-2" />Nuevo Usuario
+          <Button size="sm" onClick={() => router.push(getCreateUserHref())} className="ml-auto sm:h-9 sm:px-4">
+            <UserPlus className="h-4 w-4 mr-1.5 sm:mr-2" />
+            <span className="hidden sm:inline">Nuevo Usuario</span>
+            <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
       </div>
 
       {viewMode === 'table' ? (
         <Card className="overflow-hidden">
-          {/* Mobile: single-column list */}
+          {/* Mobile: single-column list — info arriba, acciones en su propia fila */}
           <div className="md:hidden divide-y">
             {paginatedUsers.map(user => (
-              <div key={user.id} className="flex items-center gap-3 px-3 py-2.5">
-                <button className="text-left flex-1 min-w-0" onClick={() => handleViewDetail(user)}>
-                  <div className="font-semibold text-blue-500 text-sm truncate">{user.username}</div>
-                  <div className="flex gap-1 flex-wrap mt-0.5">
-                    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{roleLabel(user.role)}</Badge>
-                    <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-[10px] px-1 py-0 h-4">
-                      {statusLabel(user.status)}
-                    </Badge>
+              <div key={user.id} className="px-3 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <button className="text-left min-w-0" onClick={() => handleViewDetail(user)}>
+                    <div className="font-semibold text-blue-500 text-sm truncate">{user.username}</div>
+                    {(user.firstName || user.lastName) && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        {[user.firstName, user.lastName].filter(Boolean).join(' ')}
+                      </div>
+                    )}
+                    <div className="flex gap-1 flex-wrap mt-1">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{roleLabel(user.role)}</Badge>
+                      <Badge variant={user.status === UserStatus.ACTIVE ? "default" : "secondary"} className="text-[10px] px-1.5 py-0 h-4">
+                        {statusLabel(user.status)}
+                      </Badge>
+                    </div>
+                  </button>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-semibold text-green-600 tabular-nums">${formatChips(user.chipBalance)}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Reg: {formatDate(user.createdAt)}</div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Reg: {formatDate(user.createdAt)}</div>
-                </button>
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <Button variant="outline" size="icon" className="h-7 w-7 text-yellow-600 border-yellow-300 hover:bg-yellow-50" onClick={() => handleWallet(user)} title="Fichas">
-                    <DollarSign className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="outline" size="icon" className="h-8 w-8 text-yellow-600 border-yellow-300 hover:bg-yellow-50" onClick={() => handleWallet(user)} title="Fichas">
+                    <DollarSign className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleResetPassword(user)} title="Contraseña">
-                    <Key className="h-3.5 w-3.5" />
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleMovements(user)} title="Movimientos">
+                    <History className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleEditUser(user.id)} title="Editar">
-                    <Edit className="h-3.5 w-3.5" />
+                  {canPromote && user.role === UserRole.CASHIER && (
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-blue-600 border-blue-300" onClick={() => setPromoteConfirmUser(user)} title="Promover a Admin">
+                      <UserCog className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleResetPassword(user)} title="Contraseña">
+                    <Key className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleEditUser(user.id)} title="Editar">
+                    <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline" size="icon"
-                    className={cn("h-7 w-7", user.status === UserStatus.BLOCKED ? "text-green-600 border-green-300" : "text-red-600 border-red-300")}
+                    className={cn("h-8 w-8 ml-auto", user.status === UserStatus.BLOCKED ? "text-green-600 border-green-300" : "text-red-600 border-red-300")}
                     onClick={() => handleToggleBlock(user)}
                     title={user.status === UserStatus.BLOCKED ? "Desbloquear" : "Bloquear"}
                   >
-                    {user.status === UserStatus.BLOCKED ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                    {user.status === UserStatus.BLOCKED ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
@@ -366,9 +450,10 @@ function UsersPageContent() {
 
           {/* Desktop header */}
           <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 border-b bg-muted/30 text-sm font-medium text-muted-foreground">
-            <div className="col-span-3">Usuario</div>
+            <div className="col-span-2">Usuario</div>
             <div className="col-span-1">Rol</div>
             <div className="col-span-1">Estado</div>
+            <div className="col-span-1">Saldo</div>
             <div className="col-span-2">Registro</div>
             <div className="col-span-2">Última Conexión</div>
             <div className="col-span-3">Acciones</div>
@@ -424,6 +509,10 @@ function UsersPageContent() {
         <ChipLoadDialog preselectedUser={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => loadTree()} />
       )}
+      {selectedUser && dialogType === 'movements' && (
+        <MovementsHistoryDialog user={selectedUser} open={true}
+          onOpenChange={open => { if (!open) handleCloseDialog() }} />
+      )}
       {selectedUser && dialogType === 'reset-password' && (
         <ResetPasswordDialog user={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onSuccess={() => loadTree()} />
@@ -432,6 +521,27 @@ function UsersPageContent() {
         <UserDetailDialog user={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onOperationSuccess={() => loadTree()} />
       )}
+
+      <AlertDialog open={!!promoteConfirmUser} onOpenChange={open => { if (!open) setPromoteConfirmUser(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Promover a Administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`"${promoteConfirmUser?.username}" pasará de Cajero a Administrador. Sus sesiones activas se cerrarán y deberá iniciar sesión nuevamente. Esta acción no se puede deshacer desde el panel.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={promoteLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmPromote}
+              disabled={promoteLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {promoteLoading ? "Procesando..." : "Promover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!blockConfirmUser} onOpenChange={open => { if (!open) setBlockConfirmUser(null) }}>
         <AlertDialogContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { useChips } from '@/hooks/useChips';
 import { ChipMovementsTable } from './chip-movements-table';
 import { useToast } from '@/hooks/use-toast';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import type { User, ChipMovementType } from 'helper';
 import { ChipMovementType as MovementType } from 'helper';
 
@@ -30,25 +30,46 @@ interface MovementsHistoryDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type DateRangeOption = 'last7' | 'last30' | 'custom' | 'all';
+type DateRangeOption = 'sinceLastLoad' | 'last7' | 'last30' | 'custom' | 'all';
 
 export function MovementsHistoryDialog({
   user,
   open,
   onOpenChange
 }: MovementsHistoryDialogProps) {
-  const { exportMovements } = useChips();
+  const { exportMovements, getMovements } = useChips();
   const { toast } = useToast();
-  const [dateRange, setDateRange] = useState<DateRangeOption>('last7');
+  const [dateRange, setDateRange] = useState<DateRangeOption>('sinceLastLoad');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [movementType, setMovementType] = useState<ChipMovementType | 'ALL'>('ALL');
   const [exporting, setExporting] = useState(false);
+  // Fecha de la última carga manual (SELL_TO_PLAYER) — null si nunca se cargó.
+  const [lastLoadDate, setLastLoadDate] = useState<Date | null>(null);
+  const [lastLoadChecked, setLastLoadChecked] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLastLoadChecked(false);
+    getMovements(user.id, { page: 1, limit: 1, type: MovementType.SELL_TO_PLAYER })
+      .then(res => {
+        if (cancelled) return;
+        const last = res.success && res.data ? res.data[0] : undefined;
+        setLastLoadDate(last ? new Date(last.createdAt) : null);
+      })
+      .catch(() => { if (!cancelled) setLastLoadDate(null); })
+      .finally(() => { if (!cancelled) setLastLoadChecked(true); });
+    return () => { cancelled = true; };
+  }, [open, user.id, getMovements]);
 
   const getDateRange = (): { startDate?: Date; endDate?: Date } => {
     const now = new Date();
 
     switch (dateRange) {
+      case 'sinceLastLoad':
+        // Sin carga previa: mostrar todos los movimientos.
+        return lastLoadDate ? { startDate: lastLoadDate } : {};
       case 'last7':
         return {
           startDate: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
@@ -98,23 +119,31 @@ export function MovementsHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw_-_1.5rem)] max-w-6xl rounded-lg p-4 sm:p-6 overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>Historial Completo de Movimientos</DialogTitle>
-          <p className="text-sm text-gray-500">
+          <DialogTitle className="pr-8">
+            <span className="sm:hidden">Movimientos</span>
+            <span className="hidden sm:inline">Historial Completo de Movimientos</span>
+          </DialogTitle>
+          <p className="text-sm text-gray-500 text-center sm:text-left">
             Usuario: <span className="font-semibold">{user.username}</span>
           </p>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Rango de Fechas</Label>
+        <div className="space-y-4 min-w-0">
+          {/* 2 renglones de filtros + renglón exportar/última carga */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Label className="w-24 sm:w-40 shrink-0">
+                <span className="sm:hidden">Fechas</span>
+                <span className="hidden sm:inline">Rango de Fechas</span>
+              </Label>
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as DateRangeOption)}>
-                <SelectTrigger>
+                <SelectTrigger className="flex-1 w-full min-w-0">
                   <SelectValue placeholder="Seleccione rango" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="sinceLastLoad">Desde última carga</SelectItem>
                   <SelectItem value="last7">Últimos 7 días</SelectItem>
                   <SelectItem value="last30">Últimos 30 días</SelectItem>
                   <SelectItem value="custom">Personalizado</SelectItem>
@@ -123,32 +152,13 @@ export function MovementsHistoryDialog({
               </Select>
             </div>
 
-            {dateRange === 'custom' && (
-              <>
-                <div className="space-y-2">
-                  <Label>Fecha Inicio</Label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fecha Fin</Label>
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="space-y-2">
-              <Label>Tipo de Movimiento</Label>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Label className="w-24 sm:w-40 shrink-0">
+                <span className="sm:hidden">Movimiento</span>
+                <span className="hidden sm:inline">Tipo de Movimiento</span>
+              </Label>
               <Select value={movementType} onValueChange={(value) => setMovementType(value as ChipMovementType | 'ALL')}>
-                <SelectTrigger>
+                <SelectTrigger className="flex-1 w-full min-w-0">
                   <SelectValue placeholder="Todos los tipos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -166,22 +176,56 @@ export function MovementsHistoryDialog({
                 </SelectContent>
               </Select>
             </div>
+
+            {dateRange === 'custom' && (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha Inicio</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fecha Fin</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Exportar a la izquierda + hint de última carga en el mismo renglón */}
+            <div className="flex items-center gap-3">
+              <Button onClick={handleExport} disabled={exporting} variant="outline" size="sm" className="shrink-0">
+                {exporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
+                {exporting ? 'Exportando...' : 'Exportar CSV'}
+              </Button>
+              {dateRange === 'sinceLastLoad' && lastLoadChecked && (
+                <p className="text-xs text-muted-foreground min-w-0 truncate">
+                  {lastLoadDate
+                    ? `Última carga: ${lastLoadDate.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Sin cargas manuales — se muestran todos'}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end">
-            <Button onClick={handleExport} disabled={exporting} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              {exporting ? 'Exportando...' : 'Exportar CSV'}
-            </Button>
-          </div>
-
-          <ChipMovementsTable
-            userId={user.id}
-            limit={10}
-            startDate={range.startDate}
-            endDate={range.endDate}
-            type={movementType === 'ALL' ? undefined : movementType}
-          />
+          {dateRange === 'sinceLastLoad' && !lastLoadChecked ? (
+            <p className="text-center text-sm text-muted-foreground py-4">Cargando movimientos...</p>
+          ) : (
+            <ChipMovementsTable
+              userId={user.id}
+              limit={10}
+              startDate={range.startDate}
+              endDate={range.endDate}
+              type={movementType === 'ALL' ? undefined : movementType}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>

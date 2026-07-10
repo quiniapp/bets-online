@@ -180,35 +180,40 @@ export function ChipMovementsTable({
         <table className="w-full">
           <thead className="bg-muted border-b">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Anterior</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Nuevo</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripción</th>
+              <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</th>
+              <th className="hidden sm:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</th>
+              <th className="px-2 sm:px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</th>
+              <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Anterior</th>
+              <th className="hidden sm:table-cell px-2 sm:px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Nuevo</th>
+              <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Descripción</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {movements.map(m => (
               <tr key={m.id} className="hover:bg-muted/50">
-                <td className="px-4 py-3 whitespace-nowrap text-sm">
-                  {new Date(m.createdAt).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm">
+                  <span className="sm:hidden">
+                    {new Date(m.createdAt).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {new Date(m.createdAt).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <Badge className={getMovementBadgeColor(m.type)}>
+                <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap">
+                  <Badge className={`${getMovementBadgeColor(m.type)} text-[10px] sm:text-xs`}>
                     {CHIP_MOVEMENT_TYPE_LABELS[m.type] || m.type}
                   </Badge>
                 </td>
-                <td className={`px-4 py-3 whitespace-nowrap text-sm font-semibold text-right ${getAmountColor(m.type)}`}>
+                <td className={`px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold text-right tabular-nums ${getAmountColor(m.type)}`}>
                   {formatAmount(m.amount, m.type)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground text-right">
+                <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-muted-foreground text-right tabular-nums">
                   ${formatChips(m.previousBalance)}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
+                <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-right tabular-nums">
                   ${formatChips(m.newBalance)}
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">
+                <td className="hidden md:table-cell px-4 py-3 text-sm text-muted-foreground">
                   {m.description || '-'}
                 </td>
               </tr>

@@ -1,6 +1,6 @@
 import { Op, QueryTypes } from 'sequelize';
 import { UserModel } from '../../persistence/models';
-import { User, CreateUserDto, UpdateUserDto, UserStatus } from 'helper';
+import { User, CreateUserDto, UpdateUserDto, UserStatus, UserRole } from 'helper';
 import { sequelize } from '../../config/sequelize';
 
 export class UsersRepository {
@@ -129,6 +129,17 @@ export class UsersRepository {
     if (updateData.status) updateFields.status = updateData.status;
 
     await user.update(updateFields);
+    return this.mapToUser(user);
+  }
+
+  // Only used by the promotion flow (usersDomain.promoteToAdmin); role is
+  // deliberately not part of UpdateUserDto so PATCH /users/:id can never touch it.
+  async updateRole(id: string, role: UserRole): Promise<User> {
+    const user = await UserModel.findByPk(id);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    await user.update({ role });
     return this.mapToUser(user);
   }
 
