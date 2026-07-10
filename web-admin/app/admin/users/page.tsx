@@ -16,7 +16,7 @@ import { useDebounce } from "@/hooks/useDebounce"
 import {
   Search, Edit, TreePine, Table,
   ChevronDown, ChevronRight, ChevronLeft,
-  Lock, Unlock, DollarSign, Key, UserPlus, History
+  Lock, Unlock, DollarSign, Key, UserPlus, History, UserCog
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { UserStatus, UserRole } from "helper"
@@ -52,14 +52,16 @@ function formatDate(date: Date | string | null | undefined, withTime = false) {
 
 interface ActionButtonsProps {
   user: User
+  canPromote?: boolean
   onEdit: (id: string) => void
   onWallet: (user: User) => void
   onMovements: (user: User) => void
+  onPromote?: (user: User) => void
   onResetPassword: (user: User) => void
   onToggleBlock: (user: User) => void
 }
 
-function ActionButtons({ user, onEdit, onWallet, onMovements, onResetPassword, onToggleBlock }: ActionButtonsProps) {
+function ActionButtons({ user, canPromote, onEdit, onWallet, onMovements, onPromote, onResetPassword, onToggleBlock }: ActionButtonsProps) {
   const isBlocked = user.status === UserStatus.BLOCKED
   return (
     <div className="flex items-center gap-1 flex-wrap">
@@ -74,6 +76,16 @@ function ActionButtons({ user, onEdit, onWallet, onMovements, onResetPassword, o
       <Button variant="outline" size="sm" onClick={() => onMovements(user)} title="Ver movimientos">
         <History className="h-3.5 w-3.5" />
       </Button>
+      {canPromote && user.role === UserRole.CASHIER && onPromote && (
+        <Button
+          variant="outline" size="sm"
+          onClick={() => onPromote(user)}
+          title="Promover a Admin"
+          className="text-blue-600 border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+        >
+          <UserCog className="h-3.5 w-3.5" />
+        </Button>
+      )}
       <Button variant="outline" size="sm" onClick={() => onResetPassword(user)} title="Cambiar contraseña">
         <Key className="h-3.5 w-3.5" />
       </Button>
@@ -96,15 +108,17 @@ interface UserRowProps {
   user: UserWithBalance
   level?: number
   allUsers?: UserWithBalance[]
+  canPromote?: boolean
   onEdit: (id: string) => void
   onWallet: (user: User) => void
   onMovements: (user: User) => void
+  onPromote?: (user: User) => void
   onResetPassword: (user: User) => void
   onViewDetail: (user: User) => void
   onToggleBlock: (user: User) => void
 }
 
-function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onMovements, onResetPassword, onViewDetail, onToggleBlock }: UserRowProps) {
+function CollapsibleRow({ user, level = 0, allUsers = [], canPromote, onEdit, onWallet, onMovements, onPromote, onResetPassword, onViewDetail, onToggleBlock }: UserRowProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2)
   const directChildren = allUsers.filter(u => u.parentUserId === user.id)
   const hasChildren = directChildren.length > 0
@@ -169,9 +183,11 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onMo
         <div className="col-span-3">
           <ActionButtons
             user={user}
+            canPromote={canPromote}
             onEdit={onEdit}
             onWallet={onWallet}
             onMovements={onMovements}
+            onPromote={onPromote}
             onResetPassword={onResetPassword}
             onToggleBlock={onToggleBlock}
           />
@@ -184,9 +200,11 @@ function CollapsibleRow({ user, level = 0, allUsers = [], onEdit, onWallet, onMo
           user={child}
           level={level + 1}
           allUsers={allUsers}
+          canPromote={canPromote}
           onEdit={onEdit}
           onWallet={onWallet}
           onMovements={onMovements}
+          onPromote={onPromote}
           onResetPassword={onResetPassword}
           onViewDetail={onViewDetail}
           onToggleBlock={onToggleBlock}
@@ -215,6 +233,11 @@ function UsersPageContent() {
   const [dialogType, setDialogType] = useState<'wallet' | 'movements' | 'reset-password' | 'detail' | null>(null)
   const [blockConfirmUser, setBlockConfirmUser] = useState<User | null>(null)
   const [blockLoading, setBlockLoading] = useState(false)
+  const [promoteConfirmUser, setPromoteConfirmUser] = useState<User | null>(null)
+  const [promoteLoading, setPromoteLoading] = useState(false)
+
+  // Solo OWNER/ADMIN pueden promover cajeros a admin
+  const canPromote = role === UserRole.OWNER || role === UserRole.ADMIN
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""
@@ -273,6 +296,25 @@ function UsersPageContent() {
     }
   }
 
+  const handleConfirmPromote = async () => {
+    if (!promoteConfirmUser) return
+    setPromoteLoading(true)
+    try {
+      const response = await apiService.post(`/users/${promoteConfirmUser.id}/promote`, {})
+      if (response.success) {
+        toast({ title: "Usuario promovido", description: `${promoteConfirmUser.username} ahora es administrador. Deberá iniciar sesión nuevamente.` })
+        loadTree()
+      } else {
+        toast({ variant: "destructive", title: "Error", description: response.error?.message || "No se pudo promover el usuario" })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "Error inesperado" })
+    } finally {
+      setPromoteLoading(false)
+      setPromoteConfirmUser(null)
+    }
+  }
+
   const getCreateUserHref = () => {
     if (role === UserRole.CASHIER) return ROUTER.CASHIER_CREATE_USER
     return ROUTER.CREATE_USER
@@ -299,9 +341,11 @@ function UsersPageContent() {
   const handleToggleBlock = (user: User) => setBlockConfirmUser(user)
 
   const sharedRowProps = {
+    canPromote,
     onEdit: handleEditUser,
     onWallet: handleWallet,
     onMovements: handleMovements,
+    onPromote: (user: User) => setPromoteConfirmUser(user),
     onResetPassword: handleResetPassword,
     onViewDetail: handleViewDetail,
     onToggleBlock: handleToggleBlock,
@@ -369,6 +413,11 @@ function UsersPageContent() {
                   <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleMovements(user)} title="Movimientos">
                     <History className="h-3.5 w-3.5" />
                   </Button>
+                  {canPromote && user.role === UserRole.CASHIER && (
+                    <Button variant="outline" size="icon" className="h-7 w-7 text-blue-600 border-blue-300" onClick={() => setPromoteConfirmUser(user)} title="Promover a Admin">
+                      <UserCog className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                   <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handleResetPassword(user)} title="Contraseña">
                     <Key className="h-3.5 w-3.5" />
                   </Button>
@@ -461,6 +510,27 @@ function UsersPageContent() {
         <UserDetailDialog user={selectedUser} open={true}
           onOpenChange={open => { if (!open) handleCloseDialog() }} onOperationSuccess={() => loadTree()} />
       )}
+
+      <AlertDialog open={!!promoteConfirmUser} onOpenChange={open => { if (!open) setPromoteConfirmUser(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Promover a Administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`"${promoteConfirmUser?.username}" pasará de Cajero a Administrador. Sus sesiones activas se cerrarán y deberá iniciar sesión nuevamente. Esta acción no se puede deshacer desde el panel.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={promoteLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmPromote}
+              disabled={promoteLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {promoteLoading ? "Procesando..." : "Promover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!blockConfirmUser} onOpenChange={open => { if (!open) setBlockConfirmUser(null) }}>
         <AlertDialogContent>
