@@ -119,7 +119,7 @@ export function MovementsHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-6xl rounded-lg p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Historial Completo de Movimientos</DialogTitle>
           <p className="text-sm text-gray-500">
