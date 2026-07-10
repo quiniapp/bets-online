@@ -119,19 +119,25 @@ export function MovementsHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-6xl rounded-lg p-4 sm:p-6 overflow-x-hidden">
+      <DialogContent className="w-[calc(100vw_-_1.5rem)] max-w-6xl rounded-lg p-4 sm:p-6 overflow-x-hidden">
         <DialogHeader>
-          <DialogTitle>Historial Completo de Movimientos</DialogTitle>
+          <DialogTitle className="pr-8">
+            <span className="sm:hidden">Movimientos</span>
+            <span className="hidden sm:inline">Historial Completo de Movimientos</span>
+          </DialogTitle>
           <p className="text-sm text-gray-500">
             Usuario: <span className="font-semibold">{user.username}</span>
           </p>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* 2 renglones: rango + select / tipo + select + botón exportar */}
+          {/* 2 renglones de filtros + renglón exportar/última carga */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 sm:gap-3">
-              <Label className="w-32 sm:w-40 shrink-0">Rango de Fechas</Label>
+              <Label className="w-24 sm:w-40 shrink-0">
+                <span className="sm:hidden">Fechas</span>
+                <span className="hidden sm:inline">Rango de Fechas</span>
+              </Label>
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as DateRangeOption)}>
                 <SelectTrigger className="flex-1 w-full min-w-0">
                   <SelectValue placeholder="Seleccione rango" />
@@ -147,7 +153,10 @@ export function MovementsHistoryDialog({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <Label className="w-32 sm:w-40 shrink-0">Tipo de Movimiento</Label>
+              <Label className="w-24 sm:w-40 shrink-0">
+                <span className="sm:hidden">Movimiento</span>
+                <span className="hidden sm:inline">Tipo de Movimiento</span>
+              </Label>
               <Select value={movementType} onValueChange={(value) => setMovementType(value as ChipMovementType | 'ALL')}>
                 <SelectTrigger className="flex-1 w-full min-w-0">
                   <SelectValue placeholder="Todos los tipos" />
@@ -166,52 +175,45 @@ export function MovementsHistoryDialog({
                   <SelectItem value={MovementType.PANEL_SALE}>Venta de Panel</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
-                onClick={handleExport}
-                disabled={exporting}
-                variant="outline"
-                size="icon"
-                className="shrink-0 sm:hidden"
-                title="Exportar CSV"
-              >
-                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              </Button>
-              <Button onClick={handleExport} disabled={exporting} variant="outline" className="shrink-0 hidden sm:inline-flex">
-                <Download className="h-4 w-4 mr-2" />
+            </div>
+
+            {dateRange === 'custom' && (
+              <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha Inicio</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Fecha Fin</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Exportar a la izquierda + hint de última carga en el mismo renglón */}
+            <div className="flex items-center gap-3">
+              <Button onClick={handleExport} disabled={exporting} variant="outline" size="sm" className="shrink-0">
+                {exporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
                 {exporting ? 'Exportando...' : 'Exportar CSV'}
               </Button>
+              {dateRange === 'sinceLastLoad' && lastLoadChecked && (
+                <p className="text-xs text-muted-foreground min-w-0 truncate">
+                  {lastLoadDate
+                    ? `Última carga: ${lastLoadDate.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Sin cargas manuales — se muestran todos'}
+                </p>
+              )}
             </div>
           </div>
-
-          {dateRange === 'custom' && (
-            <div className="grid grid-cols-2 gap-2 sm:gap-4">
-              <div className="space-y-2">
-                <Label>Fecha Inicio</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Fecha Fin</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          {dateRange === 'sinceLastLoad' && lastLoadChecked && (
-            <p className="text-xs text-muted-foreground">
-              {lastLoadDate
-                ? `Última carga: ${lastLoadDate.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-                : 'Sin cargas manuales — se muestran todos los movimientos'}
-            </p>
-          )}
 
           {dateRange === 'sinceLastLoad' && !lastLoadChecked ? (
             <p className="text-center text-sm text-muted-foreground py-4">Cargando movimientos...</p>
