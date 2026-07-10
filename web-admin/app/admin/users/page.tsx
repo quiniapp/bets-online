@@ -383,8 +383,10 @@ function UsersPageContent() {
             </Button>
           </div>
 
-          <Button onClick={() => router.push(getCreateUserHref())} className="ml-auto">
-            <UserPlus className="h-4 w-4 mr-2" />Nuevo Usuario
+          <Button size="sm" onClick={() => router.push(getCreateUserHref())} className="ml-auto sm:h-9 sm:px-4">
+            <UserPlus className="h-4 w-4 mr-1.5 sm:mr-2" />
+            <span className="hidden sm:inline">Nuevo Usuario</span>
+            <span className="sm:hidden">Nuevo</span>
           </Button>
         </div>
       </div>
