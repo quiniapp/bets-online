@@ -119,7 +119,7 @@ export function MovementsHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-6xl rounded-lg p-4 sm:p-6">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-6xl rounded-lg p-4 sm:p-6 overflow-x-hidden">
         <DialogHeader>
           <DialogTitle>Historial Completo de Movimientos</DialogTitle>
           <p className="text-sm text-gray-500">
@@ -128,12 +128,12 @@ export function MovementsHistoryDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Rango + Tipo en el mismo renglón; exportar como tercer elemento (icono en mobile) */}
-          <div className="flex items-end gap-2 sm:gap-4">
-            <div className="flex-1 min-w-0 space-y-2">
-              <Label>Rango de Fechas</Label>
+          {/* 2 renglones: rango + select / tipo + select + botón exportar */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Label className="w-32 sm:w-40 shrink-0">Rango de Fechas</Label>
               <Select value={dateRange} onValueChange={(value) => setDateRange(value as DateRangeOption)}>
-                <SelectTrigger>
+                <SelectTrigger className="flex-1 w-full min-w-0">
                   <SelectValue placeholder="Seleccione rango" />
                 </SelectTrigger>
                 <SelectContent>
@@ -146,10 +146,10 @@ export function MovementsHistoryDialog({
               </Select>
             </div>
 
-            <div className="flex-1 min-w-0 space-y-2">
-              <Label>Tipo de Movimiento</Label>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Label className="w-32 sm:w-40 shrink-0">Tipo de Movimiento</Label>
               <Select value={movementType} onValueChange={(value) => setMovementType(value as ChipMovementType | 'ALL')}>
-                <SelectTrigger>
+                <SelectTrigger className="flex-1 w-full min-w-0">
                   <SelectValue placeholder="Todos los tipos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -166,22 +166,21 @@ export function MovementsHistoryDialog({
                   <SelectItem value={MovementType.PANEL_SALE}>Venta de Panel</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                onClick={handleExport}
+                disabled={exporting}
+                variant="outline"
+                size="icon"
+                className="shrink-0 sm:hidden"
+                title="Exportar CSV"
+              >
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              </Button>
+              <Button onClick={handleExport} disabled={exporting} variant="outline" className="shrink-0 hidden sm:inline-flex">
+                <Download className="h-4 w-4 mr-2" />
+                {exporting ? 'Exportando...' : 'Exportar CSV'}
+              </Button>
             </div>
-
-            <Button
-              onClick={handleExport}
-              disabled={exporting}
-              variant="outline"
-              size="icon"
-              className="shrink-0 sm:hidden"
-              title="Exportar CSV"
-            >
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            </Button>
-            <Button onClick={handleExport} disabled={exporting} variant="outline" className="shrink-0 hidden sm:inline-flex">
-              <Download className="h-4 w-4 mr-2" />
-              {exporting ? 'Exportando...' : 'Exportar CSV'}
-            </Button>
           </div>
 
           {dateRange === 'custom' && (
