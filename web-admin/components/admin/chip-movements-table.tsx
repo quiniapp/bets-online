@@ -181,7 +181,7 @@ export function ChipMovementsTable({
           <thead className="bg-muted border-b">
             <tr>
               <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha</th>
-              <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</th>
+              <th className="hidden sm:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</th>
               <th className="px-2 sm:px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</th>
               <th className="hidden md:table-cell px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Anterior</th>
               <th className="hidden sm:table-cell px-2 sm:px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Bal. Nuevo</th>
@@ -199,7 +199,7 @@ export function ChipMovementsTable({
                     {new Date(m.createdAt).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </td>
-                <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap">
                   <Badge className={`${getMovementBadgeColor(m.type)} text-[10px] sm:text-xs`}>
                     {CHIP_MOVEMENT_TYPE_LABELS[m.type] || m.type}
                   </Badge>
