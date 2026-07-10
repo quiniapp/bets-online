@@ -125,12 +125,12 @@ export function MovementsHistoryDialog({
             <span className="sm:hidden">Movimientos</span>
             <span className="hidden sm:inline">Historial Completo de Movimientos</span>
           </DialogTitle>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 text-center sm:text-left">
             Usuario: <span className="font-semibold">{user.username}</span>
           </p>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {/* 2 renglones de filtros + renglón exportar/última carga */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 sm:gap-3">
