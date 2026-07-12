@@ -45,7 +45,7 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
           onClick={() => onSelect(selected === provider.name ? null : provider.name)}
           className={pillClass(selected === provider.name)}
         >
-          <label className="capitalize">
+          <label className="uppercase">
 
           {provider.logoUrl && (
             <img

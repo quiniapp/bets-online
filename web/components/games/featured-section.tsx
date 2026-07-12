@@ -73,7 +73,7 @@ const FeaturedSection = ({ onShowAll }: FeaturedSectionProps) => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl">⭐</span>
-          <span className="font-bold text-lg">Juegos Destacados</span>
+          <span className="font-bold text-lg uppercase">Juegos Destacados</span>
         </div>
         {onShowAll && (
           <button
