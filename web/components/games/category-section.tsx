@@ -61,7 +61,7 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {emoji && <span className="text-xl">{emoji}</span>}
-          <span className="font-bold text-lg">{title}</span>
+          <span className="font-bold text-lg capitalize">{title}</span>
         </div>
         {onShowAll && (
           <button
