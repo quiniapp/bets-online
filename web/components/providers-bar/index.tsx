@@ -45,18 +45,16 @@ const ProvidersBar = ({ selected, onSelect }: ProvidersBarProps) => {
           onClick={() => onSelect(selected === provider.name ? null : provider.name)}
           className={pillClass(selected === provider.name)}
         >
-          <label className="uppercase">
-
-          {provider.logoUrl && (
-            <img
-              src={provider.logoUrl}
-              alt={provider.displayName ?? provider.name}
-              className="h-5 object-contain max-w-[80px]"
-            />
-          ) 
-        }
-        {provider.displayName ?? provider.name}
-          </label>
+          <span className="flex items-center gap-1.5 uppercase whitespace-nowrap">
+            {provider.logoUrl && (
+              <img
+                src={provider.logoUrl}
+                alt=""
+                className="h-5 w-auto object-contain max-w-[80px] shrink-0"
+              />
+            )}
+            {provider.displayName ?? provider.name}
+          </span>
         </button>
       ))}
     </>
