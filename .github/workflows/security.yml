@@ -26,19 +26,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # pnpm 11+: `pnpm audit` uses the registry's bulk advisory endpoint.
+      # npm retired the legacy audit endpoints (410) on 2026-07-15, which
+      # breaks `pnpm audit` on pnpm <= 10. Audit reads only pnpm-lock.yaml,
+      # so no install step is needed here.
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: 11
 
+      # pnpm 11 requires Node >= 22.13 (uses node:sqlite).
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: "22"
 
       # Blocking gate: fail on any *production* CRITICAL vulnerability.
       # Baseline 2026-06: 0 prod-critical (18 prod-high, 24 moderate). As the
