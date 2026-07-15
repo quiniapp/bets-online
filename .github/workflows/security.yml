@@ -35,10 +35,11 @@ jobs:
         with:
           version: 11
 
+      # pnpm 11 requires Node >= 22.13 (uses node:sqlite).
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
 
       # Blocking gate: fail on any *production* CRITICAL vulnerability.
       # Baseline 2026-06: 0 prod-critical (18 prod-high, 24 moderate). As the
