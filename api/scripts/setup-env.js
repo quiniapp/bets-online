@@ -26,7 +26,7 @@ const log = {
 
 const apiDir = process.cwd();
 const envLocalPath = path.join(apiDir, '.env.local');
-const envLocalExamplePath = path.join(apiDir, '.env.local.example');
+const envLocalExamplePath = path.join(apiDir, '.env.example');
 
 console.log('\n🚀 Setup de Entorno - Casino Platform API\n');
 
@@ -35,12 +35,12 @@ if (fs.existsSync(envLocalPath)) {
   log.warning('.env.local ya existe. Se mantendrá el archivo existente.');
   console.log('   Si quieres recrearlo, elimínalo manualmente primero.\n');
 } else {
-  // 2. Copiar .env.local.example a .env.local
+  // 2. Copiar .env.example a .env.local
   if (fs.existsSync(envLocalExamplePath)) {
     fs.copyFileSync(envLocalExamplePath, envLocalPath);
-    log.success('Archivo .env.local creado desde .env.local.example');
+    log.success('Archivo .env.local creado desde .env.example');
   } else {
-    log.error('No se encontró .env.local.example');
+    log.error('No se encontró .env.example');
     process.exit(1);
   }
 }
@@ -115,7 +115,7 @@ try {
 const envContent = fs.readFileSync(envLocalPath, 'utf8');
 const needsSecrets =
   envContent.includes('your-jwt-secret') ||
-  envContent.includes('your-refresh-token-secret') ||
+  envContent.includes('your-refresh-secret') ||
   envContent.includes('your-session-secret');
 
 if (needsSecrets) {
@@ -150,4 +150,4 @@ console.log(`  1. Revisa tu configuración: ${colors.blue}.env.local${colors.res
 console.log(`  2. Inicia el servidor: ${colors.green}pnpm dev${colors.reset}`);
 console.log(`  3. Abre Supabase Studio: ${colors.blue}http://localhost:55323${colors.reset}\n`);
 
-console.log('Para más información, consulta: ENV_SETUP.md\n');
+console.log('Para más información, consulta: docs/environment-variables.md\n');

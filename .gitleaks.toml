@@ -23,6 +23,10 @@ paths = [
   '''(^|/)ENV_SETUP\.md$''',
   '''(^|/)COMPLETION_SUMMARY\.md$''',
   '''(^|/)config/README\.md$''',
+  # Current docs with placeholder connection strings / example values
+  '''^docs/environment-variables\.md$''',
+  '''^docs/deployment\.md$''',
+  '''(^|/)migrations/README\.md$''',
   '''pnpm-lock\.yaml$''',
 ]
 # Secret VALUES that are non-production placeholders / test fixtures. Matched
