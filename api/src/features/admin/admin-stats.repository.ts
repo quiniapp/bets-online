@@ -79,6 +79,9 @@ export class AdminStatsRepository {
                 ) AS d(day)
            LEFT JOIN chip_movements cm
              ON (cm.created_at AT TIME ZONE :tz)::date = d.day::date
+            -- Sargable lower bound (local midnight 6 days ago, back to timestamptz) so
+            -- the created_at index prunes old rows; the date equality alone cannot.
+            AND cm.created_at >= ((NOW() AT TIME ZONE :tz)::date - INTERVAL '6 days') AT TIME ZONE :tz
             AND cm.type IN ('SELL_TO_PLAYER', 'WITHDRAWAL')
             AND cm.user_id IN (SELECT id FROM descendants)
            GROUP BY d.day
