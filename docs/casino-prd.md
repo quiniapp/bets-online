@@ -1,5 +1,7 @@
 # PRD – Plataforma Web de Gestión de Casino
 
+> **Histórico (2025-11).** Documento de alcance original. Jerarquía, fichas, auditoría y reportes se implementaron; los juegos de terceros (21Viral) no estaban previstos acá. Compensación de cajeros (§5.4), liquidaciones y recuperos (§5.5) tienen tablas en la DB pero no lógica ni endpoints. El código y `CLAUDE.md` mandan sobre este documento.
+
 ## 1. Resumen Ejecutivo
 
 La plataforma será una **web de gestión para un casino basado en fichas**, con foco en:

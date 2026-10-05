@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Chip-based casino management platform: 4-level user hierarchy (Owner → Admin → Cashier → Player), chip accounting, native simulated games, and third-party games through the 21Viral integrator. The general stack/conventions in `C:\Programacion\CLAUDE.md` also apply; this file covers what is specific to this repo. `README.md` is partly outdated (it says npm and Supabase-CLI migrations; the repo uses **pnpm** and **Sequelize** migrations).
+Chip-based casino management platform: 4-level user hierarchy (Owner → Admin → Cashier → Player), chip accounting, native simulated games, and third-party games through the 21Viral integrator. The general stack/conventions in `C:\Programacion\CLAUDE.md` also apply; this file covers what is specific to this repo. Human-facing docs: `README.md` and the index in `docs/README.md`.
 
 ## Commands
 
@@ -67,4 +67,4 @@ Day-bucketed reports use `APP_TIMEZONE` (default `America/Argentina/Buenos_Aires
 - Password policy is 8 chars minimum for **all** roles; do not reintroduce a stricter rule for elevated roles.
 - CI (`.github/workflows/ci.yml`) only lints/type-checks/builds/tests the workspaces whose paths changed, and `helper/**` changes trigger all of them.
 - `security.yml` runs gitleaks over the **full git history**. A leaked secret in any old commit blocks every PR; unblock it by allowlisting the secret value regex in `.gitleaks.toml`, not by path. `codeql.yml` is the advanced setup, so GitHub's "default setup" code scanning must stay disabled.
-- Design docs and plans are in `docs/` (`docs/superpowers/{specs,plans}`, security/performance/ISO 27001 reports).
+- Docs index: `docs/README.md`. Operational guides (env vars, deployment, frontends) live in `docs/`; migrations in `api/src/persistence/migrations/README.md`. `docs/backlog/` holds deferred ideas and `docs/superpowers/specs/` the design specs of shipped features. Any `plans/` folder is gitignored, so implementation plans stay local.
