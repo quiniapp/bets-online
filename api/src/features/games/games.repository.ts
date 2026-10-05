@@ -44,23 +44,31 @@ export class GamesRepository {
     // betCount = rounds: native bets (1 row = 1 round) + integrator rounds
     // (DISTINCT provider_game_round_id). Provider txns link by provider_game_id
     // only — pt.provider_name is the integrator ('21viral'), not g.provider_name.
+    //
+    // Both sources are aggregated ONCE (one pass over bets, one over
+    // provider_transactions) and then joined to the catalog. The previous
+    // correlated-subquery form re-scanned provider_transactions for every game
+    // row (catalog size × table size), which timed out in production.
     const results = await db.query<{ id: string; name: string; isActive: boolean; betCount: string; totalWagered: string }>(
-      `SELECT g.id, g.name, g.is_active AS "isActive",
-        (
-          COALESCE((SELECT COUNT(*) FROM bets b WHERE b.game_id = g.id AND b.status <> 'CANCELLED'), 0) +
-          COALESCE((SELECT COUNT(DISTINCT pt.provider_game_round_id) FROM provider_transactions pt
-                    WHERE pt.transaction_type = 'Debit'
-                      AND g.provider_game_id IS NOT NULL
-                      AND pt.provider_game_id = g.provider_game_id), 0)
-        ) AS "betCount",
-        (
-          COALESCE((SELECT SUM(b.amount) FROM bets b WHERE b.game_id = g.id AND b.status <> 'CANCELLED'), 0) +
-          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
-                    WHERE pt.transaction_type = 'Debit'
-                      AND g.provider_game_id IS NOT NULL
-                      AND pt.provider_game_id = g.provider_game_id), 0)
-        ) AS "totalWagered"
+      `WITH native AS (
+        SELECT b.game_id, COUNT(*) AS rounds, SUM(b.amount) AS wagered
+        FROM bets b
+        WHERE b.status <> 'CANCELLED'
+        GROUP BY b.game_id
+      ), prov AS (
+        SELECT pt.provider_game_id,
+               COUNT(DISTINCT pt.provider_game_round_id) AS rounds,
+               SUM(pt.amount) AS wagered
+        FROM provider_transactions pt
+        WHERE pt.transaction_type = 'Debit' AND pt.provider_game_id IS NOT NULL
+        GROUP BY pt.provider_game_id
+      )
+      SELECT g.id, g.name, g.is_active AS "isActive",
+        COALESCE(n.rounds, 0) + COALESCE(p.rounds, 0) AS "betCount",
+        COALESCE(n.wagered, 0) + COALESCE(p.wagered, 0) AS "totalWagered"
       FROM games g
+      LEFT JOIN native n ON n.game_id = g.id
+      LEFT JOIN prov p ON p.provider_game_id = g.provider_game_id
       ORDER BY ${orderCol} DESC
       LIMIT :limit`,
       { replacements: { limit }, type: QueryTypes.SELECT }
@@ -80,23 +88,30 @@ export class GamesRepository {
   ): Promise<Array<{ providerName: string; betCount: number; totalWagered: number }>> {
     const db = GameModel.sequelize!;
     const orderCol = sortBy === 'wagered' ? '"totalWagered"' : '"betCount"';
+    // Same single-pass shape as getTopPlayed, grouped by the real provider
+    // (games.provider_name). Native games with no provider are not listed.
     const results = await db.query<{ providerName: string; betCount: string; totalWagered: string }>(
-      `SELECT p.provider_name AS "providerName",
-        (
-          COALESCE((SELECT COUNT(*) FROM bets b JOIN games g2 ON g2.id = b.game_id
-                    WHERE g2.provider_name = p.provider_name AND b.status <> 'CANCELLED'), 0) +
-          COALESCE((SELECT COUNT(DISTINCT pt.provider_game_round_id) FROM provider_transactions pt
-                    JOIN games g3 ON g3.provider_game_id = pt.provider_game_id
-                    WHERE pt.transaction_type = 'Debit' AND g3.provider_name = p.provider_name), 0)
-        ) AS "betCount",
-        (
-          COALESCE((SELECT SUM(b.amount) FROM bets b JOIN games g2 ON g2.id = b.game_id
-                    WHERE g2.provider_name = p.provider_name AND b.status <> 'CANCELLED'), 0) +
-          COALESCE((SELECT SUM(pt.amount) FROM provider_transactions pt
-                    JOIN games g3 ON g3.provider_game_id = pt.provider_game_id
-                    WHERE pt.transaction_type = 'Debit' AND g3.provider_name = p.provider_name), 0)
-        ) AS "totalWagered"
+      `WITH native AS (
+        SELECT g.provider_name, COUNT(*) AS rounds, SUM(b.amount) AS wagered
+        FROM bets b
+        JOIN games g ON g.id = b.game_id
+        WHERE b.status <> 'CANCELLED' AND g.provider_name IS NOT NULL
+        GROUP BY g.provider_name
+      ), prov AS (
+        SELECT g.provider_name,
+               COUNT(DISTINCT pt.provider_game_round_id) AS rounds,
+               SUM(pt.amount) AS wagered
+        FROM provider_transactions pt
+        JOIN games g ON g.provider_game_id = pt.provider_game_id
+        WHERE pt.transaction_type = 'Debit' AND g.provider_name IS NOT NULL
+        GROUP BY g.provider_name
+      )
+      SELECT p.provider_name AS "providerName",
+        COALESCE(n.rounds, 0) + COALESCE(pv.rounds, 0) AS "betCount",
+        COALESCE(n.wagered, 0) + COALESCE(pv.wagered, 0) AS "totalWagered"
       FROM (SELECT DISTINCT provider_name FROM games WHERE provider_name IS NOT NULL) p
+      LEFT JOIN native n ON n.provider_name = p.provider_name
+      LEFT JOIN prov pv ON pv.provider_name = p.provider_name
       ORDER BY ${orderCol} DESC
       LIMIT :limit`,
       { replacements: { limit }, type: QueryTypes.SELECT }

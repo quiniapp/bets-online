@@ -82,3 +82,20 @@ El tráfico vía Vercel se comprime en el edge, pero cualquier consumo directo d
 6. **P2** endpoint `/lobby` agregado (medio día) → luego evaluar SSR/ISR.
 7. **P7** pg_trgm (migración + 1 línea de validación).
 8. **P8/P9/P10/P12** housekeeping.
+
+---
+
+## Addendum 2026-10-04 — `GET /api/games/top-played` y `top-providers` (dashboard admin)
+
+**Síntoma:** el endpoint fallaba en producción (timeout). **Causa:** `getTopPlayed` / `getTopProviders` en `api/src/features/games/games.repository.ts` resolvían 4 subconsultas correlacionadas por cada fila de `games`, y todos los índices de `provider_transactions` empiezan por `provider_name`, así que cada juego del catálogo re-escaneaba la tabla completa (catálogo × transacciones).
+
+Bench local con datos sintéticos (4000 juegos, 200k transacciones, 20k bets), `EXPLAIN ANALYZE`:
+
+| Query | Antes | Reescrita (agregación en un solo paso) | Antes + índice |
+|---|---|---|---|
+| top-played | 80.4 s | 175 ms | 169 ms |
+| top-providers | 932 ms | 245 ms | 1008 ms |
+
+**Aplicado:** consultas reescritas como CTEs `GROUP BY` + `LEFT JOIN` al catálogo; migración `20261004000001-add-reporting-indexes` con `provider_transactions(provider_game_id, transaction_type)`, `provider_transactions(created_at)` y `games(provider_game_id)` (también sirven al informe de la casa y a game analytics, que joinean por `provider_game_id`); cota inferior sargable sobre `chip_movements.created_at` en el flujo semanal de fichas del dashboard. Test: `api/tests/repositories/games-top-played.repository.test.ts`.
+
+**Regla:** reportes sobre `provider_transactions` se agregan una sola vez y se joinean; nunca subconsultas correlacionadas por fila del catálogo.
