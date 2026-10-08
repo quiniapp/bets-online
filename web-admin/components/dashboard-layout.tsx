@@ -15,6 +15,7 @@ import { LogOut } from "lucide-react"
 import { UserRole } from "helper"
 import { useChips } from "@/hooks/useChips"
 import { formatChips } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -72,6 +73,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 <span className="text-[10px] font-semibold text-green-600">${formatChips(balance.chipBalance)}</span>
               )}
             </div>
+            <ThemeToggle />
             <Button
               variant="default"
               size="sm"

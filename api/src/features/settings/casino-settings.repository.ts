@@ -19,6 +19,15 @@ const DEFAULT_FOOTER_LINKS: FooterLink[] = [
   { id: '3', label: 'Contacto', href: '/contacto', visible: true },
 ];
 
+const CASINO_THEMES = ['light', 'dark', 'casino'] as const;
+type CasinoTheme = (typeof CASINO_THEMES)[number];
+
+// Guards against an unexpected value in the DB (or a future column default) so the
+// API never returns a theme that next-themes cannot apply.
+function normalizeTheme(value: unknown): CasinoTheme {
+  return CASINO_THEMES.includes(value as CasinoTheme) ? (value as CasinoTheme) : 'dark';
+}
+
 function mapToSettings(model: CasinoSettingsModel): CasinoSettings {
   const plain = model.get({ plain: true }) as CasinoSettingsModel;
   return {
@@ -28,6 +37,7 @@ function mapToSettings(model: CasinoSettingsModel): CasinoSettings {
     lobbySlots: plain.lobbySlots,
     footerLinks: plain.footerLinks,
     bottomNavItems: plain.bottomNavItems ?? [],
+    theme: normalizeTheme(plain.theme),
     updatedAt: new Date(plain.updatedAt),
   };
 }
@@ -43,6 +53,7 @@ export class CasinoSettingsRepository {
         lobbySlots: DEFAULT_LOBBY_SLOTS,
         footerLinks: DEFAULT_FOOTER_LINKS,
         bottomNavItems: [],
+        theme: 'dark',
         updatedAt: new Date(),
       };
     }
@@ -57,6 +68,7 @@ export class CasinoSettingsRepository {
       lobbySlots: patch.lobbySlots ?? current.lobbySlots,
       footerLinks: patch.footerLinks ?? current.footerLinks,
       bottomNavItems: patch.bottomNavItems ?? current.bottomNavItems,
+      theme: normalizeTheme(patch.theme ?? current.theme),
     }, { returning: true, conflictFields: ['owner_id'] });
     if (!record) {
       throw new Error('CasinoSettings upsert failed: no record returned');

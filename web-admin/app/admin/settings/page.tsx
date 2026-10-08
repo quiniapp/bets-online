@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Globe, Palette, Bell, Save, RefreshCw, Loader2 } from "lucide-react"
-import { useState } from "react"
+import { Globe, Palette, Bell, Save, RefreshCw, Loader2, Sun, Moon, Dices } from "lucide-react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api.service"
 import { useAuth } from "@/contexts/auth-context"
+import { markUserThemeOverride } from "@/lib/theme-sync"
 import { UserRole } from "helper"
 
 export default function AdminSettingsPage() {
@@ -22,9 +23,46 @@ export default function AdminSettingsPage() {
   const { toast } = useToast()
   const { role } = useAuth()
   const isOwner = role === UserRole.OWNER
+  const canChangeTheme = role === UserRole.OWNER || role === UserRole.ADMIN
+  const [mounted, setMounted] = useState(false)
   const [notifications, setNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(false)
   const [syncing, setSyncing] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleThemeChange = async (newTheme: string) => {
+    // The server theme is applied once by AdminThemeSync in providers.tsx. Tell it
+    // not to overwrite this pick if its request is still in flight.
+    markUserThemeOverride()
+    const previous = theme ?? 'dark'
+    setTheme(newTheme)
+    try {
+      const response = await apiService.patch('/settings/casino', { theme: newTheme })
+      if (response.success) {
+        toast({
+          title: "Tema del casino actualizado",
+          description: "El nuevo tema se aplicó a la plataforma y a los jugadores.",
+        })
+      } else {
+        setTheme(previous)
+        toast({
+          title: "Error al guardar tema",
+          description: response.error?.message || "No se pudo sincronizar el tema en el servidor",
+          variant: "destructive",
+        })
+      }
+    } catch (err: any) {
+      setTheme(previous)
+      toast({
+        title: "Error",
+        description: err.message || "Error al actualizar tema",
+        variant: "destructive",
+      })
+    }
+  }
 
   const handleSync = async () => {
     setSyncing(true)
@@ -43,7 +81,6 @@ export default function AdminSettingsPage() {
   }
 
   const handleSave = () => {
-    // Here you would typically save settings to a backend
     console.log("Settings saved")
   }
 
@@ -81,7 +118,8 @@ export default function AdminSettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Theme Settings */}
+          {/* Theme Settings — only OWNER/ADMIN can change the platform theme */}
+          {canChangeTheme && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -92,20 +130,40 @@ export default function AdminSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="theme">Theme</Label>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="theme">{t("settings.theme")}</Label>
+                {mounted ? (
+                  <Select value={theme} onValueChange={handleThemeChange}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder={t("settings.theme")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="light">
+                        <div className="flex items-center gap-2">
+                          <Sun className="h-4 w-4 text-amber-500" />
+                          <span>{t("settings.themeLight")}</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="dark">
+                        <div className="flex items-center gap-2">
+                          <Moon className="h-4 w-4 text-blue-400" />
+                          <span>{t("settings.themeDark")}</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="casino">
+                        <div className="flex items-center gap-2">
+                          <Dices className="h-4 w-4 text-emerald-400" />
+                          <span>{t("settings.themeCasino")}</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="w-[200px] h-9 border rounded-md bg-muted/20 animate-pulse" />
+                )}
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Notification Settings */}
           <Card>

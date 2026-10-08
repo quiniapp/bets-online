@@ -9,6 +9,7 @@ export class CasinoSettingsModel extends Model {
   declare lobbySlots: LobbySlot[];
   declare footerLinks: FooterLink[];
   declare bottomNavItems: BottomNavItem[];
+  declare theme: string;
   declare updatedAt: Date;
   declare createdAt: Date;
 }
@@ -54,6 +55,12 @@ CasinoSettingsModel.init(
       allowNull: false,
       defaultValue: [],
       field: 'bottom_nav_items'
+    },
+    theme: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'dark',
+      field: 'theme'
     },
     createdAt: {
       type: DataTypes.DATE,
