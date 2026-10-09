@@ -29,6 +29,7 @@ export const updateCasinoSettingsSchema = z.object({
   headerCategories: z.array(z.string().min(1).max(50)).max(20).optional(),
   lobbySlots: z.array(lobbySlotSchema).max(MAX_LOBBY_SLOTS).optional(),
   footerLinks: z.array(footerLinkSchema).max(30).optional(),
+  theme: z.enum(['light', 'dark', 'casino']).optional(),
   bottomNavItems: z
     .array(bottomNavItemSchema)
     .max(20)

@@ -34,13 +34,19 @@ export class SettingsDomain {
   ): Promise<CasinoSettings> {
     const requester = await usersRepository.findById(requesterId);
     if (!requester) throw new AppError(404, ErrorCode.NOT_FOUND, 'User not found');
-    if (requester.role !== UserRole.OWNER) {
-      throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Only owners can update casino settings');
+    if (requester.role !== UserRole.OWNER && requester.role !== UserRole.ADMIN) {
+      throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Only owners and admins can update casino settings');
+    }
+    // Admins may only change the theme. All other casino settings remain OWNER-only
+    // (the casino-settings subpages are already guarded by useOwnerGuard).
+    if (requester.role !== UserRole.OWNER && Object.keys(patch).some((key) => key !== 'theme')) {
+      throw new AppError(403, ErrorCode.INSUFFICIENT_PERMISSIONS, 'Admins can only update the casino theme');
     }
     if (patch.lobbySlots && patch.lobbySlots.length > MAX_LOBBY_SLOTS) {
       throw new AppError(400, ErrorCode.VALIDATION_ERROR, `Lobby slots cannot exceed ${MAX_LOBBY_SLOTS}`);
     }
-    const updated = await casinoSettingsRepository.patch(requesterId, patch);
+    const ownerId = await this.resolveOwnerId(requesterId, requester.role);
+    const updated = await casinoSettingsRepository.patch(ownerId, patch);
     casinoSettingsMemCache.invalidate();
     writeAudit({
       requesterId,

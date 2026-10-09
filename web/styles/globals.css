@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, .casino *));
+@custom-variant casino (&:is(.casino *));
 @theme {
   --breakpoint-xs: 475px;
 }
@@ -85,6 +86,41 @@ body {
   --sidebar-accent-foreground: oklch(0.94 0 0);
   --sidebar-border: oklch(0.20 0.008 55);
   --sidebar-ring: oklch(0.82 0.20 73);
+}
+
+.casino {
+  --background: oklch(0.11 0.038 162);
+  --foreground: oklch(0.95 0.025 145);
+  --card: oklch(0.145 0.045 162);
+  --card-foreground: oklch(0.95 0.025 145);
+  --popover: oklch(0.145 0.045 162);
+  --popover-foreground: oklch(0.95 0.025 145);
+  --primary: oklch(0.85 0.185 86);
+  --primary-foreground: oklch(0.11 0.04 162);
+  --secondary: oklch(0.19 0.05 162);
+  --secondary-foreground: oklch(0.95 0.025 145);
+  --muted: oklch(0.17 0.04 162);
+  --muted-foreground: oklch(0.72 0.04 150);
+  --accent: oklch(0.21 0.06 162);
+  --accent-foreground: oklch(0.98 0.02 145);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.95 0.03 27);
+  --border: oklch(0.24 0.048 160);
+  --input: oklch(0.17 0.04 162);
+  --ring: oklch(0.85 0.185 86);
+  --chart-1: oklch(0.85 0.185 86);
+  --chart-2: oklch(0.75 0.20 155);
+  --chart-3: oklch(0.70 0.22 310);
+  --chart-4: oklch(0.78 0.16 65);
+  --chart-5: oklch(0.62 0.24 27);
+  --sidebar: oklch(0.09 0.042 162);
+  --sidebar-foreground: oklch(0.95 0.025 145);
+  --sidebar-primary: oklch(0.85 0.185 86);
+  --sidebar-primary-foreground: oklch(0.11 0.04 162);
+  --sidebar-accent: oklch(0.16 0.055 162);
+  --sidebar-accent-foreground: oklch(0.98 0.02 145);
+  --sidebar-border: oklch(0.22 0.045 160);
+  --sidebar-ring: oklch(0.85 0.185 86);
 }
 
 @theme inline {

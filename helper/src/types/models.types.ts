@@ -501,6 +501,7 @@ export interface CasinoSettings {
   lobbySlots: LobbySlot[]
   footerLinks: FooterLink[]
   bottomNavItems: BottomNavItem[]
+  theme: 'light' | 'dark' | 'casino'
   updatedAt: Date
 }
 
@@ -509,6 +510,7 @@ export interface UpdateCasinoSettingsDto {
   lobbySlots?: LobbySlot[]
   footerLinks?: FooterLink[]
   bottomNavItems?: BottomNavItem[]
+  theme?: 'light' | 'dark' | 'casino'
 }
 
 /**
