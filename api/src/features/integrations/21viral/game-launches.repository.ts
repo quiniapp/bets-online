@@ -34,7 +34,7 @@ export class GameLaunchesRepository {
       `SELECT
         g.id                                                                        AS "gameId",
         g.name                                                                      AS "gameName",
-        g.provider_name                                                             AS "providerName",
+        COALESCE(g.visible_provider_name, g.provider_name)                          AS "providerName",
         g.game_type                                                                 AS "gameType",
         g.is_active                                                                 AS "isActive",
         COUNT(gl.id)                                                                AS "launchCount",
@@ -52,7 +52,7 @@ export class GameLaunchesRepository {
         AND g.provider_game_id IS NOT NULL
         AND pt.created_at >= :dateFrom
         AND pt.created_at <= :dateTo
-      GROUP BY g.id, g.name, g.provider_name, g.game_type, g.is_active
+      GROUP BY g.id, g.name, g.visible_provider_name, g.provider_name, g.game_type, g.is_active
       ORDER BY COUNT(gl.id) DESC`,
       { replacements: { dateFrom, dateTo }, type: QueryTypes.SELECT }
     );
