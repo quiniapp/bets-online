@@ -17,7 +17,7 @@ export class ProviderTypeOrdersRepository {
               g.games_count AS "gamesCount"
        FROM (
          SELECT game_type, COUNT(*) AS games_count FROM games
-         WHERE provider_name = :providerName AND game_type IS NOT NULL
+         WHERE COALESCE(visible_provider_name, provider_name) = :providerName AND game_type IS NOT NULL
          GROUP BY game_type
        ) g
        LEFT JOIN provider_game_type_orders pgto

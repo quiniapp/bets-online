@@ -139,7 +139,9 @@ export class BetsRepository {
    * Provider: 1 round = 1 distinct provider_game_round_id; wagered = Σ Debit, prize = Σ Credit.
    * Both join `games` for name/provider; provider txns link via provider_game_id
    * (NOT provider_name — pt.provider_name is the integrator '21viral', g.provider_name
-   * is the real provider e.g. Pragmatic). Reversals (refunds) are not netted in v1.
+   * is the real provider e.g. Pragmatic). The provider filter and the returned
+   * providerName use the effective provider: COALESCE(g.visible_provider_name,
+   * g.provider_name). Reversals (refunds) are not netted in v1.
    *
    * Returns aggregate totals plus a paginated, unified, date-desc row list.
    */
@@ -153,7 +155,12 @@ export class BetsRepository {
 
     if (dateFrom) { repl.dateFrom = dateFrom; nativeF.push('b.created_at >= :dateFrom'); provF.push('pt.created_at >= :dateFrom'); }
     if (dateTo) { repl.dateTo = dateTo; nativeF.push('b.created_at <= :dateTo'); provF.push('pt.created_at <= :dateTo'); }
-    if (providerName) { repl.providerName = providerName; nativeF.push('g.provider_name = :providerName'); provF.push('g.provider_name = :providerName'); }
+    if (providerName) {
+      repl.providerName = providerName;
+      const byProvider = 'COALESCE(g.visible_provider_name, g.provider_name) = :providerName';
+      nativeF.push(byProvider);
+      provF.push(byProvider);
+    }
     if (gameId) { repl.gameId = gameId; nativeF.push('b.game_id = :gameId'); provF.push('g.id = :gameId'); }
     if (userIds && userIds.length) { repl.userIds = userIds; nativeF.push('b.user_id IN (:userIds)'); provF.push('pt.user_id IN (:userIds)'); }
 
@@ -181,7 +188,7 @@ export class BetsRepository {
 
     // Unified, paginated row list (one row per native bet / per provider round).
     const innerSql = `
-      SELECT 'native' AS source, b.id::text AS id, b.user_id, u.username, g.name AS game_name, g.provider_name,
+      SELECT 'native' AS source, b.id::text AS id, b.user_id, u.username, g.name AS game_name, COALESCE(g.visible_provider_name, g.provider_name) AS provider_name,
              b.amount AS wagered, CASE WHEN b.status = 'WON' THEN COALESCE(b.payout, 0) ELSE 0 END AS prize,
              b.status::text AS status, b.created_at
       FROM bets b
@@ -189,7 +196,7 @@ export class BetsRepository {
       JOIN users u ON u.id = b.user_id
       WHERE b.status <> 'CANCELLED' ${natSql}
       UNION ALL
-      SELECT 'provider' AS source, pt.provider_game_round_id AS id, pt.user_id, u.username, g.name AS game_name, g.provider_name,
+      SELECT 'provider' AS source, pt.provider_game_round_id AS id, pt.user_id, u.username, g.name AS game_name, COALESCE(g.visible_provider_name, g.provider_name) AS provider_name,
              COALESCE(SUM(pt.amount) FILTER (WHERE pt.transaction_type = 'Debit'), 0) AS wagered,
              COALESCE(SUM(pt.amount) FILTER (WHERE pt.transaction_type = 'Credit'), 0) AS prize,
              NULL::text AS status, MAX(pt.created_at) AS created_at
@@ -197,7 +204,7 @@ export class BetsRepository {
       JOIN games g ON g.provider_game_id = pt.provider_game_id
       JOIN users u ON u.id = pt.user_id
       WHERE pt.provider_game_round_id IS NOT NULL ${provSql}
-      GROUP BY pt.provider_game_round_id, pt.user_id, u.username, g.name, g.provider_name`;
+      GROUP BY pt.provider_game_round_id, pt.user_id, u.username, g.name, COALESCE(g.visible_provider_name, g.provider_name)`;
 
     const listSql = `
       SELECT source, id, user_id AS "userId", username, game_name AS "gameName", provider_name AS "providerName",
