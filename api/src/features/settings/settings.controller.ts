@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiResponseBuilder } from 'helper';
 import { settingsDomain } from './settings.domain';
-import { setPublicCache } from '../../utils/http-cache';
 
 export class SettingsController {
   async getCasino(req: Request, res: Response, next: NextFunction) {
     try {
       const settings = await settingsDomain.getCasinoSettings(req.user?.userId);
-      setPublicCache(req, res, 60);
+      // No public HTTP cache — settings include the theme, which the admin can change
+      // at any time. The in-memory casinoSettingsMemCache on the server is enough.
+      res.setHeader('Cache-Control', 'no-store');
       return res.json(ApiResponseBuilder.success(settings));
     } catch (error) {
       return next(error);

@@ -15,6 +15,7 @@ import { LogOut } from "lucide-react"
 import { UserRole } from "helper"
 import { useChips } from "@/hooks/useChips"
 import { formatChips } from "@/lib/utils"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -44,13 +45,13 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const isAdminRole = role === UserRole.ADMIN || role === UserRole.OWNER || role === UserRole.CASHIER
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen">
       <div className="hidden md:block">
         <Sidebar />
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-10 md:h-13 items-center justify-between border-b bg-background px-3 md:px-6 shrink-0 gap-2">
+        <header className="flex h-10 md:h-13 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-3 md:px-6 shrink-0 gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {isAdminRole && <MobileSidebar />}
             {title && (
@@ -72,6 +73,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 <span className="text-[10px] font-semibold text-green-600">${formatChips(balance.chipBalance)}</span>
               )}
             </div>
+            <ThemeToggle />
             <Button
               variant="default"
               size="sm"

@@ -12,11 +12,18 @@ const GameCard = ({ game, onClick }: GameCardProps) => {
     <div onClick={onClick} className="cursor-pointer outline-none">
       <div
         className={cn(
-          "group rounded-xl overflow-hidden transition-all duration-300 outline-none",
+          "group rounded-xl overflow-hidden transition-all duration-300 outline-none border",
           "hover:scale-105 hover:shadow-lg hover:shadow-primary/25 relative"
         )}
+        style={{
+          borderRadius: 'var(--game-card-radius, 0.75rem)',
+          borderColor: 'var(--game-card-border, transparent)',
+        }}
       >
-        <div className="relative aspect-square bg-zinc-900 overflow-hidden">
+        <div
+          className="relative aspect-square bg-zinc-900 overflow-hidden"
+          style={{ backgroundColor: 'var(--game-card-background, #18181b)' }}
+        >
           {(game.customLogo ?? game.defaultLogo) ? (
             <img
               src={game.customLogo ?? game.defaultLogo!}
@@ -29,7 +36,10 @@ const GameCard = ({ game, onClick }: GameCardProps) => {
               <Gamepad2 className="h-6 w-6 text-muted-foreground/30" />
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/80 to-transparent" />
+          <div
+            className="absolute inset-x-0 bottom-0 h-12"
+            style={{ backgroundImage: 'linear-gradient(to top, var(--game-card-overlay, rgba(0,0,0,0.8)), transparent)' }}
+          />
           <div className="absolute inset-x-0 bottom-2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-lg shadow-primary/40">
               <Play className="h-2.5 w-2.5 fill-current" />
