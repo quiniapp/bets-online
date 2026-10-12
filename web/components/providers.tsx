@@ -2,10 +2,13 @@
 
 import type React from "react"
 import { useEffect, useRef } from "react"
+import type { CasinoSettings } from "helper"
 import { useTheme } from "next-themes"
 import { AuthProvider } from "@/contexts/auth-context"
 import { LanguageProvider } from "@/contexts/language-context"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ParticleBackground } from "@/components/particle-background"
+import { applyPlatformTheme } from "@/lib/platform-theme"
 
 function CasinoThemeSync() {
   const { setTheme } = useTheme()
@@ -21,11 +24,9 @@ function CasinoThemeSync() {
     // players always see the admin's current choice on every page load.
     fetch('/api/settings/casino', { cache: 'no-store' })
       .then(r => r.json())
-      .then((res: { success?: boolean; data?: { theme?: string } }) => {
-        const theme = res?.data?.theme
-        if (active && (theme === 'light' || theme === 'dark' || theme === 'casino')) {
-          setThemeRef.current(theme)
-        }
+      .then((res: { success?: boolean; data?: CasinoSettings | null }) => {
+        if (!active || !res?.data) return
+        applyPlatformTheme(res.data.theme, res.data.themeConfig, setThemeRef.current)
       })
       .catch(() => {/* silent */})
     return () => { active = false }
@@ -43,6 +44,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem={false}
       disableTransitionOnChange
     >
+      <ParticleBackground />
       <CasinoThemeSync />
       <LanguageProvider>
         <AuthProvider>{children}</AuthProvider>

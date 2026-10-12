@@ -40,6 +40,9 @@ const baseSettings = {
   footerLinks: [],
   bottomNavItems: [],
   theme: 'dark' as const,
+  themeConfig: null,
+  savedThemes: [],
+  activeThemeId: null,
   updatedAt: new Date(),
 };
 
@@ -66,6 +69,24 @@ describe('SettingsDomain.updateCasinoSettings — solo OWNER', () => {
     expect(casinoSettingsMemCache.invalidate).toHaveBeenCalled();
   });
 
+  it('permite al OWNER aplicar un theme personalizado (theme + themeConfig)', async () => {
+    const themeConfig = { base: 'dark' as const, tokens: { primary: '#7c5cff' } };
+
+    await domain.updateCasinoSettings(OWNER_ID, { theme: 'custom', themeConfig });
+
+    expect(casinoSettingsRepository.patch).toHaveBeenCalledWith(OWNER_ID, { theme: 'custom', themeConfig });
+  });
+
+  it('permite al OWNER guardar temas en la biblioteca sin aplicarlos', async () => {
+    const savedThemes = [
+      { id: 't1', name: 'Verde', config: { base: 'dark' as const, tokens: { primary: '#00ff00' } } },
+    ];
+
+    await domain.updateCasinoSettings(OWNER_ID, { savedThemes });
+
+    expect(casinoSettingsRepository.patch).toHaveBeenCalledWith(OWNER_ID, { savedThemes });
+  });
+
   it('permite al OWNER cambiar cualquier campo', async () => {
     await domain.updateCasinoSettings(OWNER_ID, { lobbySlots: [] });
 
@@ -75,6 +96,17 @@ describe('SettingsDomain.updateCasinoSettings — solo OWNER', () => {
   it('bloquea al ADMIN incluso para el theme', async () => {
     await expect(
       domain.updateCasinoSettings(ADMIN_ID, { theme: 'casino' })
+    ).rejects.toMatchObject({ statusCode: 403, code: ErrorCode.INSUFFICIENT_PERMISSIONS });
+
+    expect(casinoSettingsRepository.patch).not.toHaveBeenCalled();
+  });
+
+  it('bloquea al ADMIN para un theme personalizado (theme + themeConfig)', async () => {
+    await expect(
+      domain.updateCasinoSettings(ADMIN_ID, {
+        theme: 'custom',
+        themeConfig: { base: 'dark', tokens: { primary: '#7c5cff' } },
+      })
     ).rejects.toMatchObject({ statusCode: 403, code: ErrorCode.INSUFFICIENT_PERMISSIONS });
 
     expect(casinoSettingsRepository.patch).not.toHaveBeenCalled();

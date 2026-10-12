@@ -10,6 +10,9 @@ export class CasinoSettingsModel extends Model {
   declare footerLinks: FooterLink[];
   declare bottomNavItems: BottomNavItem[];
   declare theme: string;
+  declare themeConfig: object | null;
+  declare savedThemes: object[];
+  declare activeThemeId: string | null;
   declare updatedAt: Date;
   declare createdAt: Date;
 }
@@ -61,6 +64,22 @@ CasinoSettingsModel.init(
       allowNull: false,
       defaultValue: 'dark',
       field: 'theme'
+    },
+    themeConfig: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      field: 'theme_config'
+    },
+    savedThemes: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
+      field: 'saved_themes'
+    },
+    activeThemeId: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      field: 'active_theme_id'
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -2,14 +2,15 @@
 
 import type React from "react"
 import { useEffect, useRef } from "react"
+import type { CasinoSettings } from "helper"
 import { useTheme } from "next-themes"
 import { apiService } from "@/services/api.service"
 import { AuthProvider } from "@/contexts/auth-context"
 import { LanguageProvider } from "@/contexts/language-context"
 import { ThemeProvider } from "@/components/theme-provider"
+import { ParticleBackground } from "@/components/particle-background"
 import { hasUserThemeOverride } from "@/lib/theme-sync"
-
-const VALID_THEMES = ["light", "dark", "casino"]
+import { applyPlatformTheme } from "@/lib/platform-theme"
 
 /**
  * Applies the platform theme stored in casino_settings exactly once per page load.
@@ -27,14 +28,13 @@ function AdminThemeSync() {
   useEffect(() => {
     let active = true
     apiService
-      .get<{ theme?: string }>('/settings/casino')
+      .get<CasinoSettings>('/settings/casino')
       .then(res => {
-        const theme = res.data?.theme
         // If the user already changed the theme while this request was in flight,
         // their pick (and the PATCH it triggered) wins.
         if (!active || hasUserThemeOverride()) return
-        if (res.success && theme && VALID_THEMES.includes(theme)) {
-          setThemeRef.current(theme)
+        if (res.success && res.data) {
+          applyPlatformTheme(res.data.theme, res.data.themeConfig, setThemeRef.current)
         }
       })
       .catch(() => {
@@ -57,6 +57,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem={false}
       disableTransitionOnChange
     >
+      <ParticleBackground />
       <AdminThemeSync />
       <LanguageProvider>
         <AuthProvider>{children}</AuthProvider>

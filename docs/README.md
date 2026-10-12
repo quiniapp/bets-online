@@ -37,4 +37,5 @@ Foto de una fecha. Cada uno tiene arriba una sección "Estado" con lo que ya se 
 - [superpowers/specs/](./superpowers/specs/): diseños de features ya implementadas (flujo de fichas, banners estáticos). Sirven para entender el porqué; el código manda.
 - [backlog/](./backlog/): ideas diferidas (API de preview por PR en Railway, `rotateTokens` con JOIN, SEO).
 - [CHANGELOG_THEME_BRANCH.md](./CHANGELOG_THEME_BRANCH.md): resumen de la implementación del tema seleccionable (`light`/`dark`/`casino`) y de la sincronización centralizada del tema.
+- [superpowers/specs/2026-10-09-theme-generator-design.md](./superpowers/specs/2026-10-09-theme-generator-design.md): generador de temas del admin (paleta derivada de colores semilla) y aplicación del theme custom en web-admin y web.
 - Cualquier carpeta llamada `plans/` está en `.gitignore`: los planes de implementación son locales y no se commitean.

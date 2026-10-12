@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useLanguage } from "@/contexts/language-context"
 import { useTheme } from "next-themes"
@@ -9,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Globe, Palette, Bell, Save, RefreshCw, Loader2, Sun, Moon, Dices } from "lucide-react"
+import { Globe, Palette, Bell, Save, RefreshCw, Loader2, Sun, Moon, Dices, Wand2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { apiService } from "@/services/api.service"
 import { useAuth } from "@/contexts/auth-context"
 import { markUserThemeOverride } from "@/lib/theme-sync"
+import { applyPlatformTheme } from "@/lib/platform-theme"
 import { UserRole } from "helper"
 
 export default function AdminSettingsPage() {
@@ -38,9 +40,9 @@ export default function AdminSettingsPage() {
     // not to overwrite this pick if its request is still in flight.
     markUserThemeOverride()
     const previous = theme ?? 'dark'
-    setTheme(newTheme)
+    applyPlatformTheme(newTheme, null, setTheme)
     try {
-      const response = await apiService.patch('/settings/casino', { theme: newTheme })
+      const response = await apiService.patch('/settings/casino', { theme: newTheme, activeThemeId: null })
       if (response.success) {
         toast({
           title: "Tema del casino actualizado",
@@ -161,6 +163,13 @@ export default function AdminSettingsPage() {
                   <div className="w-[200px] h-9 border rounded-md bg-muted/20 animate-pulse" />
                 )}
               </div>
+              <Link
+                href="/admin/settings/theme"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              >
+                <Wand2 className="h-4 w-4" />
+                Abrir generador de temas
+              </Link>
             </CardContent>
           </Card>
           )}

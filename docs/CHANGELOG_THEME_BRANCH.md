@@ -6,7 +6,7 @@ A continuación se detalla el listado completo de los cambios realizados durante
 * **Migración de BD:** Se creó la migración `20261008000001-add-theme-to-casino-settings.js` para añadir la columna `theme` a la tabla `casino_settings`.
 * **Tipos y Validaciones:** Se actualizó `CasinoSettings` y `UpdateCasinoSettingsDto` (esquema Zod en `helper`) para incluir el atributo `theme` con los valores permitidos (`light`, `dark`, `casino`).
 * **Capa de Datos:** Se ajustó el modelo Sequelize (`CasinoSettingsModel`) y el repositorio (`CasinoSettingsRepository`) para persistir y leer el nuevo campo.
-* **Dominio y Permisos:** Solo el `OWNER` puede modificar la configuración del casino, incluido `theme`. `ADMIN` y `CASHIER` no tienen acceso.
+* **Dominio y Permisos:** Solo el `OWNER` puede modificar la configuración del casino, incluidos `theme` y `themeConfig`. `ADMIN` y `CASHIER` no tienen acceso.
 * **Resolución de Caché:** Se eliminó el caché público de 60 segundos (`setPublicCache`) en el endpoint `GET /api/settings/casino` (`settings.controller.ts`), agregando `Cache-Control: no-store` para garantizar que cuando el administrador cambie el tema, este impacte sin retrasos por caché de navegador o CDN.
 
 ## 2. Panel de Administración (`web-admin`)
@@ -23,10 +23,10 @@ A continuación se detalla el listado completo de los cambios realizados durante
 
 ## 4. Ajustes de revisión (post-implementación)
 * **Permisos:** solo el `OWNER` puede cambiar la configuración del casino (incluido el theme); `ADMIN` y `CASHIER` no.
-* **UI por rol:** El selector del header y el de la página de settings solo se muestran al `OWNER`. Si el `PATCH` falla, el tema se revierte y se muestra un toast (antes se tragaba el error).
+* **UI por rol:** El selector del header, el de la página de settings y el generador solo se muestran al `OWNER`. Si el `PATCH` falla, el tema se revierte y se muestra un toast (antes se tragaba el error).
 * **Repositorio/tipos:** `theme` se normaliza a `light | dark | casino` (fallback `dark`) en lugar de un cast ciego, y `CasinoSettings.theme` pasó a ser requerido.
 * **Limpieza:** se eliminaron `web/app/globals.css` y `web-admin/app/globals.css` (muertos: los layouts importan `styles/globals.css`) y se actualizó `components.json` a `styles/globals.css`. También se eliminó `web/components/theme-toggle.tsx` (sin uso) y se agregó `web/env.local` a `.gitignore`.
-* **Test de regresión:** `api/tests/domain/settings.domain.test.ts` cubre que solo OWNER pueda tocar la configuración del casino y que ADMIN y CASHIER reciban 403.
+* **Test de regresión:** `api/tests/domain/settings.domain.test.ts` cubre que solo OWNER pueda tocar la configuración del casino (incluidos `theme`/`themeConfig`) y que ADMIN y CASHIER reciban 403.
 * **Fix del toggle (carrera de sincronización):** en next-themes `setTheme` cambia de identidad en cada cambio de tema, así que los `useEffect(..., [setTheme])` que pedían el tema al backend se re-ejecutaban en cada cambio y pisaban la selección del usuario con el valor viejo del servidor (a veces requería refrescar). Ahora la sincronización se hace **una sola vez por carga** en `providers.tsx` (`AdminThemeSync`, efecto con deps `[]` y `setTheme` en un ref) y `lib/theme-sync.ts` marca un override para que el sync no pise un cambio local en vuelo. Se eliminaron los fetch duplicados de `ThemeToggle` y de la página de settings; en `web` se aplicó el mismo patrón a `CasinoThemeSync`.
 
 ## Próximos Pasos (Opcionales)

@@ -1,5 +1,13 @@
 import { CasinoSettingsModel } from './casino-settings.model';
-import type { CasinoSettings, UpdateCasinoSettingsDto, LobbySlot, FooterLink } from 'helper';
+import type {
+  CasinoSettings,
+  CasinoThemeConfig,
+  CasinoThemeId,
+  SavedCustomTheme,
+  UpdateCasinoSettingsDto,
+  LobbySlot,
+  FooterLink,
+} from 'helper';
 
 const DEFAULT_HEADER_CATEGORIES = [
   'videoSlots', 'LiveGames', 'CrashGame', 'Roulette', 'Blackjack',
@@ -19,13 +27,12 @@ const DEFAULT_FOOTER_LINKS: FooterLink[] = [
   { id: '3', label: 'Contacto', href: '/contacto', visible: true },
 ];
 
-const CASINO_THEMES = ['light', 'dark', 'casino'] as const;
-type CasinoTheme = (typeof CASINO_THEMES)[number];
+const CASINO_THEMES = ['light', 'dark', 'casino', 'custom'] as const;
 
 // Guards against an unexpected value in the DB (or a future column default) so the
-// API never returns a theme that next-themes cannot apply.
-function normalizeTheme(value: unknown): CasinoTheme {
-  return CASINO_THEMES.includes(value as CasinoTheme) ? (value as CasinoTheme) : 'dark';
+// API never returns a theme the frontends cannot apply.
+function normalizeTheme(value: unknown): CasinoThemeId {
+  return CASINO_THEMES.includes(value as CasinoThemeId) ? (value as CasinoThemeId) : 'dark';
 }
 
 function mapToSettings(model: CasinoSettingsModel): CasinoSettings {
@@ -38,6 +45,9 @@ function mapToSettings(model: CasinoSettingsModel): CasinoSettings {
     footerLinks: plain.footerLinks,
     bottomNavItems: plain.bottomNavItems ?? [],
     theme: normalizeTheme(plain.theme),
+    themeConfig: (plain.themeConfig as CasinoThemeConfig | null) ?? null,
+    savedThemes: (plain.savedThemes as SavedCustomTheme[]) ?? [],
+    activeThemeId: (plain.activeThemeId as string | null) ?? null,
     updatedAt: new Date(plain.updatedAt),
   };
 }
@@ -54,6 +64,9 @@ export class CasinoSettingsRepository {
         footerLinks: DEFAULT_FOOTER_LINKS,
         bottomNavItems: [],
         theme: 'dark',
+        themeConfig: null,
+        savedThemes: [],
+        activeThemeId: null,
         updatedAt: new Date(),
       };
     }
@@ -69,6 +82,9 @@ export class CasinoSettingsRepository {
       footerLinks: patch.footerLinks ?? current.footerLinks,
       bottomNavItems: patch.bottomNavItems ?? current.bottomNavItems,
       theme: normalizeTheme(patch.theme ?? current.theme),
+      themeConfig: patch.themeConfig ?? current.themeConfig,
+      savedThemes: patch.savedThemes ?? current.savedThemes,
+      activeThemeId: patch.activeThemeId !== undefined ? patch.activeThemeId : current.activeThemeId,
     }, { returning: true, conflictFields: ['owner_id'] });
     if (!record) {
       throw new Error('CasinoSettings upsert failed: no record returned');
