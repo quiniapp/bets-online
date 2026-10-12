@@ -196,3 +196,31 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ArenaBet loading screen */
+.arena-wordmark {
+  background: linear-gradient(180deg, #fde68a 0%, #fbbf24 45%, #d97706 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 24px rgba(251, 191, 36, 0.35));
+  animation: arenaGlow 2.6s ease-in-out infinite;
+}
+
+@keyframes arenaGlow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.82; transform: scale(1.03); }
+}
+
+.arena-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #fde68a, #d97706);
+  animation: arenaBounce 1.2s ease-in-out infinite;
+}
+
+@keyframes arenaBounce {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-5px); }
+}

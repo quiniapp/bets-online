@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { LanguageProvider } from "@/contexts/language-context"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ParticleBackground } from "@/components/particle-background"
+import { LoadingSplash } from "@/components/loading-splash"
 import { applyPlatformTheme } from "@/lib/platform-theme"
 
 function CasinoThemeSync() {
@@ -44,6 +45,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem={false}
       disableTransitionOnChange
     >
+      <LoadingSplash />
       <ParticleBackground />
       <CasinoThemeSync />
       <LanguageProvider>
