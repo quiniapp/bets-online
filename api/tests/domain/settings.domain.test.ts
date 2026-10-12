@@ -43,7 +43,7 @@ const baseSettings = {
   updatedAt: new Date(),
 };
 
-describe('SettingsDomain.updateCasinoSettings — permisos', () => {
+describe('SettingsDomain.updateCasinoSettings — solo OWNER', () => {
   let domain: SettingsDomain;
 
   beforeEach(() => {
@@ -59,14 +59,28 @@ describe('SettingsDomain.updateCasinoSettings — permisos', () => {
     });
   });
 
-  it('permite al ADMIN cambiar solo el theme', async () => {
-    await domain.updateCasinoSettings(ADMIN_ID, { theme: 'casino' });
+  it('permite al OWNER cambiar el theme', async () => {
+    await domain.updateCasinoSettings(OWNER_ID, { theme: 'casino' });
 
     expect(casinoSettingsRepository.patch).toHaveBeenCalledWith(OWNER_ID, { theme: 'casino' });
     expect(casinoSettingsMemCache.invalidate).toHaveBeenCalled();
   });
 
-  it('bloquea al ADMIN si intenta cambiar otro campo', async () => {
+  it('permite al OWNER cambiar cualquier campo', async () => {
+    await domain.updateCasinoSettings(OWNER_ID, { lobbySlots: [] });
+
+    expect(casinoSettingsRepository.patch).toHaveBeenCalledWith(OWNER_ID, { lobbySlots: [] });
+  });
+
+  it('bloquea al ADMIN incluso para el theme', async () => {
+    await expect(
+      domain.updateCasinoSettings(ADMIN_ID, { theme: 'casino' })
+    ).rejects.toMatchObject({ statusCode: 403, code: ErrorCode.INSUFFICIENT_PERMISSIONS });
+
+    expect(casinoSettingsRepository.patch).not.toHaveBeenCalled();
+  });
+
+  it('bloquea al ADMIN para otros campos', async () => {
     await expect(
       domain.updateCasinoSettings(ADMIN_ID, { lobbySlots: [] })
     ).rejects.toMatchObject({ statusCode: 403, code: ErrorCode.INSUFFICIENT_PERMISSIONS });
@@ -74,25 +88,11 @@ describe('SettingsDomain.updateCasinoSettings — permisos', () => {
     expect(casinoSettingsRepository.patch).not.toHaveBeenCalled();
   });
 
-  it('bloquea al ADMIN si mezcla theme con otro campo', async () => {
-    await expect(
-      domain.updateCasinoSettings(ADMIN_ID, { theme: 'casino', footerLinks: [] })
-    ).rejects.toMatchObject({ statusCode: 403, code: ErrorCode.INSUFFICIENT_PERMISSIONS });
-
-    expect(casinoSettingsRepository.patch).not.toHaveBeenCalled();
-  });
-
-  it('deja al CASHIER sin permisos, incluso para el theme', async () => {
+  it('deja al CASHIER sin permisos', async () => {
     await expect(
       domain.updateCasinoSettings(CASHIER_ID, { theme: 'casino' })
     ).rejects.toMatchObject({ statusCode: 403, code: ErrorCode.INSUFFICIENT_PERMISSIONS });
 
     expect(casinoSettingsRepository.patch).not.toHaveBeenCalled();
-  });
-
-  it('permite al OWNER cambiar cualquier campo', async () => {
-    await domain.updateCasinoSettings(OWNER_ID, { lobbySlots: [] });
-
-    expect(casinoSettingsRepository.patch).toHaveBeenCalledWith(OWNER_ID, { lobbySlots: [] });
   });
 });

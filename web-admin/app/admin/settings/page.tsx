@@ -23,7 +23,7 @@ export default function AdminSettingsPage() {
   const { toast } = useToast()
   const { role } = useAuth()
   const isOwner = role === UserRole.OWNER
-  const canChangeTheme = role === UserRole.OWNER || role === UserRole.ADMIN
+  const canChangeTheme = isOwner
   const [mounted, setMounted] = useState(false)
   const [notifications, setNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(false)

@@ -43,7 +43,7 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
   const { role } = useAuth()
   const { toast } = useToast()
-  const isAdminOrOwner = role === UserRole.OWNER || role === UserRole.ADMIN
+  const isOwner = role === UserRole.OWNER
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
@@ -51,7 +51,7 @@ export function ThemeToggle() {
   }, [])
 
   const handleSelectTheme = async (id: string) => {
-    if (!isAdminOrOwner) return
+    if (!isOwner) return
     // The server theme is applied once by AdminThemeSync in providers.tsx. Tell it
     // not to overwrite this pick if its request is still in flight.
     markUserThemeOverride()
@@ -91,9 +91,9 @@ export function ThemeToggle() {
     )
   }
 
-  // Only OWNER/ADMIN may change the platform theme. The effect above still runs for
-  // every role, so staff without permission keep following the admin's choice.
-  if (!isAdminOrOwner) {
+  // Only the OWNER may change the platform theme. Staff without permission still
+  // follow it because AdminThemeSync applies the server theme for everyone.
+  if (!isOwner) {
     return null
   }
 
