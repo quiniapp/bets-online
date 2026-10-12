@@ -199,11 +199,8 @@ body {
 
 /* ArenaBet loading screen */
 .arena-wordmark {
-  background: linear-gradient(180deg, #fde68a 0%, #fbbf24 45%, #d97706 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 2px 24px rgba(251, 191, 36, 0.35));
+  color: #ffd452;
+  text-shadow: 0 0 28px rgba(255, 212, 82, 0.5);
   animation: arenaGlow 2.6s ease-in-out infinite;
 }
 
