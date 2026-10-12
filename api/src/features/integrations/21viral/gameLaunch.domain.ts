@@ -47,7 +47,8 @@ class GameLaunchDomain {
   }
 
   async launchGame(params: LaunchGameParams): Promise<string> {
-    const game = await gamesRepository.findById(params.gameId);
+    // Real provider_name (what 21viral expects), not the visible one.
+    const game = await gamesRepository.findProviderRefById(params.gameId);
     if (!game) {
       throw new AppError(404, ErrorCode.GAME_NOT_FOUND, 'Game not found');
     }

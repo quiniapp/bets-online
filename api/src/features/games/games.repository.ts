@@ -1,19 +1,24 @@
 import { GameModel } from '../../persistence/models';
 import { Game, CreateGameDto, UpdateGameDto } from 'helper';
-import { Transaction, Op, QueryTypes, literal, Order } from 'sequelize';
+import { Transaction, Op, QueryTypes, literal, Order, fn, col, where as sqlWhere } from 'sequelize';
 
 // Catalog order: provider (admin sort) → game type within provider (per-provider
 // rule first, global game_types sort as fallback) → game sort within provider+type
-// → name. NULL sort_orders sink via COALESCE(…, max int).
+// → name. NULL sort_orders sink via COALESCE(…, max int). "Provider" is the
+// effective one: visible_provider_name when set, else provider_name.
 const GAME_ORDER: Order = [
-  [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = "GameModel"."provider_name"), 2147483647)`), 'ASC'],
-  [literal(`COALESCE("GameModel"."provider_name", '')`), 'ASC'],
-  [literal(`COALESCE((SELECT pgto.sort_order FROM provider_game_type_orders pgto WHERE pgto.provider_name = "GameModel"."provider_name" AND pgto.game_type = "GameModel"."game_type"), 2147483647)`), 'ASC'],
+  [literal(`COALESCE((SELECT sort_order FROM providers WHERE name = COALESCE("GameModel"."visible_provider_name", "GameModel"."provider_name")), 2147483647)`), 'ASC'],
+  [literal(`COALESCE("GameModel"."visible_provider_name", "GameModel"."provider_name", '')`), 'ASC'],
+  [literal(`COALESCE((SELECT pgto.sort_order FROM provider_game_type_orders pgto WHERE pgto.provider_name = COALESCE("GameModel"."visible_provider_name", "GameModel"."provider_name") AND pgto.game_type = "GameModel"."game_type"), 2147483647)`), 'ASC'],
   [literal(`COALESCE((SELECT sort_order FROM game_types WHERE name = "GameModel"."game_type"), 2147483647)`), 'ASC'],
   [literal(`COALESCE("GameModel"."game_type", '')`), 'ASC'],
   [literal(`COALESCE("GameModel"."sort_order", 2147483647)`), 'ASC'],
   ['name', 'ASC']
 ];
+
+// Provider the frontends see and filter by: the visible override, else the real
+// provider. Unqualified columns so it also works in UPDATE … WHERE.
+const effectiveProvider = () => fn('COALESCE', col('visible_provider_name'), col('provider_name'));
 
 export class GamesRepository {
   async create(gameData: CreateGameDto, transaction?: Transaction): Promise<Game> {
@@ -88,28 +93,33 @@ export class GamesRepository {
   ): Promise<Array<{ providerName: string; betCount: number; totalWagered: number }>> {
     const db = GameModel.sequelize!;
     const orderCol = sortBy === 'wagered' ? '"totalWagered"' : '"betCount"';
-    // Same single-pass shape as getTopPlayed, grouped by the real provider
-    // (games.provider_name). Native games with no provider are not listed.
+    // Same single-pass shape as getTopPlayed, grouped by the effective provider
+    // (visible_provider_name, else provider_name). Native games with no
+    // provider are not listed.
     const results = await db.query<{ providerName: string; betCount: string; totalWagered: string }>(
       `WITH native AS (
-        SELECT g.provider_name, COUNT(*) AS rounds, SUM(b.amount) AS wagered
+        SELECT COALESCE(g.visible_provider_name, g.provider_name) AS provider_name,
+               COUNT(*) AS rounds, SUM(b.amount) AS wagered
         FROM bets b
         JOIN games g ON g.id = b.game_id
         WHERE b.status <> 'CANCELLED' AND g.provider_name IS NOT NULL
-        GROUP BY g.provider_name
+        GROUP BY 1
       ), prov AS (
-        SELECT g.provider_name,
+        SELECT COALESCE(g.visible_provider_name, g.provider_name) AS provider_name,
                COUNT(DISTINCT pt.provider_game_round_id) AS rounds,
                SUM(pt.amount) AS wagered
         FROM provider_transactions pt
         JOIN games g ON g.provider_game_id = pt.provider_game_id
         WHERE pt.transaction_type = 'Debit' AND g.provider_name IS NOT NULL
-        GROUP BY g.provider_name
+        GROUP BY 1
       )
       SELECT p.provider_name AS "providerName",
         COALESCE(n.rounds, 0) + COALESCE(pv.rounds, 0) AS "betCount",
         COALESCE(n.wagered, 0) + COALESCE(pv.wagered, 0) AS "totalWagered"
-      FROM (SELECT DISTINCT provider_name FROM games WHERE provider_name IS NOT NULL) p
+      FROM (
+        SELECT DISTINCT COALESCE(visible_provider_name, provider_name) AS provider_name
+        FROM games WHERE provider_name IS NOT NULL
+      ) p
       LEFT JOIN native n ON n.provider_name = p.provider_name
       LEFT JOIN prov pv ON pv.provider_name = p.provider_name
       ORDER BY ${orderCol} DESC
@@ -143,10 +153,10 @@ export class GamesRepository {
     excludeGameTypes?: string[]
   ): Promise<{ games: Game[]; total: number }> {
     const offset = (page - 1) * limit;
-    const where: Record<string, unknown> = {};
+    const where: Record<string | symbol, unknown> = {};
     if (status === 'active' || (!status && activeOnly)) where['isActive'] = true;
     else if (status === 'inactive') where['isActive'] = false;
-    if (providerName) where['providerName'] = providerName;
+    if (providerName) where[Op.and] = [sqlWhere(effectiveProvider(), providerName)];
     if (gameType) where['gameType'] = gameType;
     else if (excludeGameTypes && excludeGameTypes.length > 0) where['gameType'] = { [Op.notIn]: excludeGameTypes };
     if (search) where['name'] = { [Op.iLike]: `%${search}%` };
@@ -173,10 +183,10 @@ export class GamesRepository {
     gameType?: string,
     currentStatus?: 'active' | 'inactive' | 'all'
   ): Promise<number> {
-    const where: Record<string, unknown> = {};
+    const where: Record<string | symbol, unknown> = {};
     if (currentStatus === 'active') where['isActive'] = true;
     else if (currentStatus === 'inactive') where['isActive'] = false;
-    if (providerName) where['providerName'] = providerName;
+    if (providerName) where[Op.and] = [sqlWhere(effectiveProvider(), providerName)];
     if (gameType) where['gameType'] = gameType;
     const [affectedCount] = await GameModel.update({ isActive }, { where });
     return affectedCount;
@@ -184,7 +194,7 @@ export class GamesRepository {
 
   async findDistinctProviders(): Promise<string[]> {
     const rows = await GameModel.findAll({
-      attributes: [[GameModel.sequelize!.fn('DISTINCT', GameModel.sequelize!.col('provider_name')), 'providerName']],
+      attributes: [[fn('DISTINCT', effectiveProvider()), 'providerName']],
       where: { providerName: { [Op.ne]: null } },
       raw: true
     });
@@ -210,6 +220,15 @@ export class GamesRepository {
     const game = await GameModel.findByPk(gameId);
     if (!game) return null;
     return this.mapToGame(game);
+  }
+
+  /** Real provider link of a game (what 21viral expects), not the visible one. */
+  async findProviderRefById(
+    gameId: string
+  ): Promise<{ providerName: string | null; providerGameId: string | null } | null> {
+    const game = await GameModel.findByPk(gameId, { attributes: ['providerName', 'providerGameId'] });
+    if (!game) return null;
+    return { providerName: game.providerName ?? null, providerGameId: game.providerGameId ?? null };
   }
 
   async findByName(name: string): Promise<Game | null> {
@@ -323,7 +342,7 @@ export class GamesRepository {
       houseEdge: Number(plain.houseEdge),
       providerId: plain.providerId ?? null,
       providerGameId: plain.providerGameId ?? null,
-      providerName: plain.providerName ?? null,
+      providerName: plain.visibleProviderName ?? plain.providerName ?? null,
       defaultLogo: plain.defaultLogo ?? null,
       customLogo: plain.customLogo ?? null,
       gameType: plain.gameType ?? null,

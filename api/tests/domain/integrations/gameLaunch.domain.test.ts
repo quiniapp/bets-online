@@ -26,7 +26,7 @@ jest.mock('../../../src/features/integrations/21viral/viral.service', () => ({
 }));
 jest.mock('../../../src/features/games/games.repository', () => ({
   gamesRepository: {
-    findById: jest.fn(),
+    findProviderRefById: jest.fn(),
     upsertFromProvider: jest.fn(),
     findPaginated: jest.fn().mockResolvedValue({ games: [], total: 0 })
   }
@@ -93,6 +93,9 @@ describe('gameLaunchDomain', () => {
     createdAt: new Date(),
     updatedAt: new Date()
   };
+
+  // Launch reads the REAL provider link, never the visible one.
+  const mockProviderRef = { providerName: 'pragmatic', providerGameId: 'vs25wolfgold' };
 
   const mockUser = {
     id: userId,
@@ -171,7 +174,7 @@ describe('gameLaunchDomain', () => {
 
   describe('launchGame', () => {
     it('returns gameStartUrl for player with existing profile', async () => {
-      mockGamesRepo.findById.mockResolvedValue(mockGame);
+      mockGamesRepo.findProviderRefById.mockResolvedValue(mockProviderRef);
       mockUsersRepo.findById.mockResolvedValue(mockUser as any);
       mockProfileRepo.findByUserId.mockResolvedValue(mockProfile);
       mockBalancesRepo.findByUserId.mockResolvedValue(mockBalance as any);
@@ -196,7 +199,7 @@ describe('gameLaunchDomain', () => {
     });
 
     it('auto-creates UserProviderProfile when none exists', async () => {
-      mockGamesRepo.findById.mockResolvedValue(mockGame);
+      mockGamesRepo.findProviderRefById.mockResolvedValue(mockProviderRef);
       mockUsersRepo.findById.mockResolvedValue(mockUser as any);
       mockProfileRepo.findByUserId.mockResolvedValue(null);
       mockProfileRepo.create.mockResolvedValue(mockProfile);
@@ -215,13 +218,13 @@ describe('gameLaunchDomain', () => {
     });
 
     it('throws 404 when game not found', async () => {
-      mockGamesRepo.findById.mockResolvedValue(null);
+      mockGamesRepo.findProviderRefById.mockResolvedValue(null);
 
       await expect(gameLaunchDomain.launchGame(launchParams)).rejects.toThrow('Game not found');
     });
 
     it('throws when game has no providerGameId', async () => {
-      mockGamesRepo.findById.mockResolvedValue({ ...mockGame, providerGameId: null, providerName: null });
+      mockGamesRepo.findProviderRefById.mockResolvedValue({ providerGameId: null, providerName: null });
       mockUsersRepo.findById.mockResolvedValue(mockUser as any);
 
       await expect(gameLaunchDomain.launchGame(launchParams)).rejects.toThrow('Game is not linked to a provider');

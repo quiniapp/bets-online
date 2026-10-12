@@ -57,7 +57,7 @@ export class UserFavoriteGamesRepository {
       houseEdge: Number(plain.houseEdge),
       providerId: plain.providerId ?? null,
       providerGameId: plain.providerGameId ?? null,
-      providerName: plain.providerName ?? null,
+      providerName: plain.visibleProviderName ?? plain.providerName ?? null,
       defaultLogo: plain.defaultLogo ?? null,
       gameType: plain.gameType ?? null,
       createdAt: new Date(plain.createdAt),

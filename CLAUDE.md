@@ -56,6 +56,7 @@ Chip operations (`features/chips/chips.domain.ts`) run inside a `sequelize.trans
 ### 21Viral integration (`features/integrations/21viral`)
 - 21Viral is an **integrator** that aggregates real providers (Pragmatic, RubyPlay, …). It calls back server-to-server at root-level `/players/*` routes (`callbacks.routes.ts`, mounted outside `/api`), authenticated by HMAC (`middleware/hmac.middleware.ts`, see `docs/rfc8785-hmac-sha256.md`).
 - `games.provider_name` holds the real provider, while `provider_transactions.provider_name` is always `'21viral'`. **Join provider transactions to games on `provider_game_id` only**, never on `provider_name`.
+- `games.visible_provider_name` (nullable, edited by SQL) lets a game show up under a different provider in the frontends. Everything front-facing uses the effective provider `COALESCE(visible_provider_name, provider_name)`: filters, the selects returned as `providerName`, and the joins to `providers` and `provider_game_type_orders`. Only the 21viral side keeps the real `provider_name`: the launch (`gamesRepository.findProviderRefById`) and the sync upsert.
 - A round is a distinct `provider_game_round_id`. `transaction_type`: Debit = wager, Credit = win, Reversal = refund.
 - Native games are stored in `bets` (1 bet = 1 round) and integrator games in `provider_transactions`. Reports and "most played" combine both.
 

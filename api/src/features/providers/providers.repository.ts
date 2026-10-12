@@ -8,7 +8,7 @@ export class ProvidersRepository {
       where: {
         name: {
           [Op.in]: literal(
-            `(SELECT DISTINCT provider_name FROM games WHERE is_active = true AND provider_name IS NOT NULL)`
+            `(SELECT DISTINCT COALESCE(visible_provider_name, provider_name) FROM games WHERE is_active = true AND provider_name IS NOT NULL)`
           )
         }
       },

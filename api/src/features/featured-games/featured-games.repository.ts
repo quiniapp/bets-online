@@ -70,7 +70,7 @@ export class FeaturedGamesRepository {
       houseEdge: Number(plain.game.houseEdge),
       providerId: plain.game.providerId ?? null,
       providerGameId: plain.game.providerGameId ?? null,
-      providerName: plain.game.providerName ?? null,
+      providerName: plain.game.visibleProviderName ?? plain.game.providerName ?? null,
       defaultLogo: plain.game.defaultLogo ?? null,
       gameType: plain.game.gameType ?? null,
       rtp: plain.game.rtp != null ? Number(plain.game.rtp) : null,

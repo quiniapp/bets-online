@@ -12,6 +12,7 @@ export class GameModel extends Model {
   declare providerId: string | null;
   declare providerGameId: string | null;
   declare providerName: string | null;
+  declare visibleProviderName: string | null;
   declare defaultLogo: string | null;
   declare customLogo: string | null;
   declare gameType: string | null;
@@ -86,6 +87,14 @@ GameModel.init(
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'provider_name'
+    },
+    // Provider shown to the frontends; NULL = provider_name. provider_name stays
+    // the real one for 21viral.
+    visibleProviderName: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      defaultValue: null,
+      field: 'visible_provider_name'
     },
     defaultLogo: {
       type: DataTypes.TEXT,
