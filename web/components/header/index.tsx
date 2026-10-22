@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogOutIcon, UserIcon, Grid3x3, Gamepad2, Tv2, Flame, CircleDot, Trophy, Menu, LayoutDashboard, User, History, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
@@ -32,6 +32,8 @@ const GAME_ITEMS = [
 
 const HeaderIndex = () => {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const selectedCategory = searchParams.get("category") ?? searchParams.get("type")
     const { user, role, logout } = useAuth()
     const [logoutOpen, setLogoutOpen] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
@@ -81,6 +83,26 @@ const HeaderIndex = () => {
                     />
                 </button>
             </Flex>
+
+            {/* Desktop category nav (Ganamos-style pills) */}
+            <nav className="hidden md:flex items-center justify-center gap-1 flex-1 px-4">
+                {GAME_ITEMS.map(item => {
+                    const active = item.type === null ? !selectedCategory : selectedCategory === item.type
+                    const Icon = item.icon
+                    return (
+                        <Button
+                            key={String(item.type)}
+                            variant={active ? "default" : "ghost"}
+                            size="sm"
+                            className={"h-9 rounded-full px-4 " + (active ? "" : "text-muted-foreground hover:text-foreground")}
+                            onClick={() => router.push(item.type === null ? "/" : `/?category=${item.type}`)}
+                        >
+                            <Icon className="h-3.5 w-3.5 mr-1.5" />
+                            {item.label}
+                        </Button>
+                    )
+                })}
+            </nav>
 
             {/* Right: nav */}
             <nav className="flex items-center gap-2">
