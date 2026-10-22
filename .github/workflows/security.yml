@@ -37,7 +37,7 @@ jobs:
 
       # pnpm 11 requires Node >= 22.13 (uses node:sqlite).
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
