@@ -76,9 +76,9 @@ const HeaderIndex = () => {
                 </Button>
                 <button onClick={() => router.push('/')} className="flex items-center">
                     <img
-                        src="/logo-small.png"
+                        src="/ArenaBet.svg"
                         alt="Logo"
-                        className="h-10 w-auto max-w-[160px]"
+                        className="h-12 w-auto max-w-[180px]"
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                 </button>
@@ -121,7 +121,7 @@ const HeaderIndex = () => {
                         <Button
                             onClick={() => setLogoutOpen(true)}
                             size="sm"
-                            className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold h-8 px-3"
+                            className="bg-primary text-primary-foreground font-semibold h-8 px-3"
                         >
                             <LogOutIcon className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline ml-1">Salir</span>
@@ -131,7 +131,7 @@ const HeaderIndex = () => {
                     <Button
                         onClick={() => router.push(ROUTER.LOGIN)}
                         size="sm"
-                        className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold h-8 px-3"
+                        className="bg-primary text-primary-foreground font-semibold h-8 px-3"
                     >
                         <UserIcon className="h-3.5 w-3.5" />
                         <span className="ml-1">Ingresar</span>
@@ -151,7 +151,7 @@ const HeaderIndex = () => {
                             aria-label="Ir al inicio"
                             className="flex items-center"
                         >
-                            <img src="/logo-small.png" alt="Logo" className="h-10 w-auto max-w-[160px]" />
+                            <img src="/ArenaBet.svg" alt="Logo" className="h-10 w-auto max-w-[160px]" />
                         </button>
                     </div>
 
@@ -223,7 +223,7 @@ const HeaderIndex = () => {
                             <div className="text-xs text-muted-foreground text-center">{user.username}</div>
                             <Button
                                 size="sm"
-                                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold"
+                                className="w-full bg-primary text-primary-foreground font-semibold"
                                 onClick={() => { setMenuOpen(false); setLogoutOpen(true) }}
                             >
                                 <LogOutIcon className="h-4 w-4 mr-2" />

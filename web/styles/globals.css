@@ -55,6 +55,8 @@ body {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.68 0.16 73);
+  --button-gradient: linear-gradient(180deg, #f7e08a 0%, #d4af37 45%, #a67c00 100%);
+  --button-glow: rgba(212, 175, 55, 0.35);
 }
 
 .dark {
@@ -90,6 +92,8 @@ body {
   --sidebar-accent-foreground: oklch(0.94 0 0);
   --sidebar-border: oklch(0.20 0.008 55);
   --sidebar-ring: oklch(0.82 0.20 73);
+  --button-gradient: linear-gradient(180deg, #ffe9a8 0%, #f5c542 45%, #b8860b 100%);
+  --button-glow: rgba(245, 197, 66, 0.35);
 }
 
 .casino {
@@ -129,6 +133,8 @@ body {
   --game-card-border: rgba(255, 255, 255, 0.06);
   --game-card-background: #1f0139;
   --game-card-overlay: rgba(12, 2, 24, 0.85);
+  --button-gradient: linear-gradient(135deg, #ff4fb0 0%, #d946ef 45%, #8b5cf6 100%);
+  --button-glow: rgba(253, 96, 206, 0.35);
 }
 
 @theme inline {
@@ -266,5 +272,22 @@ body {
 
 .casino ::selection {
   background: rgba(253, 96, 206, 0.4);
+}
+
+/* Brand gradient for primary buttons (gold in light/dark, magenta in casino) */
+button.bg-primary,
+[data-slot="button"].bg-primary {
+  background-image: var(--button-gradient, none);
+  box-shadow: 0 2px 14px var(--button-glow, transparent);
+}
+
+button.bg-primary:hover,
+[data-slot="button"].bg-primary:hover,
+button.bg-accent:hover,
+[data-slot="button"].bg-accent:hover {
+  background-image: var(--button-gradient, none);
+  box-shadow: 0 4px 20px var(--button-glow, transparent);
+  color: var(--primary-foreground);
+  filter: brightness(1.06);
 }
 
