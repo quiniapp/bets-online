@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import { useLobby } from "@/contexts/lobby-context"
 import GameCard from "./game-card"
-import { SectionHeading } from "./section-heading"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, twoRowItemClass } from "@/lib/two-row-grid"
 
@@ -59,7 +58,21 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
 
   return (
     <div className="w-full px-4 py-2">
-      <SectionHeading title={title} emoji={emoji} onShowAll={onShowAll} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {emoji && <span className="text-xl">{emoji}</span>}
+          <span className="font-bold text-lg uppercase">{title}</span>
+        </div>
+        {onShowAll && (
+          <button
+            onClick={onShowAll}
+            className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+          >
+            Mostrar todo
+            <span className="text-xs">›</span>
+          </button>
+        )}
+      </div>
       <div className={GRID}>
         {games.slice(0, limit).map((game, idx) => (
           <div key={game.id} className={twoRowItemClass(idx)}>

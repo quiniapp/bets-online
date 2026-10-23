@@ -7,7 +7,6 @@ import { useLobby } from "@/contexts/lobby-context"
 import { apiService } from "@/services/api.service"
 import type { FeaturedGameWithGame } from "helper"
 import GameCard from "./game-card"
-import { SectionHeading } from "./section-heading"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, featuredItemClass } from "@/lib/two-row-grid"
 
@@ -71,7 +70,21 @@ const FeaturedSection = ({ onShowAll }: FeaturedSectionProps) => {
 
   return (
     <div className="w-full px-4 py-2">
-      <SectionHeading title="Juegos Destacados" emoji="⭐" onShowAll={onShowAll} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">⭐</span>
+          <span className="font-bold text-lg uppercase">Juegos Destacados</span>
+        </div>
+        {onShowAll && (
+          <button
+            onClick={onShowAll}
+            className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+          >
+            Mostrar todo
+            <span className="text-xs">›</span>
+          </button>
+        )}
+      </div>
       <div className={GRID}>
         {items.slice(0, TWO_ROW_MAX_ITEMS).map((item, idx) => (
           <div key={item.id} className={featuredItemClass(idx)}>
