@@ -20,7 +20,7 @@ const LoaderPage = ({size = 'md'}: LoaderPageProps) => {
     return (
         <FlexCol className="h-screen items-center justify-center gap-4">
             <img
-                src="/logo.png"
+                src="/ArenaBet.svg"
                 alt="Logo"
                 className="h-16 w-auto opacity-90"
                 onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}

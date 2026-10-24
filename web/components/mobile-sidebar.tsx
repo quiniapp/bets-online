@@ -53,7 +53,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
         <div className="flex h-full flex-col overflow-hidden">
           <div className="flex h-16 shrink-0 items-center border-b px-6">
             <Link href="/" aria-label="Ir al inicio" onClick={() => setOpen(false)}>
-              <img src="/logo-small.png" alt="Logo" className="h-12 w-auto max-w-[180px]" />
+              <img src="/ArenaBet.svg" alt="Logo" className="h-12 w-auto max-w-[180px]" />
             </Link>
           </div>
 
@@ -127,7 +127,7 @@ export function MobileSidebar({ className }: MobileSidebarProps) {
               {getRoleDisplay()}
             </div>
             <div className="mb-3 text-sm font-medium">{user?.username}</div>
-            <Button size="sm" className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold" onClick={logout}>
+            <Button size="sm" className="w-full bg-primary text-primary-foreground font-semibold" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
               {t("common.logout")}
             </Button>

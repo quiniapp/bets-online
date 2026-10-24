@@ -77,7 +77,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             <Button
               variant="default"
               size="sm"
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold h-7 px-2 md:h-8 md:px-3 text-xs"
+              className="bg-primary text-primary-foreground font-semibold h-7 px-2 md:h-8 md:px-3 text-xs"
               onClick={() => setShowLogoutConfirm(true)}
               aria-label="Cerrar sesión"
             >
@@ -110,7 +110,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={logout}
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold"
+              className="bg-primary text-primary-foreground font-semibold"
             >
               Salir
             </AlertDialogAction>
