@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import { useLobby } from "@/contexts/lobby-context"
+import { useProviders } from "@/hooks/useProviders"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, twoRowItemClass } from "@/lib/two-row-grid"
@@ -29,6 +30,12 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
   const loading = lobbyActive ? lobby!.loading : fetched.loading
   const { user } = useAuth()
   const router = useRouter()
+  const { providers } = useProviders()
+  const provider = providerName
+    ? providers.find(p => p.name === providerName) ??
+      providers.find(p => p.name.toLowerCase() === providerName.toLowerCase())
+    : undefined
+  const providerLogo = provider?.logoUrl ?? null
 
   const handleGameClick = (gameId: string) => {
     const playUrl = `${ROUTER.USER_GAME_PLAY}/${gameId}/play`
@@ -60,7 +67,15 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
     <div className="w-full px-4 py-2">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {emoji && <span className="text-xl">{emoji}</span>}
+          {providerLogo ? (
+            <img
+              src={providerLogo}
+              alt={provider?.displayName ?? title}
+              className="h-6 w-auto max-w-[110px] object-contain"
+            />
+          ) : (
+            emoji && <span className="text-xl">{emoji}</span>
+          )}
           <span className="font-bold text-lg uppercase">{title}</span>
         </div>
         {onShowAll && (

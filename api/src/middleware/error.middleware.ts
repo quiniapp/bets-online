@@ -33,6 +33,15 @@ export const errorHandler = (
     );
   }
 
+  // Multer (multipart) errors: too large / wrong field, etc. These are client
+  // errors, not server failures, so surface a 4xx instead of a generic 500.
+  if (err.name === 'MulterError') {
+    const code = (err as Error & { code?: string }).code;
+    const status = code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+    const message = code === 'LIMIT_FILE_SIZE' ? 'File too large (max 5MB)' : err.message;
+    return res.status(status).json(ApiResponseBuilder.error(ErrorCode.INVALID_INPUT, message));
+  }
+
   logger.error({ err, method: req.method, url: req.originalUrl }, 'unhandled error');
 
   return res.status(500).json(
