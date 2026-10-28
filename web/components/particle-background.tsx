@@ -9,7 +9,7 @@ interface Particle {
   r: number;
 }
 
-const MAX_PARTICLES = 110;
+const MAX_PARTICLES = 150;
 const LINK_DISTANCE = 130;
 
 /**
@@ -44,7 +44,7 @@ export function ParticleBackground() {
     let linkColor = '#ffffff';
 
     const refreshColors = () => {
-      dotColor = readVar('--primary', '#e98f15');
+      dotColor = readVar('--ring', readVar('--primary', '#e98f15'));
       linkColor = readVar('--foreground', '#ffffff');
     };
 
@@ -64,7 +64,7 @@ export function ParticleBackground() {
         y: Math.random() * height,
         vx: (Math.random() - 0.5) * 0.24,
         vy: (Math.random() - 0.5) * 0.24,
-        r: Math.random() * 1.5 + 0.6,
+        r: Math.random() * 2 + 0.8,
       }));
       refreshColors();
     };
@@ -92,7 +92,7 @@ export function ParticleBackground() {
           const dy = a.y - b.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           if (distance < LINK_DISTANCE) {
-            ctx.globalAlpha = (1 - distance / LINK_DISTANCE) * 0.16;
+            ctx.globalAlpha = (1 - distance / LINK_DISTANCE) * 0.34;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
@@ -101,13 +101,16 @@ export function ParticleBackground() {
         }
       }
 
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = 1;
       ctx.fillStyle = dotColor;
+      ctx.shadowColor = dotColor;
+      ctx.shadowBlur = 8;
       for (const particle of particles) {
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.r, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
       raf = requestAnimationFrame(draw);

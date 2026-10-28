@@ -3,6 +3,7 @@
 
 @custom-variant dark (&:is(.dark *, .casino *));
 @custom-variant casino (&:is(.casino *));
+
 @theme {
   --breakpoint-xs: 475px;
 }
@@ -97,44 +98,64 @@ body {
 }
 
 .casino {
-  --background: #190628;
-  --foreground: #f6f1ff;
-  --card: #1f0139;
-  --card-foreground: #f6f1ff;
-  --popover: #1f0139;
-  --popover-foreground: #f6f1ff;
-  --primary: #fd60ce;
-  --primary-foreground: #1a0626;
-  --secondary: #2a123f;
-  --secondary-foreground: #f6f1ff;
-  --muted: #230a40;
-  --muted-foreground: #a99bc4;
-  --accent: #2e1a4d;
-  --accent-foreground: #f6f1ff;
-  --destructive: #e11d48;
-  --destructive-foreground: #ffe4ec;
-  --border: #3a1f5c;
-  --input: #230a40;
-  --ring: #fd60ce;
-  --chart-1: #fd60ce;
-  --chart-2: #8b5cf6;
-  --chart-3: #ffc405;
-  --chart-4: #ff7a00;
-  --chart-5: #22d3ee;
-  --sidebar: #14041f;
-  --sidebar-foreground: #f6f1ff;
-  --sidebar-primary: #fd60ce;
-  --sidebar-primary-foreground: #1a0626;
-  --sidebar-accent: #230a40;
-  --sidebar-accent-foreground: #f6f1ff;
-  --sidebar-border: #3a1f5c;
-  --sidebar-ring: #fd60ce;
+  --background: #17284A;
+  --foreground: #F1F5FF;
+
+  --card: #1C3055;
+  --card-foreground: #F1F5FF;
+
+  --popover: #1C3055;
+  --popover-foreground: #F1F5FF;
+
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #1E3154;
+  --secondary-foreground: #DCE8FF;
+
+  --muted: #16243F;
+  --muted-foreground: #94A7C8;
+
+  --accent: #21395F;
+  --accent-foreground: #BFDBFE;
+
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+
+  --border: #2B4166;
+  --input: #172641;
+  --ring: #60A5FA;
+
+  /* Charts */
+  --chart-1: #3B82F6;
+  --chart-2: #22D3EE;
+  --chart-3: #60A5FA;
+  --chart-4: #818CF8;
+  --chart-5: #38BDF8;
+
+  /* Sidebar */
+  --sidebar: #101C33;
+  --sidebar-foreground: #E2E8F0;
+  --sidebar-primary: #3B82F6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1A2C4C;
+  --sidebar-accent-foreground: #BFDBFE;
+  --sidebar-border: #223656;
+  --sidebar-ring: #60A5FA;
+
+  /* Game cards */
   --game-card-radius: 1rem;
-  --game-card-border: rgba(255, 255, 255, 0.06);
-  --game-card-background: #1f0139;
-  --game-card-overlay: rgba(12, 2, 24, 0.85);
-  --button-gradient: linear-gradient(135deg, #ff4fb0 0%, #d946ef 45%, #8b5cf6 100%);
-  --button-glow: rgba(253, 96, 206, 0.35);
+  --game-card-border: rgba(96, 165, 250, 0.12);
+  --game-card-background: #101B32;
+  --game-card-overlay: rgba(4, 9, 22, 0.86);
+
+  /* Buttons */
+  --button-gradient: linear-gradient(135deg,
+      #60A5FA 0%,
+      #3B82F6 45%,
+      #22D3EE 100%);
+
+  --button-glow: rgba(59, 130, 246, 0.32);
 }
 
 @theme inline {
@@ -181,6 +202,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -192,9 +214,19 @@ body {
 }
 
 @keyframes glowPulse {
-  0%, 100% { opacity: 0.15; transform: scale(1); }
-  50% { opacity: 0.28; transform: scale(1.08); }
+
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.28;
+    transform: scale(1.08);
+  }
 }
+
 .glow-pulse {
   animation: glowPulse 4s ease-in-out infinite;
 }
@@ -203,20 +235,26 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
 
-/* ===== Casino theme: Ganamos-inspired (violet/magenta) ===== */
-.casino body {
+/* ===== Casino theme: Electric Blue ===== */
+.casino {
   background-image:
-    radial-gradient(1200px 620px at 50% -12%, rgba(253, 96, 206, 0.18), transparent 60%),
-    radial-gradient(900px 520px at 105% 8%, rgba(139, 92, 246, 0.16), transparent 60%),
-    radial-gradient(820px 520px at -5% 100%, rgba(255, 196, 5, 0.07), transparent 60%),
-    linear-gradient(180deg, #190628 0%, #12041d 100%);
+    radial-gradient(1200px 620px at 50% -12%, rgba(59, 130, 246, 0.32), transparent 60%),
+    radial-gradient(900px 520px at 105% 8%, rgba(34, 211, 238, 0.20), transparent 60%),
+    radial-gradient(820px 520px at -5% 100%, rgba(129, 140, 248, 0.14), transparent 60%),
+    linear-gradient(180deg, #214793 0%, #023dab 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
   background-size: cover;
+}
+
+.casino body {
+  background-color: transparent;
+  background-image: none;
 }
 
 .casino [data-slot="button"] {
@@ -224,29 +262,29 @@ body {
 }
 
 .casino .casino-cta {
-  background-image: linear-gradient(135deg, #ff4fb0 0%, #d946ef 45%, #8b5cf6 100%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 6px 24px rgba(253, 96, 206, 0.35);
+  background-image: linear-gradient(135deg, #60A5FA 0%, #3B82F6 45%, #1D4ED8 100%);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.35);
   color: #ffffff;
 }
 
 .casino .casino-cta:hover {
   filter: brightness(1.08);
-  box-shadow: 0 10px 34px rgba(253, 96, 206, 0.5);
+  box-shadow: 0 10px 34px rgba(59, 130, 246, 0.55);
 }
 
 .casino [data-slot="card"] {
-  background-image: linear-gradient(180deg, #230a40 0%, #1a0626 100%);
-  border-color: #3a1f5c;
+  background-image: linear-gradient(180deg, #14233F 0%, #0C1628 100%);
+  border-color: #2B4166;
 }
 
 .casino [data-slot="card"]:hover {
-  border-color: rgba(253, 96, 206, 0.45);
-  box-shadow: 0 10px 40px rgba(253, 96, 206, 0.12);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 10px 40px rgba(59, 130, 246, 0.15);
 }
 
 .casino ::selection {
-  background: rgba(253, 96, 206, 0.4);
+  background: rgba(59, 130, 246, 0.4);
 }
 
 /* Brand gradient for primary buttons (gold in light/dark, magenta in casino) */

@@ -22,12 +22,12 @@ import type { Balance } from "helper";
 import { formatChips } from "@/lib/utils";
 
 const GAME_ITEMS = [
-    { type: null,          label: "Lobby",         icon: Grid3x3   },
-    { type: "videoSlots",  label: "Casino",        icon: Gamepad2  },
-    { type: "LiveGames",   label: "Casino en Vivo",icon: Tv2       },
-    { type: "CrashGame",   label: "Crash",         icon: Flame     },
-    { type: "Roulette",    label: "Ruletas",       icon: CircleDot },
-    { type: "Blackjack",   label: "Blackjack",     icon: Trophy    },
+    { type: null, label: "Lobby", icon: Grid3x3 },
+    { type: "videoSlots", label: "Casino", icon: Gamepad2 },
+    { type: "LiveGames", label: "Casino en Vivo", icon: Tv2 },
+    { type: "CrashGame", label: "Crash", icon: Flame },
+    { type: "Roulette", label: "Ruletas", icon: CircleDot },
+    { type: "Blackjack", label: "Blackjack", icon: Trophy },
 ]
 
 const HeaderIndex = () => {
@@ -44,7 +44,7 @@ const HeaderIndex = () => {
         if (!user) return
         apiService.get<{ balance: Balance }>('/chips/my-balance').then(r => {
             if (r.success && r.data) setBalance(r.data.balance)
-        }).catch(() => {})
+        }).catch(() => { })
     }, [user])
 
     const getDashboardRoute = () => {
@@ -62,191 +62,191 @@ const HeaderIndex = () => {
 
     return (
         <>
-        <header className="flex justify-between items-center px-3 py-2 border-b border-primary/20 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
-            {/* Left: hamburger (mobile) + logo */}
-            <Flex className="items-center gap-2">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden h-8 w-8"
-                    onClick={() => setMenuOpen(true)}
-                    aria-label="Abrir menú"
-                >
-                    <Menu className="h-5 w-5" />
-                </Button>
-                <button onClick={() => router.push('/')} className="flex items-center">
-                    <img
-                        src="/ArenaBet.svg"
-                        alt="Logo"
-                        className="h-12 w-auto max-w-[180px]"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                </button>
-            </Flex>
-
-            {/* Desktop category nav (Ganamos-style pills) */}
-            <nav className="hidden md:flex items-center justify-center gap-1 flex-1 px-4">
-                {GAME_ITEMS.map(item => {
-                    const active = item.type === null ? !selectedCategory : selectedCategory === item.type
-                    const Icon = item.icon
-                    return (
-                        <Button
-                            key={String(item.type)}
-                            variant={active ? "default" : "ghost"}
-                            size="sm"
-                            className={"h-9 rounded-full px-4 " + (active ? "" : "text-muted-foreground hover:text-foreground")}
-                            onClick={() => router.push(item.type === null ? "/" : `/?category=${item.type}`)}
-                        >
-                            <Icon className="h-3.5 w-3.5 mr-1.5" />
-                            {item.label}
-                        </Button>
-                    )
-                })}
-            </nav>
-
-            {/* Right: nav */}
-            <nav className="flex items-center gap-2">
-                {user ? (
-                    <>
-                        {balance !== null && (
-                            <div className="hidden sm:flex items-center bg-muted rounded-full px-3 py-1 text-sm font-semibold">
-                                ${formatChips(balance.chipBalance)}
-                            </div>
-                        )}
-                        {balance !== null && (
-                            <div className="sm:hidden flex items-center bg-muted rounded-full px-2.5 py-1 text-xs font-semibold">
-                                ${formatChips(balance.chipBalance)}
-                            </div>
-                        )}
-                        <Button
-                            onClick={() => setLogoutOpen(true)}
-                            size="sm"
-                            className="bg-primary text-primary-foreground font-semibold h-8 px-3"
-                        >
-                            <LogOutIcon className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline ml-1">Salir</span>
-                        </Button>
-                    </>
-                ) : (
+            <header className="flex justify-between items-center px-3 py-2 border-b border-primary/20 bg-background/95 backdrop-blur-sm sticky top-0 z-50">
+                {/* Left: hamburger (mobile) + logo */}
+                <Flex className="items-center gap-2">
                     <Button
-                        onClick={() => router.push(ROUTER.LOGIN)}
-                        size="sm"
-                        className="bg-primary text-primary-foreground font-semibold h-8 px-3"
+                        variant="ghost"
+                        size="icon"
+                        className="md:hidden h-8 w-8"
+                        onClick={() => setMenuOpen(true)}
+                        aria-label="Abrir menú"
                     >
-                        <UserIcon className="h-3.5 w-3.5" />
-                        <span className="ml-1">Ingresar</span>
+                        <Menu className="h-5 w-5" />
                     </Button>
-                )}
-            </nav>
-        </header>
+                    <button onClick={() => router.push('/')} className="flex items-center">
+                        <img
+                            src="/ArenaBet.svg"
+                            alt="Logo"
+                            className="h-12 w-auto max-w-[180px] origin-left scale-175"
+                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                    </button>
+                </Flex>
 
-        {/* Mobile hamburger drawer */}
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetContent side="left" className="w-72 p-0">
-                <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-                <div className="flex h-full flex-col">
-                    <div className="flex h-14 items-center border-b px-5">
-                        <button
-                            onClick={() => { setMenuOpen(false); router.push('/') }}
-                            aria-label="Ir al inicio"
-                            className="flex items-center"
-                        >
-                            <img src="/ArenaBet.svg" alt="Logo" className="h-10 w-auto max-w-[160px]" />
-                        </button>
-                    </div>
+                {/* Desktop category nav (Ganamos-style pills) */}
+                <nav className="hidden md:flex items-center justify-center gap-1 flex-1 px-4">
+                    {GAME_ITEMS.map(item => {
+                        const active = item.type === null ? !selectedCategory : selectedCategory === item.type
+                        const Icon = item.icon
+                        return (
+                            <Button
+                                key={String(item.type)}
+                                variant={active ? "default" : "ghost"}
+                                size="sm"
+                                className={"h-9 rounded-full px-4 " + (active ? "" : "text-muted-foreground hover:text-foreground")}
+                                onClick={() => router.push(item.type === null ? "/" : `/?category=${item.type}`)}
+                            >
+                                <Icon className="h-3.5 w-3.5 mr-1.5" />
+                                {item.label}
+                            </Button>
+                        )
+                    })}
+                </nav>
 
-                    <ScrollArea className="flex-1 px-3 py-4">
-                        <nav className="space-y-1">
-                            {/* Juegos section (collapsible) */}
-                            <Collapsible open={gamesOpen} onOpenChange={setGamesOpen}>
-                                <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" className="w-full justify-between font-medium">
-                                        <span className="flex items-center gap-2">
-                                            <Gamepad2 className="h-4 w-4" />
-                                            Juegos
-                                        </span>
-                                        {gamesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                    </Button>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="space-y-0.5 mt-0.5">
-                                    {GAME_ITEMS.map(item => {
-                                        const Icon = item.icon
-                                        return (
-                                            <Button
-                                                key={String(item.type)}
-                                                variant="ghost"
-                                                className="w-full justify-start pl-8 font-normal"
-                                                onClick={() => {
-                                                    setMenuOpen(false)
-                                                    if (item.type === null) {
-                                                        router.push('/')
-                                                    } else {
-                                                        router.push(`/?category=${item.type}`)
-                                                    }
-                                                }}
-                                            >
-                                                <Icon className="h-4 w-4 mr-2" />
-                                                {item.label}
-                                            </Button>
-                                        )
-                                    })}
-                                </CollapsibleContent>
-                            </Collapsible>
-
-                            {/* Player links */}
-                            {user && (
-                                <>
-                                    <div className="h-px bg-border my-2" />
-                                    {playerMenuItems.map(item => (
-                                        <Button
-                                            key={item.href}
-                                            variant="ghost"
-                                            className="w-full justify-start font-normal"
-                                            onClick={() => { setMenuOpen(false); router.push(item.href) }}
-                                        >
-                                            <item.icon className="h-4 w-4 mr-2" />
-                                            {item.label}
-                                        </Button>
-                                    ))}
-                                </>
-                            )}
-                        </nav>
-                    </ScrollArea>
-
-                    {user && (
-                        <div className="border-t p-4 space-y-2">
+                {/* Right: nav */}
+                <nav className="flex items-center gap-2">
+                    {user ? (
+                        <>
                             {balance !== null && (
-                                <div className="text-sm font-semibold text-center bg-muted rounded-full py-1.5">
+                                <div className="hidden sm:flex items-center bg-muted rounded-full px-3 py-1 text-sm font-semibold">
                                     ${formatChips(balance.chipBalance)}
                                 </div>
                             )}
-                            <div className="text-xs text-muted-foreground text-center">{user.username}</div>
+                            {balance !== null && (
+                                <div className="sm:hidden flex items-center bg-muted rounded-full px-2.5 py-1 text-xs font-semibold">
+                                    ${formatChips(balance.chipBalance)}
+                                </div>
+                            )}
                             <Button
+                                onClick={() => setLogoutOpen(true)}
                                 size="sm"
-                                className="w-full bg-primary text-primary-foreground font-semibold"
-                                onClick={() => { setMenuOpen(false); setLogoutOpen(true) }}
+                                className="bg-primary text-primary-foreground font-semibold h-8 px-3"
                             >
-                                <LogOutIcon className="h-4 w-4 mr-2" />
-                                Salir
+                                <LogOutIcon className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline ml-1">Salir</span>
                             </Button>
-                        </div>
+                        </>
+                    ) : (
+                        <Button
+                            onClick={() => router.push(ROUTER.LOGIN)}
+                            size="sm"
+                            className="bg-primary text-primary-foreground font-semibold h-8 px-3"
+                        >
+                            <UserIcon className="h-3.5 w-3.5" />
+                            <span className="ml-1">Ingresar</span>
+                        </Button>
                     )}
-                </div>
-            </SheetContent>
-        </Sheet>
+                </nav>
+            </header>
 
-        <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-            <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>¿Cerrar sesión?</DialogTitle>
-                    <p className="text-sm text-muted-foreground">¿Seguro que querés cerrar la sesión?</p>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setLogoutOpen(false)}>Cancelar</Button>
-                    <Button variant="destructive" onClick={() => { setLogoutOpen(false); logout() }}>Confirmar</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            {/* Mobile hamburger drawer */}
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                <SheetContent side="left" className="w-72 p-0">
+                    <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+                    <div className="flex h-full flex-col">
+                        <div className="flex h-14 items-center border-b px-5">
+                            <button
+                                onClick={() => { setMenuOpen(false); router.push('/') }}
+                                aria-label="Ir al inicio"
+                                className="flex items-center"
+                            >
+                                <img src="/ArenaBet.svg" alt="Logo" className="h-10 w-auto max-w-[160px]" />
+                            </button>
+                        </div>
+
+                        <ScrollArea className="flex-1 px-3 py-4">
+                            <nav className="space-y-1">
+                                {/* Juegos section (collapsible) */}
+                                <Collapsible open={gamesOpen} onOpenChange={setGamesOpen}>
+                                    <CollapsibleTrigger asChild>
+                                        <Button variant="ghost" className="w-full justify-between font-medium">
+                                            <span className="flex items-center gap-2">
+                                                <Gamepad2 className="h-4 w-4" />
+                                                Juegos
+                                            </span>
+                                            {gamesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                        </Button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="space-y-0.5 mt-0.5">
+                                        {GAME_ITEMS.map(item => {
+                                            const Icon = item.icon
+                                            return (
+                                                <Button
+                                                    key={String(item.type)}
+                                                    variant="ghost"
+                                                    className="w-full justify-start pl-8 font-normal"
+                                                    onClick={() => {
+                                                        setMenuOpen(false)
+                                                        if (item.type === null) {
+                                                            router.push('/')
+                                                        } else {
+                                                            router.push(`/?category=${item.type}`)
+                                                        }
+                                                    }}
+                                                >
+                                                    <Icon className="h-4 w-4 mr-2" />
+                                                    {item.label}
+                                                </Button>
+                                            )
+                                        })}
+                                    </CollapsibleContent>
+                                </Collapsible>
+
+                                {/* Player links */}
+                                {user && (
+                                    <>
+                                        <div className="h-px bg-border my-2" />
+                                        {playerMenuItems.map(item => (
+                                            <Button
+                                                key={item.href}
+                                                variant="ghost"
+                                                className="w-full justify-start font-normal"
+                                                onClick={() => { setMenuOpen(false); router.push(item.href) }}
+                                            >
+                                                <item.icon className="h-4 w-4 mr-2" />
+                                                {item.label}
+                                            </Button>
+                                        ))}
+                                    </>
+                                )}
+                            </nav>
+                        </ScrollArea>
+
+                        {user && (
+                            <div className="border-t p-4 space-y-2">
+                                {balance !== null && (
+                                    <div className="text-sm font-semibold text-center bg-muted rounded-full py-1.5">
+                                        ${formatChips(balance.chipBalance)}
+                                    </div>
+                                )}
+                                <div className="text-xs text-muted-foreground text-center">{user.username}</div>
+                                <Button
+                                    size="sm"
+                                    className="w-full bg-primary text-primary-foreground font-semibold"
+                                    onClick={() => { setMenuOpen(false); setLogoutOpen(true) }}
+                                >
+                                    <LogOutIcon className="h-4 w-4 mr-2" />
+                                    Salir
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>¿Cerrar sesión?</DialogTitle>
+                        <p className="text-sm text-muted-foreground">¿Seguro que querés cerrar la sesión?</p>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setLogoutOpen(false)}>Cancelar</Button>
+                        <Button variant="destructive" onClick={() => { setLogoutOpen(false); logout() }}>Confirmar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     )
 }
