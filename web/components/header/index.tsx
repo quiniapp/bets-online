@@ -78,7 +78,7 @@ const HeaderIndex = () => {
                         <img
                             src="/ArenaBet.svg"
                             alt="Logo"
-                            className="h-12 w-auto max-w-[180px] origin-left scale-175"
+                            className="h-12 w-auto max-w-[180px] origin-left scale-150"
                             onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
                     </button>
