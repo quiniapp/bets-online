@@ -1,4 +1,5 @@
 "use client"
+import { Heart } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { UserRole } from "helper"
 import { useFavorites } from "@/contexts/favorites-context"
@@ -11,7 +12,7 @@ export function FavoritesSection() {
   return (
     <StaticGameSection
       title="Tus favoritos"
-      emoji="❤️"
+      icon={Heart}
       games={favoriteGames}
       loading={loading}
       maxItems={8}

@@ -7,6 +7,7 @@ import { useLobby } from "@/contexts/lobby-context"
 import { apiService } from "@/services/api.service"
 import type { FeaturedGameWithGame } from "helper"
 import GameCard from "./game-card"
+import { Star } from "lucide-react"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, featuredItemClass } from "@/lib/two-row-grid"
 
@@ -72,7 +73,7 @@ const FeaturedSection = ({ onShowAll }: FeaturedSectionProps) => {
     <div className="w-full px-4 py-2">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xl">⭐</span>
+          <Star className="h-5 w-5 text-primary" />
           <span className="font-bold text-lg uppercase">Juegos Destacados</span>
         </div>
         {onShowAll && (
