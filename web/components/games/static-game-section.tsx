@@ -1,5 +1,6 @@
 "use client"
 import { useRouter } from "next/navigation"
+import type { LucideIcon } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
@@ -8,7 +9,7 @@ import type { Game } from "helper"
 
 interface StaticGameSectionProps {
   title: string
-  emoji?: string
+  icon?: LucideIcon
   games: Game[]
   loading?: boolean
   maxItems?: number
@@ -18,7 +19,7 @@ interface StaticGameSectionProps {
  * A lobby section backed by an already-loaded list of games (no own fetch),
  * used for "recently played" and "favorites". Hides itself when empty.
  */
-export function StaticGameSection({ title, emoji, games, loading, maxItems = 8 }: StaticGameSectionProps) {
+export function StaticGameSection({ title, icon: Icon, games, loading, maxItems = 8 }: StaticGameSectionProps) {
   const { user } = useAuth()
   const router = useRouter()
 
@@ -46,7 +47,7 @@ export function StaticGameSection({ title, emoji, games, loading, maxItems = 8 }
   return (
     <div className="w-full px-4 py-2">
       <div className="flex items-center gap-2 mb-3">
-        {emoji && <span className="text-xl">{emoji}</span>}
+        {Icon && <Icon className="h-5 w-5 text-primary" />}
         <span className="font-bold text-lg uppercase">{title}</span>
       </div>
       <div className={GRID}>

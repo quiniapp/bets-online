@@ -5,13 +5,14 @@ import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import { useLobby } from "@/contexts/lobby-context"
 import { useProviders } from "@/hooks/useProviders"
+import type { LucideIcon } from "lucide-react"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, twoRowItemClass } from "@/lib/two-row-grid"
 
 interface CategorySectionProps {
   title: string
-  emoji?: string
+  icon?: LucideIcon
   gameType?: string | null
   providerName?: string | null
   limit?: number
@@ -20,7 +21,7 @@ interface CategorySectionProps {
   onShowAll?: () => void
 }
 
-const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, slotId, onShowAll }: CategorySectionProps) => {
+const CategorySection = ({ title, icon: Icon, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, slotId, onShowAll }: CategorySectionProps) => {
   const lobby = useLobby()
   const lobbyActive = slotId !== undefined && !!lobby && (lobby.loading || lobby.data !== null)
   const fetched = useGames({ activeOnly: true, gameType: gameType ?? null, providerName: providerName ?? null, limit, skip: lobbyActive })
@@ -74,7 +75,7 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
               className="h-6 w-auto max-w-[110px] object-contain"
             />
           ) : (
-            emoji && <span className="text-xl">{emoji}</span>
+            Icon && <Icon className="h-5 w-5 text-primary" />
           )}
           <span className="font-bold text-lg uppercase">{title}</span>
         </div>

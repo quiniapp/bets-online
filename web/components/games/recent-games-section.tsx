@@ -1,4 +1,5 @@
 "use client"
+import { History } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { UserRole } from "helper"
 import { useRecentGames } from "@/hooks/useRecentGames"
@@ -11,7 +12,7 @@ export function RecentGamesSection() {
   return (
     <StaticGameSection
       title="Últimos juegos"
-      emoji="🕹️"
+      icon={History}
       games={games}
       loading={loading}
       maxItems={8}
