@@ -330,6 +330,47 @@ export class GamesRepository {
     );
   }
 
+  /**
+   * Distinct games the user most recently played, most-recent first.
+   * Combines native bets (game_id) and integrator rounds (provider_transactions
+   * joined to games on provider_game_id), dedupes, and returns full Game objects.
+   */
+  async findRecentlyPlayedByUser(userId: string, limit: number): Promise<Game[]> {
+    const db = GameModel.sequelize!;
+    const rows = (await db.query(
+      `SELECT game_id, MAX(last_played_at) AS last_played_at
+       FROM (
+         SELECT b.game_id AS game_id, MAX(b.created_at) AS last_played_at
+         FROM bets b
+         WHERE b.user_id = :userId AND b.game_id IS NOT NULL
+         GROUP BY b.game_id
+         UNION ALL
+         SELECT g.id AS game_id, MAX(pt.created_at) AS last_played_at
+         FROM provider_transactions pt
+         JOIN games g ON g.provider_game_id = pt.provider_game_id
+         WHERE pt.user_id = :userId AND g.provider_game_id IS NOT NULL
+         GROUP BY g.id
+       ) sub
+       GROUP BY game_id
+       ORDER BY last_played_at DESC
+       LIMIT :limit`,
+      { replacements: { userId, limit }, type: QueryTypes.SELECT }
+    )) as Array<{ game_id: string }>;
+
+    if (!rows.length) return [];
+
+    const order = new Map<string, number>();
+    rows.forEach((r, i) => order.set(r.game_id, i));
+
+    const games = await GameModel.findAll({
+      where: { id: { [Op.in]: rows.map(r => r.game_id) }, isActive: true }
+    });
+
+    return games
+      .map(g => this.mapToGame(g))
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  }
+
   private mapToGame(model: GameModel): Game {
     const plain = model.get({ plain: true });
     return {

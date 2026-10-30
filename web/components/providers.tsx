@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react"
 import type { CasinoSettings } from "helper"
 import { useTheme } from "next-themes"
 import { AuthProvider } from "@/contexts/auth-context"
+import { FavoritesProvider } from "@/contexts/favorites-context"
 import { LanguageProvider } from "@/contexts/language-context"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ParticleBackground } from "@/components/particle-background"
@@ -49,7 +50,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ParticleBackground />
       <CasinoThemeSync />
       <LanguageProvider>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <FavoritesProvider>{children}</FavoritesProvider>
+        </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
   )
