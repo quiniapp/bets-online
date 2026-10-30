@@ -18,6 +18,8 @@ import { HomeBottomNav } from "@/components/home-bottom-nav";
 import { useCasinoSettings } from "@/hooks/useCasinoSettings";
 import { useGameTypes } from "@/hooks/useGameTypes";
 import { LobbyProvider } from "@/contexts/lobby-context";
+import { RecentGamesSection } from "@/components/games/recent-games-section";
+import { FavoritesSection } from "@/components/games/favorites-section";
 import type { LobbySlot } from "helper";
 
 interface FilterUpdates {
@@ -95,6 +97,8 @@ function LandingContent() {
           </div>
         ) : (
           <>
+            <RecentGamesSection />
+            <FavoritesSection />
             <FeaturedSection onShowAll={() => applyFilters({ category: null })} />
             {lobbySlots.map(slot => (
               <CategorySection
