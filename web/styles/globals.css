@@ -306,3 +306,12 @@ button.bg-accent:hover,
   color: var(--primary-foreground);
   filter: brightness(1.06);
 }
+
+/* Loading screen logo zoom */
+@keyframes arenaZoom {
+  0%, 100% { transform: scale(0.94); }
+  50% { transform: scale(1.08); }
+}
+.arena-logo-zoom {
+  animation: arenaZoom 2.6s ease-in-out infinite;
+}

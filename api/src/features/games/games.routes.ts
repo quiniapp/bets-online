@@ -31,6 +31,7 @@ router.get('/providers', gamesController.getProviders.bind(gamesController));
 router.get('/stats', gamesController.stats.bind(gamesController));
 router.get('/top-played', gamesController.topPlayed.bind(gamesController));
 router.get('/top-providers', gamesController.topProviders.bind(gamesController));
+router.get('/my-recents', authMiddleware, gamesController.getMyRecent.bind(gamesController));
 router.get('/:id', validateParams(idParamSchema), optionalAuth, gamesController.getById.bind(gamesController));
 
 // Protected routes (authentication required)

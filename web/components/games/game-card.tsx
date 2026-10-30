@@ -1,6 +1,9 @@
-import { Play, Gamepad2 } from "lucide-react"
+import { Play, Gamepad2, Heart } from "lucide-react"
 import type { Game } from "helper"
+import { UserRole } from "helper"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/contexts/auth-context"
+import { useFavorites } from "@/contexts/favorites-context"
 
 interface GameCardProps {
   game: Game
@@ -8,6 +11,16 @@ interface GameCardProps {
 }
 
 const GameCard = ({ game, onClick }: GameCardProps) => {
+  const { role } = useAuth()
+  const { favoriteIds, toggleFavorite } = useFavorites()
+  const isPlayer = role === UserRole.PLAYER
+  const isFavorite = favoriteIds.has(game.id)
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    toggleFavorite(game.id)
+  }
+
   return (
     <div onClick={onClick} className="cursor-pointer outline-none">
       <div
@@ -40,6 +53,15 @@ const GameCard = ({ game, onClick }: GameCardProps) => {
             className="absolute inset-x-0 bottom-0 h-12"
             style={{ backgroundImage: 'linear-gradient(to top, var(--game-card-overlay, rgba(0,0,0,0.8)), transparent)' }}
           />
+          {isPlayer && (
+            <button
+              onClick={handleToggleFavorite}
+              className="absolute top-2 right-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/70"
+              aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+            >
+              <Heart className={"h-4 w-4 transition-colors " + (isFavorite ? "fill-red-500 text-red-500" : "text-white")} />
+            </button>
+          )}
           <div className="absolute inset-x-0 bottom-2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-lg shadow-primary/40">
               <Play className="h-2.5 w-2.5 fill-current" />
