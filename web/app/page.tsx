@@ -18,6 +18,8 @@ import { HomeBottomNav } from "@/components/home-bottom-nav";
 import { useCasinoSettings } from "@/hooks/useCasinoSettings";
 import { useGameTypes } from "@/hooks/useGameTypes";
 import { LobbyProvider } from "@/contexts/lobby-context";
+import { RecentGamesSection } from "@/components/games/recent-games-section";
+import { FavoritesSection } from "@/components/games/favorites-section";
 import type { LobbySlot } from "helper";
 
 interface FilterUpdates {
@@ -70,7 +72,9 @@ function LandingContent() {
       <HeaderIndex />
       <FlexCol className="items-center w-full flex-1">
         <HeroBannerIndex />
-        <CategoriesBar selected={selectedCategory} onSelect={v => applyFilters({ category: v })} />
+        <div className="w-full md:hidden">
+          <CategoriesBar selected={selectedCategory} onSelect={v => applyFilters({ category: v })} />
+        </div>
         <ProvidersBar selected={selectedProvider} onSelect={v => applyFilters({ provider: v })} />
 
         <div className="w-full px-4 py-2">
@@ -93,6 +97,8 @@ function LandingContent() {
           </div>
         ) : (
           <>
+            <RecentGamesSection />
+            <FavoritesSection />
             <FeaturedSection onShowAll={() => applyFilters({ category: null })} />
             {lobbySlots.map(slot => (
               <CategorySection

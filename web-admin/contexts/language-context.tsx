@@ -57,6 +57,9 @@ const translations = {
     "settings.languageDesc": "Selecciona el idioma para la interfaz",
     "settings.theme": "Tema",
     "settings.themeDesc": "Selecciona el tema de la aplicación",
+    "settings.themeLight": "Claro",
+    "settings.themeDark": "Oscuro",
+    "settings.themeCasino": "Casino Virtual",
     "settings.notifications": "Notificaciones",
     "settings.notificationsDesc": "Configurar notificaciones del sistema",
 
@@ -119,6 +122,9 @@ const translations = {
     "settings.languageDesc": "Select the interface language",
     "settings.theme": "Theme",
     "settings.themeDesc": "Select the application theme",
+    "settings.themeLight": "Light",
+    "settings.themeDark": "Dark",
+    "settings.themeCasino": "Virtual Casino",
     "settings.notifications": "Notifications",
     "settings.notificationsDesc": "Configure system notifications",
 

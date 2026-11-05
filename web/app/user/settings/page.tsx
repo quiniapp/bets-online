@@ -2,19 +2,17 @@
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { useLanguage } from "@/contexts/language-context"
-import { useTheme } from "next-themes"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Globe, Palette, Bell, Save } from "lucide-react"
+import { Globe, Bell, Save } from "lucide-react"
 import { useState } from "react"
 
 export default function UserSettingsPage() {
   const { language, setLanguage, t } = useLanguage()
-  const { theme, setTheme } = useTheme()
   const [notifications, setNotifications] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(false)
 
@@ -50,32 +48,6 @@ export default function UserSettingsPage() {
                   <SelectContent>
                     <SelectItem value="es">{t("common.spanish")}</SelectItem>
                     <SelectItem value="en">{t("common.english")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Theme Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                {t("settings.theme")}
-              </CardTitle>
-              <CardDescription>{t("settings.themeDesc")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="theme">Theme</Label>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -8,6 +8,7 @@ import {
   RecoveryMode,
   RecoveryStatus
 } from './enums.types';
+import type { ThemeTokenName } from '../constants';
 
 /**
  * User Model
@@ -494,6 +495,52 @@ export interface BottomNavItem {
   visible: boolean
 }
 
+export type CasinoThemeId = 'light' | 'dark' | 'casino' | 'custom'
+
+/**
+ * Optional background gradient of a generated theme. Rendered as a
+ * linear-gradient over the base background color.
+ */
+export interface CasinoBackgroundGradient {
+  angle: number
+  from: string
+  to: string
+  via?: string
+}
+
+/**
+ * Per-game-card overrides of a generated theme (players site). Applied as CSS
+ * variables with sensible fallbacks, so a missing field keeps the default look.
+ */
+export interface CasinoGameCardTokens {
+  background?: string
+  border?: string
+  radius?: number
+  overlay?: string
+}
+
+/**
+ * Tokens of a theme generated from the admin panel. Only used when
+ * CasinoSettings.theme === 'custom'; base picks the light/dark variable set
+ * that the token overrides are layered on top of.
+ */
+export interface CasinoThemeConfig {
+  base: 'light' | 'dark'
+  tokens: Partial<Record<ThemeTokenName, string>>
+  backgroundGradient?: CasinoBackgroundGradient | null
+  gameCard?: CasinoGameCardTokens | null
+}
+
+/**
+ * A theme built with the admin generator and stored in the library. Saving a
+ * theme does NOT apply it; the header toggle applies it later.
+ */
+export interface SavedCustomTheme {
+  id: string
+  name: string
+  config: CasinoThemeConfig
+}
+
 export interface CasinoSettings {
   id: string
   ownerId: string
@@ -501,6 +548,10 @@ export interface CasinoSettings {
   lobbySlots: LobbySlot[]
   footerLinks: FooterLink[]
   bottomNavItems: BottomNavItem[]
+  theme: CasinoThemeId
+  themeConfig: CasinoThemeConfig | null
+  savedThemes: SavedCustomTheme[]
+  activeThemeId: string | null
   updatedAt: Date
 }
 
@@ -509,6 +560,10 @@ export interface UpdateCasinoSettingsDto {
   lobbySlots?: LobbySlot[]
   footerLinks?: FooterLink[]
   bottomNavItems?: BottomNavItem[]
+  theme?: CasinoThemeId
+  themeConfig?: CasinoThemeConfig
+  savedThemes?: SavedCustomTheme[]
+  activeThemeId?: string | null
 }
 
 /**

@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useGames } from "@/hooks/useGames"
 import { useLobby } from "@/contexts/lobby-context"
+import { useProviders } from "@/hooks/useProviders"
+import type { LucideIcon } from "lucide-react"
 import GameCard from "./game-card"
 import ROUTER from "@/routes"
 import { SECTION_GRID as GRID, TWO_ROW_MAX_ITEMS, twoRowItemClass } from "@/lib/two-row-grid"
 
 interface CategorySectionProps {
   title: string
-  emoji?: string
+  icon?: LucideIcon
   gameType?: string | null
   providerName?: string | null
   limit?: number
@@ -19,7 +21,7 @@ interface CategorySectionProps {
   onShowAll?: () => void
 }
 
-const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, slotId, onShowAll }: CategorySectionProps) => {
+const CategorySection = ({ title, icon: Icon, gameType, providerName, limit = TWO_ROW_MAX_ITEMS, slotId, onShowAll }: CategorySectionProps) => {
   const lobby = useLobby()
   const lobbyActive = slotId !== undefined && !!lobby && (lobby.loading || lobby.data !== null)
   const fetched = useGames({ activeOnly: true, gameType: gameType ?? null, providerName: providerName ?? null, limit, skip: lobbyActive })
@@ -29,6 +31,12 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
   const loading = lobbyActive ? lobby!.loading : fetched.loading
   const { user } = useAuth()
   const router = useRouter()
+  const { providers } = useProviders()
+  const provider = providerName
+    ? providers.find(p => p.name === providerName) ??
+      providers.find(p => p.name.toLowerCase() === providerName.toLowerCase())
+    : undefined
+  const providerLogo = provider?.logoUrl ?? null
 
   const handleGameClick = (gameId: string) => {
     const playUrl = `${ROUTER.USER_GAME_PLAY}/${gameId}/play`
@@ -60,7 +68,15 @@ const CategorySection = ({ title, emoji, gameType, providerName, limit = TWO_ROW
     <div className="w-full px-4 py-2">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {emoji && <span className="text-xl">{emoji}</span>}
+          {providerLogo ? (
+            <img
+              src={providerLogo}
+              alt={provider?.displayName ?? title}
+              className="h-6 w-auto max-w-[110px] object-contain"
+            />
+          ) : (
+            Icon && <Icon className="h-5 w-5 text-primary" />
+          )}
           <span className="font-bold text-lg uppercase">{title}</span>
         </div>
         {onShowAll && (

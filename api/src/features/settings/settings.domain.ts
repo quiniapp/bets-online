@@ -40,7 +40,8 @@ export class SettingsDomain {
     if (patch.lobbySlots && patch.lobbySlots.length > MAX_LOBBY_SLOTS) {
       throw new AppError(400, ErrorCode.VALIDATION_ERROR, `Lobby slots cannot exceed ${MAX_LOBBY_SLOTS}`);
     }
-    const updated = await casinoSettingsRepository.patch(requesterId, patch);
+    const ownerId = await this.resolveOwnerId(requesterId, requester.role);
+    const updated = await casinoSettingsRepository.patch(ownerId, patch);
     casinoSettingsMemCache.invalidate();
     writeAudit({
       requesterId,

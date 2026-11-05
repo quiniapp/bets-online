@@ -97,6 +97,20 @@ export class GamesController {
     }
   }
 
+  async getMyRecent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json(ApiResponseBuilder.error('UNAUTHORIZED', 'Authentication required'));
+      }
+      const limit = Math.min(20, parseInt(req.query.limit as string) || 10);
+      const games = await gamesDomain.getRecentGamesForUser(userId, limit);
+      return res.json(ApiResponseBuilder.success({ games }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async bulkUpdateSortOrder(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.user) {

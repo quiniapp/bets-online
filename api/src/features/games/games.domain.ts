@@ -148,6 +148,10 @@ export class GamesDomain {
     return gameTypesMemCache.getOrFetch(() => gamesRepository.findDistinctGameTypes());
   }
 
+  async getRecentGamesForUser(userId: string, limit: number): Promise<Game[]> {
+    return gamesRepository.findRecentlyPlayedByUser(userId, limit);
+  }
+
   /**
    * Get game by ID
    */

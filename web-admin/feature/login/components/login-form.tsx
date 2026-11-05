@@ -36,7 +36,7 @@ const LoginForm = () => {
         <FlexCol className="w-full gap-4 sm:gap-6">
           <FlexCol className="gap-1 w-full justify-center items-center text-center">
             <img
-              src="/logo.png"
+              src="/ArenaBet.svg"
               alt="Logo"
               className="h-20 w-auto mx-auto mb-1"
               onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -107,7 +107,7 @@ const LoginForm = () => {
             </FlexCol>
 
             <Button
-              className="w-full bg-blue-600"
+              className="w-full"
               type="submit"
               disabled={isLoading}
             >

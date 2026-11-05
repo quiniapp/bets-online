@@ -1,4 +1,6 @@
 import multer from 'multer';
+import { ErrorCode } from 'helper';
+import { AppError } from './error.middleware';
 
 // Explicit whitelist — no SVG (can embed scripts) and no generic image/*.
 // The declared mimetype is client-controlled; real content validation happens
@@ -9,7 +11,11 @@ export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIMETYPES.has(file.mimetype)) cb(null, true);
-    else cb(new Error('Only PNG, JPEG, WebP or GIF images are allowed'));
+    if (ALLOWED_MIMETYPES.has(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+    // A 400 (not a generic 500): unsupported formats are a client error.
+    cb(new AppError(400, ErrorCode.INVALID_INPUT, 'Only PNG, JPEG, WebP or GIF images are allowed'));
   }
 });

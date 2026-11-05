@@ -45,13 +45,13 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const isAdminRole = role === UserRole.ADMIN || role === UserRole.OWNER || role === UserRole.CASHIER
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen">
       <div className="hidden md:block">
         <Sidebar />
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-11 md:h-14 items-center justify-between border-b bg-background px-4 md:px-6 shrink-0">
+        <header className="flex h-11 md:h-14 items-center justify-between border-b bg-background/80 backdrop-blur-sm px-4 md:px-6 shrink-0">
           <div className="flex items-center gap-3">
             {isAdminRole && <MobileSidebar />}
             {title && (
@@ -74,7 +74,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             <Button
               variant="default"
               size="sm"
-              className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold h-8 px-3"
+              className="bg-primary text-primary-foreground font-semibold h-8 px-3"
               onClick={logout}
               aria-label="Cerrar sesión"
             >

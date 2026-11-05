@@ -45,6 +45,53 @@ describe('updateCasinoSettingsSchema', () => {
     expect(updateCasinoSettingsSchema.safeParse({ bottomNavItems: items }).success).toBe(true);
   });
 
+  it('accepts a custom theme with background gradient and game card', () => {
+    expect(updateCasinoSettingsSchema.safeParse({
+      theme: 'custom',
+      themeConfig: {
+        base: 'dark',
+        tokens: { primary: '#7c5cff' },
+        backgroundGradient: { angle: 135, from: '#000000', to: '#ffffff', via: '#334455' },
+        gameCard: { background: '#111111', border: '#222222', radius: 12, overlay: '#000000' },
+      },
+    }).success).toBe(true);
+  });
+
+  it('rejects invalid themeConfig gradient and game card values', () => {
+    expect(updateCasinoSettingsSchema.safeParse({
+      themeConfig: { base: 'dark', backgroundGradient: { angle: 500, from: '#000', to: '#fff' } },
+    }).success).toBe(false);
+    expect(updateCasinoSettingsSchema.safeParse({
+      themeConfig: { base: 'dark', backgroundGradient: { angle: 90, from: 'javascript:alert(1)', to: '#fff' } },
+    }).success).toBe(false);
+    expect(updateCasinoSettingsSchema.safeParse({
+      themeConfig: { base: 'dark', gameCard: { radius: 500 } },
+    }).success).toBe(false);
+  });
+
+  it('accepts a saved themes library and a null activeThemeId', () => {
+    expect(updateCasinoSettingsSchema.safeParse({
+      savedThemes: [
+        { id: 't1', name: 'Verde', config: { base: 'dark', tokens: { primary: '#00ff00' } } },
+      ],
+      activeThemeId: 't1',
+    }).success).toBe(true);
+    expect(updateCasinoSettingsSchema.safeParse({ activeThemeId: null }).success).toBe(true);
+  });
+
+  it('rejects saved themes without a name or with too many entries', () => {
+    expect(updateCasinoSettingsSchema.safeParse({
+      savedThemes: [{ id: 't1', config: { base: 'dark' } }],
+    }).success).toBe(false);
+
+    const many = Array.from({ length: 31 }, (_, index) => ({
+      id: 't' + index,
+      name: 'T' + index,
+      config: { base: 'dark' },
+    }));
+    expect(updateCasinoSettingsSchema.safeParse({ savedThemes: many }).success).toBe(false);
+  });
+
   it('rejects duplicate categoryType in bottomNavItems', () => {
     expect(updateCasinoSettingsSchema.safeParse({
       bottomNavItems: [

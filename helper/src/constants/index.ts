@@ -50,6 +50,48 @@ export const MAX_LOBBY_SLOTS = 10;
 export const MAX_BOTTOM_NAV_VISIBLE = 6;
 
 /**
+ * CSS custom properties a generated ("custom") theme may override. The names are
+ * the CSS variable suffixes: "primary-foreground" maps to --primary-foreground.
+ * Kept in sync with the token list in the frontends' styles/globals.css.
+ */
+export const THEME_TOKEN_NAMES = [
+  'background',
+  'foreground',
+  'card',
+  'card-foreground',
+  'popover',
+  'popover-foreground',
+  'primary',
+  'primary-foreground',
+  'secondary',
+  'secondary-foreground',
+  'muted',
+  'muted-foreground',
+  'accent',
+  'accent-foreground',
+  'destructive',
+  'destructive-foreground',
+  'border',
+  'input',
+  'ring',
+  'chart-1',
+  'chart-2',
+  'chart-3',
+  'chart-4',
+  'chart-5',
+  'sidebar',
+  'sidebar-foreground',
+  'sidebar-primary',
+  'sidebar-primary-foreground',
+  'sidebar-accent',
+  'sidebar-accent-foreground',
+  'sidebar-border',
+  'sidebar-ring',
+] as const;
+
+export type ThemeTokenName = (typeof THEME_TOKEN_NAMES)[number];
+
+/**
  * Token Expiration
  */
 export const ACCESS_TOKEN_EXPIRY = '15m';
