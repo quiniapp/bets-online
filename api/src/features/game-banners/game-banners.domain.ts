@@ -1,4 +1,4 @@
-import { GameBanner, UpdateGameBannerDto } from 'helper';
+import { GameBanner, GameBannerWithGame, UpdateGameBannerDto } from 'helper';
 import { gameBannersRepository } from './game-banners.repository';
 import { supabaseStorage } from '../../services/supabase-storage.service';
 import { safeImageFileName } from '../../utils/storage-key.utils';
@@ -13,17 +13,22 @@ export interface BannerImageFile {
 }
 
 export class GameBannersDomain {
-  async getActive(): Promise<GameBanner[]> {
-    return gameBannersRepository.findAllActive();
+  async getActive(placement: string = 'hero'): Promise<GameBanner[]> {
+    return gameBannersRepository.findAllActive(placement);
   }
 
-  async getAll(): Promise<GameBanner[]> {
-    return gameBannersRepository.findAll();
+  async getAll(placement?: string): Promise<GameBannerWithGame[]> {
+    return gameBannersRepository.findAllWithGame(placement);
   }
 
-  async createWithImage(file: BannerImageFile, sortOrder?: number): Promise<GameBanner> {
+  async createWithImage(
+    file: BannerImageFile,
+    sortOrder?: number,
+    gameId?: string | null,
+    placement: 'hero' | 'promo' = 'hero'
+  ): Promise<GameBanner> {
     const processed = await processImageUpload(file, 'banner');
-    const banner = await gameBannersRepository.create({ sortOrder });
+    const banner = await gameBannersRepository.create({ sortOrder, gameId, placement });
     const filePath = `banners/${banner.id}/${safeImageFileName(processed.originalname)}`;
     let uploaded = false;
     try {

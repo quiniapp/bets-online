@@ -19,6 +19,7 @@ import { useCasinoSettings } from "@/hooks/useCasinoSettings";
 import { useGameTypes } from "@/hooks/useGameTypes";
 import { LobbyProvider } from "@/contexts/lobby-context";
 import { RecentGamesSection } from "@/components/games/recent-games-section";
+import { PromoSection } from "@/components/games/promo-section";
 import { FavoritesSection } from "@/components/games/favorites-section";
 import type { LobbySlot } from "helper";
 
@@ -72,6 +73,7 @@ function LandingContent() {
       <HeaderIndex />
       <FlexCol className="items-center w-full flex-1">
         <HeroBannerIndex />
+        <PromoSection />
         <div className="w-full md:hidden">
           <CategoriesBar selected={selectedCategory} onSelect={v => applyFilters({ category: v })} />
         </div>

@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api.service';
-import type { GameBanner, UpdateGameBannerDto } from 'helper';
+import type { GameBanner, GameBannerWithGame, UpdateGameBannerDto } from 'helper';
 
 export function useGameBanners() {
-  const [items, setItems] = useState<GameBanner[]>([]);
+  const [items, setItems] = useState<GameBannerWithGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const response = await apiService.get<GameBanner[]>('/admin/banners');
+    const response = await apiService.get<GameBannerWithGame[]>('/admin/banners');
     if (response.success && response.data) {
       setItems(response.data);
     }
@@ -35,7 +35,7 @@ export function useGameBanners() {
     return response;
   };
 
-  const saveOrder = async (ordered: GameBanner[]) => {
+  const saveOrder = async (ordered: GameBannerWithGame[]) => {
     setSaving(true);
     try {
       await Promise.all(

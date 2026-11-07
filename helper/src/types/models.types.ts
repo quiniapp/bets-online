@@ -400,7 +400,8 @@ export interface UpdateFeaturedGameDto {
  */
 export interface GameBanner {
   id: string;
-  gameId?: string | null;       // legacy, unused — banners are standalone images
+  gameId?: string | null;       // game opened when the banner is clicked
+  placement: 'hero' | 'promo';  // hero carousel vs small promo row
   sortOrder: number;
   isActive: boolean;
   imageUrl?: string | null;     // public Supabase Storage URL of the banner image
@@ -420,6 +421,8 @@ export interface GameBannerWithGame extends GameBanner {
  */
 export interface CreateGameBannerDto {
   sortOrder?: number;
+  gameId?: string | null;
+  placement?: 'hero' | 'promo';
 }
 
 /**
@@ -428,6 +431,8 @@ export interface CreateGameBannerDto {
 export interface UpdateGameBannerDto {
   sortOrder?: number;
   isActive?: boolean;
+  gameId?: string | null;
+  placement?: 'hero' | 'promo';
 }
 
 /**
