@@ -18,7 +18,7 @@ const LoaderPage = ({ text = "Cargando..." }: LoaderPageProps) => {
           src="/ArenaBet.svg"
           alt="ArenaBet"
           draggable={false}
-          className="arena-logo-zoom h-32 w-auto max-w-[78vw] select-none drop-shadow-[0_0_30px_rgba(125, 249, 255, 0.45)] sm:h-28"
+          className="arena-logo-zoom h-48 w-auto max-w-[78vw] select-none drop-shadow-[0_0_30px_rgba(125, 249, 255, 0.45)] sm:h-64"
         />
         <div className="flex items-center gap-2" aria-hidden="true">
           <span className="arena-dot" />

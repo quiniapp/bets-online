@@ -4,6 +4,7 @@ import { sequelize } from '../../config/sequelize';
 export class GameBannerModel extends Model {
   declare id: string;
   declare gameId: string | null;
+  declare placement: string;
   declare sortOrder: number;
   declare isActive: boolean;
   declare imageUrl: string | null;
@@ -23,6 +24,12 @@ GameBannerModel.init(
       type: DataTypes.UUID,
       allowNull: true,
       field: 'game_id'
+    },
+    placement: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: 'hero',
+      field: 'placement'
     },
     sortOrder: {
       type: DataTypes.INTEGER,

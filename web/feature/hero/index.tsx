@@ -41,7 +41,7 @@ const HeroBannerIndex = () => {
   if (loading) {
     return (
       <div className="w-full px-4 py-2">
-        <div className="mx-auto h-40 max-w-7xl sm:h-56 md:h-72 lg:h-80 xl:h-96 w-full rounded-xl bg-accent animate-pulse" />
+        <div className="mx-auto h-40 w-full max-w-7xl rounded-xl bg-accent animate-pulse md:h-auto md:aspect-[1600/854]" />
       </div>
     )
   }
@@ -58,7 +58,7 @@ const HeroBannerIndex = () => {
         <CarouselContent>
           {banners.map((banner, index) => (
             <CarouselItem key={banner.id}>
-              <div className="relative h-40 sm:h-56 md:h-72 lg:h-80 xl:h-96 w-full rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-primary/20">
+              <div className="relative h-40 w-full rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-primary/20 md:h-auto md:aspect-[1600/854]">
                 {/* First banner is the LCP — fetch it ASAP; the rest can wait */}
                 <img
                   src={banner.imageUrl ?? undefined}
