@@ -4,5 +4,11 @@ packages:
   - web-admin
   - helper
 
-ignoredBuiltDependencies:
-  - bcrypt
+overrides:
+  proxy-addr: ^2.0.8
+
+allowBuilds:
+  unrs-resolver: true
+  bcrypt: true
+  supabase: true
+  "@scarf/scarf": false

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LogOutIcon, UserIcon, Grid3x3, Gamepad2, Tv2, Flame, CircleDot, Trophy, Menu, LayoutDashboard, User, History, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { LogOutIcon, UserIcon, Grid3x3, Gamepad2, Tv2, Flame, CircleDot, Trophy, Menu, LayoutDashboard, User, Settings, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import ROUTER from "@/routes";
 import { Flex } from "../flex";
@@ -18,6 +18,9 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { apiService } from "@/services/api.service";
+import { useCasinoSettings } from "@/hooks/useCasinoSettings";
+import { useGameTypes } from "@/hooks/useGameTypes";
+import { gameTypeConfig } from "@/lib/game-type-config";
 import type { Balance } from "helper";
 import { formatChips } from "@/lib/utils";
 
@@ -39,6 +42,14 @@ const HeaderIndex = () => {
     const [menuOpen, setMenuOpen] = useState(false)
     const [gamesOpen, setGamesOpen] = useState(true)
     const [balance, setBalance] = useState<Balance | null>(null)
+    const { headerCategories } = useCasinoSettings()
+    const { types: availableTypes } = useGameTypes()
+
+    const orderedCategories = headerCategories.filter(
+        t => availableTypes.length === 0 || availableTypes.includes(t)
+    )
+    const headerSet = new Set(headerCategories)
+    const hasOtherTypes = availableTypes.some(t => !headerSet.has(t))
 
     useEffect(() => {
         if (!user) return
@@ -55,7 +66,6 @@ const HeaderIndex = () => {
 
     const playerMenuItems = [
         { label: "Dashboard", href: getDashboardRoute(), icon: LayoutDashboard },
-        { label: "Mis Apuestas", href: ROUTER.USER_BETS, icon: History },
         { label: "Perfil", href: ROUTER.USER_PROFILE, icon: User },
         { label: "Configuración", href: ROUTER.USER_SETTINGS, icon: Settings },
     ]
@@ -78,30 +88,52 @@ const HeaderIndex = () => {
                         <img
                             src="/ArenaBet.svg"
                             alt="Logo"
-                            className="h-12 w-auto max-w-[180px] origin-left scale-150"
+                            className="h-16 w-auto max-w-[220px] origin-left scale-150"
                             onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                         />
                     </button>
                 </Flex>
 
-                {/* Desktop category nav (Ganamos-style pills) */}
+                {/* Desktop category nav (configured from admin header categories) */}
                 <nav className="hidden md:flex items-center justify-center gap-1 flex-1 px-4">
-                    {GAME_ITEMS.map(item => {
-                        const active = item.type === null ? !selectedCategory : selectedCategory === item.type
-                        const Icon = item.icon
+                    <Button
+                        variant={selectedCategory === null ? "default" : "ghost"}
+                        size="sm"
+                        className={"h-9 rounded-full px-4 " + (selectedCategory === null ? "" : "text-muted-foreground hover:text-foreground")}
+                        onClick={() => router.push("/")}
+                    >
+                        <Grid3x3 className="h-3.5 w-3.5 mr-1.5" />
+                        Lobby
+                    </Button>
+                    {orderedCategories.map(type => {
+                        const cfg = gameTypeConfig[type]
+                        const Icon = cfg?.icon ?? Gamepad2
+                        const label = cfg?.label ?? type
+                        const active = selectedCategory === type
                         return (
                             <Button
-                                key={String(item.type)}
+                                key={type}
                                 variant={active ? "default" : "ghost"}
                                 size="sm"
                                 className={"h-9 rounded-full px-4 " + (active ? "" : "text-muted-foreground hover:text-foreground")}
-                                onClick={() => router.push(item.type === null ? "/" : `/?category=${item.type}`)}
+                                onClick={() => router.push(`/?category=${type}`)}
                             >
                                 <Icon className="h-3.5 w-3.5 mr-1.5" />
-                                {item.label}
+                                {label}
                             </Button>
                         )
                     })}
+                    {hasOtherTypes && (
+                        <Button
+                            variant={selectedCategory === "__otros__" ? "default" : "ghost"}
+                            size="sm"
+                            className={"h-9 rounded-full px-4 " + (selectedCategory === "__otros__" ? "" : "text-muted-foreground hover:text-foreground")}
+                            onClick={() => router.push("/?category=__otros__")}
+                        >
+                            <Gamepad2 className="h-3.5 w-3.5 mr-1.5" />
+                            Otros
+                        </Button>
+                    )}
                 </nav>
 
                 {/* Right: nav */}

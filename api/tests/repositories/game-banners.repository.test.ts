@@ -71,11 +71,11 @@ describe('GameBannersRepository', () => {
     expect(await gameBannersRepository.delete('nope')).toBeNull();
   });
 
-  it('findAllActive queries active rows ordered, WITHOUT a game include', async () => {
+  it('findAllActive queries active rows of the given placement, WITHOUT a game include', async () => {
     (GameBannerModel.findAll as jest.Mock).mockResolvedValue([]);
     await gameBannersRepository.findAllActive();
     const arg = (GameBannerModel.findAll as jest.Mock).mock.calls[0][0];
-    expect(arg.where).toEqual({ isActive: true });
+    expect(arg.where).toEqual({ isActive: true, placement: 'hero' });
     expect(arg.include).toBeUndefined();
   });
 });
