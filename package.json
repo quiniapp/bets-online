@@ -65,5 +65,10 @@
     "helper/src/**/*.ts": [
       "eslint --fix"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "proxy-addr": "^2.0.8"
+    }
   }
 }
