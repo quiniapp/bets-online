@@ -59,9 +59,9 @@ Cambiar esa contraseña en cualquier entorno compartido (desde el backoffice o `
 
 ## Tablas
 
-Negocio activo: `users`, `balances`, `chip_movements`, `sessions`, `audit_logs`, `games`, `providers`, `game_types`, `provider_game_type_orders`, `game_images`, `game_banners`, `featured_games`, `casino_settings`, `user_favorite_games`, `bets` (juegos nativos), `user_provider_profiles`, `provider_transactions`, `game_launches` (21Viral).
+Negocio activo: `users`, `balances`, `chip_movements`, `cashier_compensation_modes`, `cashier_settlements`, `sessions`, `audit_logs`, `games`, `providers`, `game_types`, `provider_game_type_orders`, `game_images`, `game_banners`, `featured_games`, `casino_settings`, `user_favorite_games`, `bets` (juegos nativos), `user_provider_profiles`, `provider_transactions`, `game_launches` (21Viral).
 
-Creadas por el PRD original pero hoy sin lógica ni endpoints: `cashier_compensation_modes`, `cashier_settlements`, `chip_panels`, `recoveries`, `user_game_provider_blocklist`.
+Creadas por el PRD original pero hoy sin lógica ni endpoints: `chip_panels`, `recoveries`, `user_game_provider_blocklist`.
 
 Extensiones: `uuid-ossp`, `pgcrypto`, `pg_trgm` (índice GIN sobre `games.name` para la búsqueda).
 

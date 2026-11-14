@@ -1,6 +1,6 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../../config/sequelize';
-import { SettlementStatus } from 'helper';
+import { CompensationType, SettlementStatus } from 'helper';
 
 export class CashierSettlementModel extends Model {
   declare id: string;
@@ -12,6 +12,12 @@ export class CashierSettlementModel extends Model {
   declare profit: number;
   declare payableAmount: number;
   declare status: SettlementStatus;
+  declare compensationType: CompensationType | null;
+  declare percentage: number | null;
+  declare notes: string | null;
+  declare createdBy: string | null;
+  declare paidBy: string | null;
+  declare paymentReference: string | null;
   declare createdAt: Date;
   declare paidAt: Date | null;
 }
@@ -73,6 +79,46 @@ CashierSettlementModel.init(
       allowNull: false,
       defaultValue: SettlementStatus.PENDING,
       field: 'status'
+    },
+    compensationType: {
+      type: DataTypes.ENUM(...Object.values(CompensationType)),
+      allowNull: true,
+      field: 'compensation_type'
+    },
+    percentage: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      field: 'percentage'
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'notes'
+    },
+    createdBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'created_by',
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      onDelete: 'SET NULL'
+    },
+    paidBy: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'paid_by',
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      onDelete: 'SET NULL'
+    },
+    paymentReference: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'payment_reference'
     },
     createdAt: {
       type: DataTypes.DATE,

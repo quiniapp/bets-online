@@ -182,7 +182,10 @@ export const SUCCESS_MESSAGES = {
   GAME_UPDATED: 'Game updated successfully',
   PANEL_CREATED: 'Panel created successfully',
   RECOVERY_CREATED: 'Recovery created successfully',
-  SETTLEMENT_CREATED: 'Settlement created successfully'
+  SETTLEMENT_CREATED: 'Settlement created successfully',
+  SETTLEMENT_PAID: 'Settlement paid successfully',
+  SETTLEMENT_CANCELED: 'Settlement canceled successfully',
+  COMPENSATION_UPDATED: 'Compensation updated successfully'
 };
 
 /**
