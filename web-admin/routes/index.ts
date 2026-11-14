@@ -8,6 +8,7 @@ const ROUTER = {
   ADMIN_USERS: "/admin/users",
   ADMIN_GAMES: "/admin/games",
   ADMIN_BALANCES: "/admin/balances",
+  ADMIN_CASHIER_ACCOUNTS: "/admin/cashier-accounts",
   ADMIN_TRANSACTIONS: "/admin/transactions",
   ADMIN_REPORTS: "/admin/reports",
   ADMIN_SETTINGS: "/admin/settings",

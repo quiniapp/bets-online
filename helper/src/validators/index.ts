@@ -7,3 +7,4 @@ export * from './bet.validator';
 export * from './provider.validator';
 export * from './provider-type-order.validator';
 export * from './casino-settings.validator';
+export * from './cashier-account.validator';

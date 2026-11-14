@@ -12,6 +12,7 @@ import {
   Gamepad2,
   User,
   Settings,
+  Wallet,
 } from "lucide-react";
 
 interface MenuItem {
@@ -113,6 +114,11 @@ export const useSidebarNavigation = () => {
       title: t("nav.earnings"),
       icon: DollarSign,
       items: [{ title: t("earnings.calculate"), href: "/admin/balances" }],
+    },
+    {
+      title: "Cuentas corrientes",
+      href: "/admin/cashier-accounts",
+      icon: Wallet,
     },
     {
       title: t("nav.transactions"),

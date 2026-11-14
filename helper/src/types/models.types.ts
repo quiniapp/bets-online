@@ -127,6 +127,12 @@ export interface CashierSettlement {
   profit: number;
   payableAmount: number;
   status: SettlementStatus;
+  compensationType?: CompensationType | null;
+  percentage?: number | null;
+  notes?: string | null;
+  createdBy?: string | null;
+  paidBy?: string | null;
+  paymentReference?: string | null;
   createdAt: Date;
   paidAt?: Date | null;
 }
@@ -138,6 +144,130 @@ export interface CreateSettlementDto {
   cashierId: string;
   periodStart: Date;
   periodEnd: Date;
+}
+
+/**
+ * Active compensation configuration of a cashier, as shown in the account module.
+ */
+export interface CashierCompensationSummary {
+  type: CompensationType;
+  percentage: number | null;
+  activeFrom: Date;
+}
+
+/**
+ * Current account of a cashier with the owner: chip sales, prizes paid,
+ * commission accrued and the amount the owner still owes.
+ */
+export interface CashierAccountSummary {
+  cashierId: string;
+  username: string;
+  email?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  status: UserStatus;
+  chipBalance: number;
+  compensation: CashierCompensationSummary | null;
+  totalSales: number;
+  totalPrizes: number;
+  profit: number;
+  pendingAmount: number;
+  paidAmount: number;
+  openProfit: number;
+  openCommission: number;
+  balanceDue: number;
+  lastSettlementAt: Date | null;
+  lastPaidAt: Date | null;
+}
+
+/**
+ * Aggregated totals across every cashier account (not just the current page).
+ */
+export interface CashierAccountsSummary {
+  totalCashiers: number;
+  totalSales: number;
+  totalPrizes: number;
+  totalProfit: number;
+  pendingAmount: number;
+  paidAmount: number;
+  openCommission: number;
+  balanceDue: number;
+}
+
+/**
+ * Payload of GET /cashier-accounts.
+ */
+export interface CashierAccountsListResult {
+  accounts: CashierAccountSummary[];
+  summary: CashierAccountsSummary;
+}
+
+/**
+ * A settlement row enriched with the cashier username for the global list.
+ */
+export interface CashierSettlementWithCashier extends CashierSettlement {
+  cashierUsername: string;
+}
+
+/**
+ * Movement included in a cashier account statement.
+ */
+export interface CashierAccountMovement {
+  id: string;
+  playerId: string;
+  playerUsername: string | null;
+  type: ChipMovementType;
+  amount: number;
+  description?: string | null;
+  createdAt: Date;
+}
+
+/**
+ * Full detail returned by GET /cashier-accounts/:cashierId.
+ */
+export interface CashierAccountDetail {
+  account: CashierAccountSummary;
+  settlements: CashierSettlement[];
+  movements: CashierAccountMovement[];
+}
+
+/**
+ * Result of previewing a settlement before creating it.
+ */
+export interface CashierSettlementPreview {
+  cashierId: string;
+  periodStart: Date;
+  periodEnd: Date;
+  compensation: CashierCompensationSummary | null;
+  totalSales: number;
+  totalPrizes: number;
+  profit: number;
+  payableAmount: number;
+}
+
+/**
+ * Update the active compensation mode of a cashier.
+ */
+export interface UpdateCashierCompensationDto {
+  type: CompensationType;
+  percentage: number;
+}
+
+/**
+ * Create a settlement for a cashier period.
+ */
+export interface CreateCashierSettlementDto {
+  periodStart: Date;
+  periodEnd: Date;
+  notes?: string;
+}
+
+/**
+ * Pay a pending settlement.
+ */
+export interface PayCashierSettlementDto {
+  paymentReference?: string;
+  notes?: string;
 }
 
 /**
