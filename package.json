@@ -2,6 +2,7 @@
   "name": "casino-management-platform",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "workspaces": [
     "api",
     "web",
@@ -65,5 +66,10 @@
     "helper/src/**/*.ts": [
       "eslint --fix"
     ]
+  },
+  "pnpm": {
+    "overrides": {
+      "proxy-addr": "^2.0.8"
+    }
   }
 }
