@@ -9,6 +9,7 @@
 | [environment-variables.md](./environment-variables.md) | Todas las variables de `api`, `web` y `web-admin`; local, CI, Railway, Vercel; conexión a Supabase |
 | [deployment.md](./deployment.md) | Topología, Railway, Vercel, qué hace cada workflow de GitHub Actions, branch protection, checklist de entorno nuevo |
 | [frontend.md](./frontend.md) | `web` vs `web-admin`, estructura, `api.service` (CSRF, cookies), cómo agregar páginas |
+| [cuentas-corrientes-cajeros.md](./cuentas-corrientes-cajeros.md) | Cuentas corrientes de cajeros: comisión, liquidaciones, pagos, API y operación |
 | [../api/src/persistence/migrations/README.md](../api/src/persistence/migrations/README.md) | Migraciones y seeds con Sequelize CLI |
 | [../api/src/config/README.md](../api/src/config/README.md) | Cómo la API carga y valida su configuración |
 | [../.github/README.md](../.github/README.md) | Workflows y template de PR |

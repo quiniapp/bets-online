@@ -116,40 +116,49 @@ export class CashierAccountsDomain {
   async previewSettlement(
     requesterId: string,
     cashierId: string,
-    periodStart: Date,
-    periodEnd: Date
+    periodStart: Date | string,
+    periodEnd: Date | string
   ): Promise<CashierSettlementPreview> {
     await this.assertOwner(requesterId);
     await this.getCashierInOwnerTree(requesterId, cashierId);
-    this.assertValidPeriod(periodStart, periodEnd);
+
+    const start = this.normalizeDate(periodStart);
+    const end = this.normalizeDate(periodEnd);
+    this.assertValidPeriod(start, end);
 
     const compensation = await cashierAccountsRepository.findCompensationModeForPeriod(
       cashierId,
-      periodStart,
-      periodEnd
+      start,
+      end
     );
     const totals = await cashierAccountsRepository.getMovementTotalsForPeriod(
       cashierId,
-      periodStart,
-      periodEnd
+      start,
+      end
     );
 
-    return this.buildPreview(cashierId, periodStart, periodEnd, compensation, totals);
+    return this.buildPreview(cashierId, start, end, compensation, totals);
   }
 
   async createSettlement(
     requesterId: string,
     cashierId: string,
-    data: { periodStart: Date; periodEnd: Date; notes?: string }
+    data: { periodStart: Date | string; periodEnd: Date | string; notes?: string }
   ) {
     await this.assertOwner(requesterId);
     await this.getCashierInOwnerTree(requesterId, cashierId);
-    this.assertValidPeriod(data.periodStart, data.periodEnd);
+
+    // Express deja las fechas del body como string: validate() valida pero no
+    // reemplaza req.body. El dominio normaliza para que el cálculo y el INSERT
+    // reciban siempre Date.
+    const periodStart = this.normalizeDate(data.periodStart);
+    const periodEnd = this.normalizeDate(data.periodEnd);
+    this.assertValidPeriod(periodStart, periodEnd);
 
     const overlapping = await cashierAccountsRepository.findOverlappingSettlement(
       cashierId,
-      data.periodStart,
-      data.periodEnd
+      periodStart,
+      periodEnd
     );
     if (overlapping) {
       throw new AppError(
@@ -161,8 +170,8 @@ export class CashierAccountsDomain {
 
     const compensation = await cashierAccountsRepository.findCompensationModeForPeriod(
       cashierId,
-      data.periodStart,
-      data.periodEnd
+      periodStart,
+      periodEnd
     );
     if (!compensation) {
       throw new AppError(
@@ -174,21 +183,21 @@ export class CashierAccountsDomain {
 
     const totals = await cashierAccountsRepository.getMovementTotalsForPeriod(
       cashierId,
-      data.periodStart,
-      data.periodEnd
+      periodStart,
+      periodEnd
     );
     const preview = this.buildPreview(
       cashierId,
-      data.periodStart,
-      data.periodEnd,
+      periodStart,
+      periodEnd,
       compensation,
       totals
     );
 
     const settlement = await cashierAccountsRepository.createSettlement({
       cashierId,
-      periodStart: data.periodStart,
-      periodEnd: data.periodEnd,
+      periodStart,
+      periodEnd,
       totalSales: preview.totalSales,
       totalPrizesPaid: preview.totalPrizes,
       profit: preview.profit,
@@ -206,8 +215,8 @@ export class CashierAccountsDomain {
       entityId: settlement.id,
       newValues: {
         cashierId,
-        periodStart: data.periodStart,
-        periodEnd: data.periodEnd,
+        periodStart,
+        periodEnd,
         totalSales: preview.totalSales,
         totalPrizes: preview.totalPrizes,
         payableAmount: preview.payableAmount
@@ -445,6 +454,10 @@ export class CashierAccountsDomain {
   private calculatePayable(profit: number, percentage: number | null | undefined): number {
     if (!percentage || percentage <= 0 || profit <= 0) return 0;
     return roundMoney((profit * percentage) / 100);
+  }
+
+  private normalizeDate(value: Date | string): Date {
+    return value instanceof Date ? value : new Date(value);
   }
 
   private assertValidPeriod(periodStart: Date, periodEnd: Date): void {

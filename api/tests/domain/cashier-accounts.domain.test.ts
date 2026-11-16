@@ -215,6 +215,43 @@ describe('CashierAccountsDomain', () => {
     expect(created.id).toBe('new-settlement');
   });
 
+  it('acepta fechas ISO string, como llegan en el body HTTP', async () => {
+    (cashierAccountsRepository.findCompensationModeForPeriod as jest.Mock).mockResolvedValue({
+      id: 'mode-2',
+      cashierId: 'cashier-1',
+      type: CompensationType.PERCENTAGE,
+      percentage: 20,
+      activeFrom: new Date('2026-01-01'),
+      activeTo: null,
+      createdAt: new Date('2026-01-01')
+    });
+    (cashierAccountsRepository.getMovementTotalsForPeriod as jest.Mock).mockResolvedValue({
+      totalSales: 500,
+      totalPrizes: 0
+    });
+    (cashierAccountsRepository.findOverlappingSettlement as jest.Mock).mockResolvedValue(null);
+    (cashierAccountsRepository.createSettlement as jest.Mock).mockResolvedValue(
+      makeSettlement({ id: 'string-dates', payableAmount: 100 })
+    );
+
+    await domain.createSettlement('owner-1', 'cashier-1', {
+      periodStart: '2026-11-09T00:00:00.000Z',
+      periodEnd: '2026-11-16T23:59:59.999Z'
+    });
+
+    expect(cashierAccountsRepository.findOverlappingSettlement).toHaveBeenCalledWith(
+      'cashier-1',
+      new Date('2026-11-09T00:00:00.000Z'),
+      new Date('2026-11-16T23:59:59.999Z')
+    );
+    expect(cashierAccountsRepository.createSettlement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        periodStart: new Date('2026-11-09T00:00:00.000Z'),
+        periodEnd: new Date('2026-11-16T23:59:59.999Z')
+      })
+    );
+  });
+
   it('rechaza liquidaciones superpuestas', async () => {
     (cashierAccountsRepository.findOverlappingSettlement as jest.Mock).mockResolvedValue(
       makeSettlement()
