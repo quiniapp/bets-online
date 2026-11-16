@@ -26,16 +26,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # pnpm 11+: `pnpm audit` uses the registry's bulk advisory endpoint.
-      # npm retired the legacy audit endpoints (410) on 2026-07-15, which
-      # breaks `pnpm audit` on pnpm <= 10. Audit reads only pnpm-lock.yaml,
-      # so no install step is needed here.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 11
-
-      # pnpm 11 requires Node >= 22.13 (uses node:sqlite).
+      # pnpm 11+ is required because npm retired the legacy audit endpoint.
+      # We invoke it through npx instead of pnpm/action-setup so it does not
+      # conflict with the repo's packageManager pin (pnpm 9.15.9).
+      # Audit reads only pnpm-lock.yaml, so no install step is needed.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -45,12 +39,12 @@ jobs:
       # Baseline 2026-06: 0 prod-critical (18 prod-high, 24 moderate). As the
       # backlog is remediated (Dependabot PRs), ratchet this down to --audit-level high.
       - name: Audit production dependencies (blocking on critical)
-        run: pnpm audit --prod --audit-level critical
+        run: npx --yes pnpm@11 --pm-on-fail=ignore audit --prod --audit-level critical
 
       # Full visibility across all deps/levels — reported in the job log, never blocks.
       - name: Full audit report (non-blocking)
         if: always()
-        run: pnpm audit || true
+        run: npx --yes pnpm@11 --pm-on-fail=ignore audit || true
 
   secret-scan:
     name: Secret Scan (gitleaks)
