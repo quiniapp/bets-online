@@ -34,6 +34,12 @@ router.get(
   cashierAccountsController.listSettlements.bind(cashierAccountsController)
 );
 
+router.get(
+  '/settlements/:id/receipt',
+  validateParams(idParamSchema),
+  cashierAccountsController.settlementReceipt.bind(cashierAccountsController)
+);
+
 router.post(
   '/settlements/:id/pay',
   validateParams(idParamSchema),

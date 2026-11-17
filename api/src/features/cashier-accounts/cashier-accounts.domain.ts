@@ -18,6 +18,7 @@ import {
 } from './cashier-accounts.repository';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
+import { generateSettlementReceiptPdf } from '../../utils/settlement-receipt.utils';
 
 const roundMoney = (value: number): number =>
   Math.round((value + Number.EPSILON) * 100) / 100;
@@ -252,6 +253,37 @@ export class CashierAccountsDomain {
       page: filters.page,
       limit: filters.limit
     });
+  }
+
+  async getSettlementReceipt(requesterId: string, settlementId: string) {
+    await this.assertOwner(requesterId);
+    const settlement = await this.getSettlementInOwnerTree(requesterId, settlementId);
+
+    const cashier = await usersRepository.findById(settlement.cashierId);
+    if (!cashier) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Cashier not found');
+    }
+
+    const buffer = generateSettlementReceiptPdf({
+      settlementId: settlement.id,
+      cashierUsername: cashier.username,
+      amount: settlement.payableAmount,
+      createdAt: settlement.createdAt,
+      paidAt: settlement.paidAt,
+      status: settlement.status,
+      periodStart: settlement.periodStart,
+      periodEnd: settlement.periodEnd,
+      totalSales: settlement.totalSales,
+      totalPrizes: settlement.totalPrizesPaid,
+      profit: settlement.profit,
+      percentage: settlement.percentage
+    });
+
+    const safeUsername = cashier.username.replace(/[^a-zA-Z0-9_-]/g, '-');
+    return {
+      buffer,
+      filename: `comprobante-liquidacion-${safeUsername}-${settlement.id.slice(0, 8)}.pdf`
+    };
   }
 
   async paySettlement(

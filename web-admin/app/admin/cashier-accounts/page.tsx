@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Download,
   Eye,
   Loader2,
   Percent,
@@ -52,6 +53,7 @@ import {
 import type {
   CashierAccountDetail,
   CashierAccountSummary,
+  CashierSettlement,
   CashierSettlementPreview,
   CashierSettlementWithCashier
 } from "helper"
@@ -175,10 +177,36 @@ export default function CashierAccountsPage() {
   const [detailAccount, setDetailAccount] = useState<CashierAccountSummary | null>(null)
   const [detail, setDetail] = useState<CashierAccountDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null)
 
   const refreshAll = useCallback(async () => {
     await Promise.all([reloadAccounts(), reloadSettlements()])
   }, [reloadAccounts, reloadSettlements])
+
+  const downloadReceipt = async (settlementId: string, cashierUsername?: string) => {
+    setDownloadingReceiptId(settlementId)
+    try {
+      const blob = await apiService.getBlob(
+        `/cashier-accounts/settlements/${settlementId}/receipt`
+      )
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `comprobante-liquidacion-${cashierUsername ?? settlementId.slice(0, 8)}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo generar el comprobante",
+        description: error instanceof Error ? error.message : "Error de conexión"
+      })
+    } finally {
+      setDownloadingReceiptId(null)
+    }
+  }
 
   const openCompensation = (account: CashierAccountSummary) => {
     setCompensationAccount(account)
@@ -293,9 +321,13 @@ export default function CashierAccountsPage() {
 
   const createSettlement = async () => {
     if (!settlementAccount || creatingSettlement || !preview) return
+    const cashierUsername = settlementAccount.username
     setCreatingSettlement(true)
     try {
-      const response = await apiService.post(
+      const response = await apiService.post<{
+        settlement: CashierSettlement
+        message: string
+      }>(
         `/cashier-accounts/${settlementAccount.cashierId}/settlements`,
         {
           periodStart: startOfDayIso(settlementStart),
@@ -304,11 +336,12 @@ export default function CashierAccountsPage() {
         }
       )
 
-      if (response.success) {
+      if (response.success && response.data) {
         toast({ title: "Liquidación creada" })
         setSettlementAccount(null)
         setPreview(null)
         await refreshAll()
+        await downloadReceipt(response.data.settlement.id, cashierUsername)
       } else {
         toast({
           variant: "destructive",
@@ -739,6 +772,17 @@ export default function CashierAccountsPage() {
                             </Badge>
                           </div>
                           <div className="col-span-3 flex flex-wrap justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              title="Descargar comprobante PDF"
+                              disabled={downloadingReceiptId === settlement.id}
+                              onClick={() => downloadReceipt(settlement.id, settlement.cashierUsername)}
+                            >
+                              {downloadingReceiptId === settlement.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Download className="h-3.5 w-3.5" />}
+                            </Button>
                             {settlement.status === SettlementStatus.PENDING && (
                               <>
                                 <Button

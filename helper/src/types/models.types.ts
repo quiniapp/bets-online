@@ -70,7 +70,9 @@ export interface Balance {
 export interface ChipMovement {
   id: string;
   userId: string;
+  userUsername?: string | null;
   relatedUserId?: string | null;
+  relatedUsername?: string | null;
   type: ChipMovementType;
   amount: number;
   description?: string;

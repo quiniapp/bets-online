@@ -399,6 +399,7 @@ export class ChipsDomain {
       types?: ChipMovementType[];
       compact?: boolean;
       includeDescendants?: boolean;
+      includeRelated?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number; page: number; limit: number }> {
     const requester = await usersRepository.findById(requesterId);
@@ -443,6 +444,7 @@ export class ChipsDomain {
       type: options?.type,
       types: options?.types,
       compact: options?.compact,
+      includeRelated: options?.includeRelated,
     });
 
     return {

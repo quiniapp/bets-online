@@ -168,6 +168,29 @@ class ApiService {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
+  // GET binario (PDF, CSV, imágenes). No usa request() porque ese método
+  // siempre parsea JSON.
+  async getBlob(endpoint: string): Promise<Blob> {
+    const response = await fetch(`${this.baseUrl}/api${endpoint}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      try {
+        const data = await response.json() as ApiResponse<unknown>;
+        if (!data.success && data.error?.message) message = data.error.message;
+      } catch {
+        // El cuerpo no era JSON; conservar el mensaje genérico.
+      }
+      if (response.status === 401) this.handleAuthError();
+      throw new Error(message);
+    }
+
+    return response.blob();
+  }
+
   async post<T>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',

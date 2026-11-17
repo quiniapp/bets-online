@@ -140,6 +140,22 @@ export class CashierAccountsController {
     }
   }
 
+  async settlementReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buffer, filename } = await cashierAccountsDomain.getSettlementReceipt(
+        req.user!.userId,
+        req.params.id
+      );
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async paySettlement(req: Request, res: Response, next: NextFunction) {
     try {
       const settlement = await cashierAccountsDomain.paySettlement(

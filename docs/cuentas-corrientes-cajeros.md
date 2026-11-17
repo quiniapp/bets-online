@@ -409,7 +409,17 @@ x-csrf-token: ...
 La liquidación debe estar pendiente. Si ya está pagada o cancelada, devuelve
 `409`.
 
-### 7.8 Cancelar liquidación
+### 7.8 Descargar comprobante PDF
+
+```http
+GET /api/cashier-accounts/settlements/:settlementId/receipt
+```
+
+Devuelve un PDF con fecha, hora, usuario, monto, período, estado y datos de la
+comisión. El backoffice lo descarga automáticamente al crear una liquidación y
+también permite descargarlo desde la tabla de liquidaciones.
+
+### 7.9 Cancelar liquidación
 
 ```http
 POST /api/cashier-accounts/settlements/:settlementId/cancel
@@ -458,11 +468,21 @@ Muestra todas las liquidaciones con:
 - comisión y porcentaje aplicado;
 - estado;
 - fecha/referencia de pago;
-- acciones **Pagar** y **Cancelar** para las pendientes.
+- acciones **Pagar**, **Cancelar** y **Descargar comprobante PDF**.
 
 Filtro por estado: todas, pendientes, pagadas o canceladas.
 
-### 8.4 Diálogo de detalle
+Al crear una liquidación, el comprobante PDF se descarga automáticamente.
+
+### 8.4 Movimientos de un cajero
+
+En el detalle de usuario y en el historial de movimientos se incluyen las ventas
+y premios **operados** por el cajero, además de sus propias cargas y retiros.
+En esas filas el usuario que se muestra es el jugador afectado y el balance
+corresponde al jugador; por eso las columnas de balance se muestran como `—`
+para los movimientos relacionados.
+
+### 8.5 Diálogo de detalle
 
 Incluye:
 
