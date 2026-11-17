@@ -22,7 +22,7 @@ import { ChipMovementsTable } from './chip-movements-table';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2 } from 'lucide-react';
 import type { User, ChipMovementType } from 'helper';
-import { ChipMovementType as MovementType } from 'helper';
+import { ChipMovementType as MovementType, UserRole } from 'helper';
 
 interface MovementsHistoryDialogProps {
   user: User;
@@ -39,7 +39,8 @@ export function MovementsHistoryDialog({
 }: MovementsHistoryDialogProps) {
   const { exportMovements, getMovements } = useChips();
   const { toast } = useToast();
-  const [dateRange, setDateRange] = useState<DateRangeOption>('sinceLastLoad');
+  const isPlayer = user.role === UserRole.PLAYER;
+  const [dateRange, setDateRange] = useState<DateRangeOption>(isPlayer ? 'sinceLastLoad' : 'all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [movementType, setMovementType] = useState<ChipMovementType | 'ALL'>('ALL');
@@ -50,6 +51,10 @@ export function MovementsHistoryDialog({
 
   useEffect(() => {
     if (!open) return;
+    if (!isPlayer) {
+      setLastLoadChecked(true);
+      return;
+    }
     let cancelled = false;
     setLastLoadChecked(false);
     getMovements(user.id, { page: 1, limit: 1, type: MovementType.SELL_TO_PLAYER })
@@ -61,7 +66,7 @@ export function MovementsHistoryDialog({
       .catch(() => { if (!cancelled) setLastLoadDate(null); })
       .finally(() => { if (!cancelled) setLastLoadChecked(true); });
     return () => { cancelled = true; };
-  }, [open, user.id, getMovements]);
+  }, [open, user.id, isPlayer, getMovements]);
 
   const getDateRange = (): { startDate?: Date; endDate?: Date } => {
     const now = new Date();

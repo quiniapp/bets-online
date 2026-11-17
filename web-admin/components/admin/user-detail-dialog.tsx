@@ -14,7 +14,7 @@ import { ChipLoadDialog } from './chip-load-dialog';
 import { ChipMovementsTable } from './chip-movements-table';
 import { DollarSign, Minus, User, Mail, Calendar, Clock } from 'lucide-react';
 import type { User as UserType } from 'helper';
-import { UserStatus } from 'helper';
+import { UserRole, UserStatus } from 'helper';
 import { useChips } from '@/hooks/useChips';
 
 interface UserDetailDialogProps {
@@ -168,6 +168,12 @@ export function UserDetailDialog({
                 limit={5}
                 onRefresh={refreshTimestamp}
               />
+              {user.role !== UserRole.PLAYER && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Se incluyen las ventas y premios operados por este usuario. En esas filas,
+                  el usuario mostrado es el jugador afectado y el balance corresponde al jugador.
+                </p>
+              )}
             </div>
           </div>
         </DialogContent>
