@@ -2,12 +2,14 @@ import { Router } from 'express';
 import {
   cancelCashierSettlementSchema,
   cashierAccountListQuerySchema,
+  cashierDailyAccountQuerySchema,
   cashierSettlementListQuerySchema,
   createCashierSettlementSchema,
   idParamSchema,
   payCashierSettlementSchema,
   previewCashierSettlementSchema,
   updateCashierCompensationSchema,
+  updateCashierDailyAccountSchema,
   UserRole
 } from 'helper';
 import { authMiddleware, requireRole } from '../../middleware/auth.middleware';
@@ -18,6 +20,39 @@ const router = Router();
 
 router.use(authMiddleware);
 router.use(requireRole(UserRole.OWNER));
+
+// Daily current accounts. Declared before '/:id' routes so "daily" is not
+// interpreted as a cashier uuid.
+router.get(
+  '/daily',
+  validateQuery(cashierDailyAccountQuerySchema),
+  cashierAccountsController.getDailyAccounts.bind(cashierAccountsController)
+);
+
+router.get(
+  '/daily/summary.pdf',
+  validateQuery(cashierDailyAccountQuerySchema),
+  cashierAccountsController.dailySummaryReceipt.bind(cashierAccountsController)
+);
+
+router.get(
+  '/daily/:id/receipt',
+  validateParams(idParamSchema),
+  cashierAccountsController.dailyAccountReceipt.bind(cashierAccountsController)
+);
+
+router.put(
+  '/daily/:id',
+  validateParams(idParamSchema),
+  validate(updateCashierDailyAccountSchema),
+  cashierAccountsController.updateDailyAccount.bind(cashierAccountsController)
+);
+
+router.post(
+  '/daily/liquidate',
+  validateQuery(cashierDailyAccountQuerySchema),
+  cashierAccountsController.liquidateDailyAccounts.bind(cashierAccountsController)
+);
 
 // Cashier accounts list + per-cashier detail
 router.get(

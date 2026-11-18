@@ -37,11 +37,24 @@ jest.mock('../../src/features/cashier-accounts/cashier-accounts.repository', () 
     findSettlements: jest.fn()
   }
 }));
+jest.mock('../../src/features/cashier-accounts/cashier-daily-accounts.repository', () => ({
+  cashierDailyAccountsRepository: {
+    findDailyAccounts: jest.fn(),
+    findDailyAccountById: jest.fn(),
+    findPreviousDailyAccount: jest.fn(),
+    findDailyAccountsFromDate: jest.fn(),
+    upsertDailyAccount: jest.fn(),
+    updateDailyAccountFields: jest.fn(),
+    markDailyLiquidated: jest.fn(),
+    getDailyMovementTotals: jest.fn()
+  }
+}));
 
 import { CashierAccountsDomain } from '../../src/features/cashier-accounts/cashier-accounts.domain';
 import { usersRepository } from '../../src/features/users/users.repository';
 import { balancesRepository } from '../../src/features/chips/balances.repository';
 import { cashierAccountsRepository } from '../../src/features/cashier-accounts/cashier-accounts.repository';
+import { cashierDailyAccountsRepository } from '../../src/features/cashier-accounts/cashier-daily-accounts.repository';
 
 const owner = {
   id: 'owner-1',
@@ -91,6 +104,31 @@ const makeSettlement = (overrides: Record<string, unknown> = {}) => ({
   paymentReference: null,
   createdAt: new Date('2026-01-08'),
   paidAt: null,
+  ...overrides
+});
+
+const makeDailyAccount = (overrides: Record<string, unknown> = {}) => ({
+  id: 'daily-1',
+  cashierId: 'cashier-1',
+  cashierUsername: 'cajero1',
+  date: '2026-11-16',
+  pass: 0,
+  successes: 0,
+  claims: 0,
+  subtotal: 0,
+  previousBalance: 0,
+  collections: 0,
+  paid: 0,
+  total: 0,
+  drag: 0,
+  leave: 0,
+  cashierCommission: 0,
+  bills: 0,
+  revenue: 0,
+  previousDrag: 0,
+  isLiquidated: false,
+  createdAt: new Date('2026-11-16T12:00:00.000Z'),
+  updatedAt: new Date('2026-11-16T12:00:00.000Z'),
   ...overrides
 });
 
@@ -150,8 +188,8 @@ describe('CashierAccountsDomain', () => {
       pendingAmount: 50,
       paidAmount: 40,
       openProfit: 150,
-      openCommission: 30,
-      balanceDue: 80
+      openCommission: 60,
+      balanceDue: 110
     });
     expect(result.summary).toMatchObject({
       totalCashiers: 1,
@@ -160,8 +198,8 @@ describe('CashierAccountsDomain', () => {
       totalProfit: 600,
       pendingAmount: 50,
       paidAmount: 40,
-      openCommission: 30,
-      balanceDue: 80
+      openCommission: 60,
+      balanceDue: 110
     });
   });
 
@@ -191,7 +229,7 @@ describe('CashierAccountsDomain', () => {
         totalSales: 800,
         totalPrizesPaid: 300,
         profit: 500,
-        payableAmount: 125,
+        payableAmount: 200,
         percentage: 25
       })
     );
@@ -207,7 +245,7 @@ describe('CashierAccountsDomain', () => {
         totalSales: 800,
         totalPrizesPaid: 300,
         profit: 500,
-        payableAmount: 125,
+        payableAmount: 200,
         percentage: 25,
         createdBy: 'owner-1'
       })
@@ -352,6 +390,95 @@ describe('CashierAccountsDomain', () => {
     await expect(domain.listAccounts('owner-1')).rejects.toMatchObject({
       statusCode: 403,
       code: ErrorCode.FORBIDDEN
+    });
+  });
+
+  it('calcula la cuenta diaria con comisión sobre las ventas', async () => {
+    (cashierDailyAccountsRepository.findDailyAccounts as jest.Mock).mockResolvedValue([
+      makeDailyAccount({ claims: 100, collections: 50, paid: 20, leave: 30 })
+    ]);
+    (cashierDailyAccountsRepository.findPreviousDailyAccount as jest.Mock).mockResolvedValue(
+      makeDailyAccount({ date: '2026-11-15', total: 500, drag: 600 })
+    );
+    (cashierDailyAccountsRepository.getDailyMovementTotals as jest.Mock).mockResolvedValue(
+      new Map([['cashier-1', { sales: 1000, prizes: 200 }]])
+    );
+    (cashierAccountsRepository.findCompensationModeForPeriod as jest.Mock).mockResolvedValue({
+      id: 'mode-1',
+      cashierId: 'cashier-1',
+      type: CompensationType.PERCENTAGE,
+      percentage: 10,
+      activeFrom: new Date('2026-01-01'),
+      activeTo: null,
+      createdAt: new Date('2026-01-01')
+    });
+    (cashierDailyAccountsRepository.upsertDailyAccount as jest.Mock).mockImplementation(
+      (data: Record<string, unknown>) => Promise.resolve(makeDailyAccount(data))
+    );
+
+    const result = await domain.getDailyAccounts('owner-1', '2026-11-16');
+
+    expect(cashierDailyAccountsRepository.upsertDailyAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cashierId: 'cashier-1',
+        date: '2026-11-16',
+        pass: 1100,
+        successes: 200,
+        claims: 100,
+        cashierCommission: 110,
+        subtotal: 790,
+        previousBalance: 500,
+        collections: 50,
+        paid: 20,
+        total: 1230,
+        drag: 1390,
+        leave: 30,
+        previousDrag: 600,
+        revenue: 790
+      })
+    );
+    expect(result.totals).toMatchObject({
+      pass: 1100,
+      successes: 200,
+      claims: 100,
+      cashierCommission: 110,
+      subtotal: 790,
+      total: 1230
+    });
+  });
+
+  it('marca las cuentas del día como liquidadas', async () => {
+    (cashierDailyAccountsRepository.findDailyAccounts as jest.Mock).mockResolvedValue([
+      makeDailyAccount()
+    ]);
+    (cashierDailyAccountsRepository.findPreviousDailyAccount as jest.Mock).mockResolvedValue(null);
+    (cashierDailyAccountsRepository.getDailyMovementTotals as jest.Mock).mockResolvedValue(
+      new Map([['cashier-1', { sales: 0, prizes: 0 }]])
+    );
+    (cashierAccountsRepository.findCompensationModeForPeriod as jest.Mock).mockResolvedValue(null);
+    (cashierDailyAccountsRepository.upsertDailyAccount as jest.Mock).mockImplementation(
+      (data: Record<string, unknown>) => Promise.resolve(makeDailyAccount(data))
+    );
+
+    const result = await domain.liquidateDailyAccounts('owner-1', '2026-11-16');
+
+    expect(cashierDailyAccountsRepository.markDailyLiquidated).toHaveBeenCalledWith(
+      ['cashier-1'],
+      '2026-11-16'
+    );
+    expect(result.accounts[0].isLiquidated).toBe(true);
+  });
+
+  it('no permite editar una cuenta diaria ya liquidada', async () => {
+    (cashierDailyAccountsRepository.findDailyAccountById as jest.Mock).mockResolvedValue(
+      makeDailyAccount({ isLiquidated: true })
+    );
+
+    await expect(
+      domain.updateDailyAccount('owner-1', 'daily-1', { claims: 10 })
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: ErrorCode.ALREADY_EXISTS
     });
   });
 });

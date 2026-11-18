@@ -205,6 +205,70 @@ export interface CashierAccountsListResult {
 }
 
 /**
+ * Daily current account of a cashier, modeled after the reference operator app.
+ * One row per cashier and calendar day.
+ */
+export interface CashierDailyAccount {
+  id: string;
+  cashierId: string;
+  cashierUsername: string;
+  date: string;
+  pass: number;
+  successes: number;
+  claims: number;
+  subtotal: number;
+  previousBalance: number;
+  collections: number;
+  paid: number;
+  total: number;
+  drag: number;
+  leave: number;
+  cashierCommission: number;
+  bills: number;
+  revenue: number;
+  previousDrag: number;
+  isLiquidated: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Aggregated totals of the daily current accounts for one date.
+ */
+export interface CashierDailyAccountTotals {
+  pass: number;
+  successes: number;
+  claims: number;
+  subtotal: number;
+  previousBalance: number;
+  collections: number;
+  paid: number;
+  total: number;
+  drag: number;
+  leave: number;
+  cashierCommission: number;
+}
+
+/**
+ * Payload of GET /cashier-accounts/daily.
+ */
+export interface CashierDailyAccountsResult {
+  date: string;
+  accounts: CashierDailyAccount[];
+  totals: CashierDailyAccountTotals;
+}
+
+/**
+ * Manual fields the owner can edit on a daily account.
+ */
+export interface UpdateCashierDailyAccountDto {
+  claims?: number;
+  collections?: number;
+  paid?: number;
+  leave?: number;
+}
+
+/**
  * A settlement row enriched with the cashier username for the global list.
  */
 export interface CashierSettlementWithCashier extends CashierSettlement {

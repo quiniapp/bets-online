@@ -70,3 +70,22 @@ export const cashierSettlementListQuerySchema = z.object({
   status: z.nativeEnum(SettlementStatus).optional(),
   search: z.string().max(100).optional()
 });
+
+/**
+ * Date query for the daily current account (YYYY-MM-DD).
+ */
+export const cashierDailyAccountQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+});
+
+/**
+ * Manual adjustments on a daily current account.
+ */
+export const updateCashierDailyAccountSchema = z.object({
+  claims: z.number().finite().optional(),
+  collections: z.number().finite().optional(),
+  paid: z.number().finite().optional(),
+  leave: z.number().finite().optional()
+}).refine(data => Object.values(data).some(value => value !== undefined), {
+  message: 'At least one field is required'
+});
