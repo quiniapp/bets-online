@@ -156,6 +156,78 @@ export class CashierAccountsController {
     }
   }
 
+  async getDailyAccounts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const date = req.query.date as string;
+      const result = await cashierAccountsDomain.getDailyAccounts(req.user!.userId, date);
+      return res.json(ApiResponseBuilder.success(result));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async updateDailyAccount(req: Request, res: Response, next: NextFunction) {
+    try {
+      const account = await cashierAccountsDomain.updateDailyAccount(
+        req.user!.userId,
+        req.params.id,
+        {
+          claims: req.body.claims,
+          collections: req.body.collections,
+          paid: req.body.paid,
+          leave: req.body.leave
+        }
+      );
+      return res.json(ApiResponseBuilder.success(account));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async liquidateDailyAccounts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const date = req.query.date as string;
+      const result = await cashierAccountsDomain.liquidateDailyAccounts(
+        req.user!.userId,
+        date
+      );
+      return res.json(ApiResponseBuilder.success(result));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async dailyAccountReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buffer, filename } = await cashierAccountsDomain.getDailyAccountReceipt(
+        req.user!.userId,
+        req.params.id
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async dailySummaryReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const date = req.query.date as string;
+      const { buffer, filename } = await cashierAccountsDomain.getDailySummaryReceipt(
+        req.user!.userId,
+        date
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async paySettlement(req: Request, res: Response, next: NextFunction) {
     try {
       const settlement = await cashierAccountsDomain.paySettlement(

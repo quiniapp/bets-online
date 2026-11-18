@@ -2,6 +2,8 @@ import {
   CashierAccountMovement,
   CashierAccountSummary,
   CashierCompensationMode,
+  CashierDailyAccount,
+  CashierDailyAccountTotals,
   CashierSettlement,
   CashierSettlementPreview,
   CompensationType,
@@ -16,9 +18,15 @@ import {
   cashierAccountsRepository,
   MovementTotals
 } from './cashier-accounts.repository';
+import { cashierDailyAccountsRepository } from './cashier-daily-accounts.repository';
+import { config } from '../../config';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
 import { generateSettlementReceiptPdf } from '../../utils/settlement-receipt.utils';
+import {
+  generateCashierDailyAccountPdf,
+  generateDailyAccountsSummaryPdf
+} from '../../utils/cashier-daily-account-pdf.utils';
 
 const roundMoney = (value: number): number =>
   Math.round((value + Number.EPSILON) * 100) / 100;
@@ -286,6 +294,110 @@ export class CashierAccountsDomain {
     };
   }
 
+  async getDailyAccounts(requesterId: string, date: string) {
+    await this.assertOwner(requesterId);
+    const normalizedDate = this.normalizeDateOnly(date);
+    const accounts = await this.recalculateDailyAccounts(requesterId, normalizedDate);
+    return {
+      date: normalizedDate,
+      accounts,
+      totals: this.sumDailyAccounts(accounts)
+    };
+  }
+
+  async recalculateDailyAccounts(requesterId: string, date: string): Promise<CashierDailyAccount[]> {
+    const cashiers = await this.getOwnerCashiers(requesterId);
+    const accounts: CashierDailyAccount[] = [];
+
+    for (const cashier of cashiers) {
+      accounts.push(await this.buildDailyAccount(cashier, date));
+    }
+
+    return accounts;
+  }
+
+  async updateDailyAccount(
+    requesterId: string,
+    id: string,
+    data: { claims?: number; collections?: number; paid?: number; leave?: number }
+  ) {
+    await this.assertOwner(requesterId);
+    const account = await cashierDailyAccountsRepository.findDailyAccountById(id);
+    if (!account) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Daily account not found');
+    }
+
+    const cashier = await this.getCashierInOwnerTree(requesterId, account.cashierId);
+    if (account.isLiquidated) {
+      throw new AppError(
+        409,
+        ErrorCode.ALREADY_EXISTS,
+        'La cuenta del día ya está liquidada; no se puede editar'
+      );
+    }
+
+    await cashierDailyAccountsRepository.updateDailyAccountFields(id, data);
+
+    // Recalcular el día y los días posteriores ya existentes para propagar
+    // saldo anterior / arrastre.
+    const rows = await cashierDailyAccountsRepository.findDailyAccountsFromDate(
+      cashier.id,
+      account.date
+    );
+    for (const row of rows) {
+      await this.buildDailyAccount(cashier, row.date);
+    }
+
+    const updated = await cashierDailyAccountsRepository.findDailyAccountById(id);
+    if (!updated) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Daily account not found');
+    }
+    return updated;
+  }
+
+  async liquidateDailyAccounts(requesterId: string, date: string) {
+    await this.assertOwner(requesterId);
+    const normalizedDate = this.normalizeDateOnly(date);
+    const cashiers = await this.getOwnerCashiers(requesterId);
+    const accounts = await this.recalculateDailyAccounts(requesterId, normalizedDate);
+    await cashierDailyAccountsRepository.markDailyLiquidated(
+      cashiers.map(cashier => cashier.id),
+      normalizedDate
+    );
+
+    return {
+      date: normalizedDate,
+      accounts: accounts.map(account => ({ ...account, isLiquidated: true })),
+      totals: this.sumDailyAccounts(accounts)
+    };
+  }
+
+  async getDailyAccountReceipt(requesterId: string, id: string) {
+    await this.assertOwner(requesterId);
+    const account = await cashierDailyAccountsRepository.findDailyAccountById(id);
+    if (!account) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Daily account not found');
+    }
+    await this.getCashierInOwnerTree(requesterId, account.cashierId);
+
+    return {
+      buffer: generateCashierDailyAccountPdf(account),
+      filename: `cuenta-corriente-${account.cashierUsername}-${account.date}.pdf`
+    };
+  }
+
+  async getDailySummaryReceipt(requesterId: string, date: string) {
+    const result = await this.getDailyAccounts(requesterId, date);
+    return {
+      buffer: generateDailyAccountsSummaryPdf({
+        date: result.date,
+        accounts: result.accounts,
+        totals: result.totals
+      }),
+      filename: `resumen-cuenta-corriente-${result.date}.pdf`
+    };
+  }
+
   async paySettlement(
     requesterId: string,
     settlementId: string,
@@ -395,8 +507,8 @@ export class CashierAccountsDomain {
       const openSales = roundMoney(Math.max(0, totalSales - settledSales));
       const openPrizes = roundMoney(Math.max(0, totalPrizes - settledPrizes));
       const openProfit = roundMoney(openSales - openPrizes);
-      const openCommission = this.calculatePayable(
-        openProfit,
+      const openCommission = this.calculateCommission(
+        openSales,
         activeMode?.percentage ?? null
       );
 
@@ -463,7 +575,11 @@ export class CashierAccountsDomain {
     const totalSales = roundMoney(totals.totalSales);
     const totalPrizes = roundMoney(totals.totalPrizes);
     const profit = roundMoney(totalSales - totalPrizes);
-    const payableAmount = this.calculatePayable(profit, compensation?.percentage ?? null);
+    // La comisión se calcula sobre las ventas (pase), no sobre la ganancia.
+    const payableAmount = this.calculateCommission(
+      totalSales,
+      compensation?.percentage ?? null
+    );
 
     return {
       cashierId,
@@ -483,13 +599,125 @@ export class CashierAccountsDomain {
     };
   }
 
-  private calculatePayable(profit: number, percentage: number | null | undefined): number {
-    if (!percentage || percentage <= 0 || profit <= 0) return 0;
-    return roundMoney((profit * percentage) / 100);
+  private calculateCommission(baseAmount: number, percentage: number | null | undefined): number {
+    if (!percentage || percentage <= 0 || baseAmount <= 0) return 0;
+    return roundMoney((baseAmount * percentage) / 100);
   }
 
   private normalizeDate(value: Date | string): Date {
     return value instanceof Date ? value : new Date(value);
+  }
+
+  private normalizeDateOnly(value: string): string {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, 'Date must be YYYY-MM-DD');
+    }
+    const [year, month, day] = value.split('-').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day
+    ) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, 'Invalid date');
+    }
+    return value;
+  }
+
+  private async buildDailyAccount(cashier: User, date: string): Promise<CashierDailyAccount> {
+    const existingRows = await cashierDailyAccountsRepository.findDailyAccounts([cashier.id], date);
+    const existing = existingRows[0] ?? null;
+    const previous = await cashierDailyAccountsRepository.findPreviousDailyAccount(
+      cashier.id,
+      date
+    );
+    const movementTotals = await cashierDailyAccountsRepository.getDailyMovementTotals(
+      [cashier.id],
+      date,
+      config.timezone
+    );
+    const totals = movementTotals.get(cashier.id) ?? { sales: 0, prizes: 0 };
+
+    const start = new Date(`${date}T00:00:00.000Z`);
+    const end = new Date(`${date}T23:59:59.999Z`);
+    const mode = await cashierAccountsRepository.findCompensationModeForPeriod(
+      cashier.id,
+      start,
+      end
+    );
+    const percentage = mode?.percentage ?? 0;
+
+    const claims = existing?.claims ?? 0;
+    const collections = existing?.collections ?? 0;
+    const paid = existing?.paid ?? 0;
+    const leave = existing?.leave ?? 0;
+
+    // Fórmula de la app de referencia: la comisión se calcula sobre el pase
+    // (ventas + reclamos positivos), no sobre la ganancia.
+    const pass = roundMoney(totals.sales + Math.max(claims, 0));
+    const commission = this.calculateCommission(pass, percentage);
+    const subtotal = roundMoney(
+      pass - commission - totals.prizes + Math.min(claims, 0)
+    );
+    const previousBalance = previous?.total ?? 0;
+    const previousDrag = previous?.drag ?? 0;
+    const drag = roundMoney(previousDrag + subtotal);
+    const total = roundMoney(previousBalance + subtotal - collections + paid - leave);
+    const bills = previous?.bills ?? 0;
+
+    const saved = await cashierDailyAccountsRepository.upsertDailyAccount({
+      cashierId: cashier.id,
+      date,
+      pass,
+      successes: roundMoney(totals.prizes),
+      claims,
+      subtotal,
+      previousBalance,
+      collections,
+      paid,
+      total,
+      drag,
+      leave,
+      cashierCommission: commission,
+      bills,
+      revenue: subtotal,
+      previousDrag,
+      isLiquidated: existing?.isLiquidated ?? false
+    });
+
+    return { ...saved, cashierUsername: cashier.username };
+  }
+
+  private sumDailyAccounts(accounts: CashierDailyAccount[]): CashierDailyAccountTotals {
+    const totals: CashierDailyAccountTotals = {
+      pass: 0,
+      successes: 0,
+      claims: 0,
+      subtotal: 0,
+      previousBalance: 0,
+      collections: 0,
+      paid: 0,
+      total: 0,
+      drag: 0,
+      leave: 0,
+      cashierCommission: 0
+    };
+
+    for (const account of accounts) {
+      totals.pass = roundMoney(totals.pass + account.pass);
+      totals.successes = roundMoney(totals.successes + account.successes);
+      totals.claims = roundMoney(totals.claims + account.claims);
+      totals.subtotal = roundMoney(totals.subtotal + account.subtotal);
+      totals.previousBalance = roundMoney(totals.previousBalance + account.previousBalance);
+      totals.collections = roundMoney(totals.collections + account.collections);
+      totals.paid = roundMoney(totals.paid + account.paid);
+      totals.total = roundMoney(totals.total + account.total);
+      totals.drag = roundMoney(totals.drag + account.drag);
+      totals.leave = roundMoney(totals.leave + account.leave);
+      totals.cashierCommission = roundMoney(totals.cashierCommission + account.cashierCommission);
+    }
+
+    return totals;
   }
 
   private assertValidPeriod(periodStart: Date, periodEnd: Date): void {

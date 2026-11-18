@@ -33,7 +33,7 @@ comisión se registra como un hecho administrativo: **no mueve fichas ni saldos*
 | **Venta** | Movimiento `SELL_TO_PLAYER` donde el cajero es `related_user_id`. |
 | **Premio** | Movimiento `PRIZE` pagado por el cajero. En el movimiento el importe es negativo. |
 | **Ganancia** | Ventas menos premios del período o del histórico. |
-| **Comisión** | Porcentaje de la ganancia que le corresponde al cajero. |
+| **Comisión** | Porcentaje de las ventas que le corresponde al cajero. |
 | **Liquidación** | Snapshot de un período con ventas, premios, ganancia, porcentaje y comisión a pagar. |
 | **Comisión abierta** | Comisión estimada de movimientos que todavía no fueron liquidados. |
 | **Pago** | Marca una liquidación como pagada. No genera movimientos de fichas. |
@@ -112,47 +112,54 @@ Solo se consideran movimientos de fichas cuyo `related_user_id` es el cajero:
 ventas   = Σ amount de movimientos SELL_TO_PLAYER
 premios  = Σ (-amount) de movimientos PRIZE
 ganancia = ventas - premios
-comisión = max(0, ganancia) × porcentaje / 100
+comisión = ventas × porcentaje / 100
 ```
 
 Los importes se redondean a **2 decimales**.
+
+La comisión se calcula **sobre las ventas (pase)**, no sobre la ganancia. Los
+premios se informan por separado y no reducen la comisión del cajero; en la
+cuenta diaria sí afectan el subtotal y el saldo a liquidar.
 
 Notas:
 
 - En los movimientos `PRIZE` el importe se guarda en negativo; por eso se
   invierte el signo para obtener el premio pagado.
-- Si la ganancia es negativa o cero, la comisión es **0**. Las pérdidas no se
-  arrastran automáticamente a períodos futuros.
+- Si no hay ventas, la comisión es **0**, aunque haya premios.
 - No se incluyen en la cuenta del cajero los movimientos de juegos de proveedor
   (`GAME_BET`, `GAME_WIN`, `GAME_REFUND`) porque no están atribuidos a un
   cajero.
 - Tampoco se incluyen premios automáticos de juegos nativos que no tengan
   `related_user_id`.
 
-### 4.2 Ejemplo con ganancia
+### 4.2 Ejemplo con ventas y premios
 
 | Concepto | Importe |
 |---|---:|
 | Ventas del período | 150.000,00 |
 | Premios pagados | 90.000,00 |
 | Ganancia | 60.000,00 |
-| Porcentaje | 25% |
-| **Comisión a pagar** | **15.000,00** |
+| Porcentaje sobre ventas | 25% |
+| **Comisión a pagar** | **37.500,00** |
 
-### 4.3 Ejemplo con pérdida
+### 4.3 Ejemplo con premios mayores a las ventas
 
 | Concepto | Importe |
 |---|---:|
 | Ventas del período | 50.000,00 |
 | Premios pagados | 70.000,00 |
 | Ganancia | -20.000,00 |
-| Porcentaje | 25% |
-| **Comisión a pagar** | **0,00** |
+| Porcentaje sobre ventas | 25% |
+| **Comisión a pagar** | **12.500,00** |
 
-### 4.4 Período sin movimientos
+La comisión no se pone en cero por una ganancia negativa: se calcula igual sobre
+las ventas. En la cuenta diaria, el exceso de premios reduce el subtotal y el
+saldo a liquidar.
 
-Si no hay ventas ni premios, la ganancia y la comisión son `0`. En el backoffice
-el botón **Crear liquidación** se deshabilita para evitar liquidaciones vacías.
+### 4.4 Período sin ventas
+
+Si no hay ventas, la comisión es `0`, aunque haya premios. En el backoffice el
+botón **Crear liquidación** se deshabilita para evitar liquidaciones vacías.
 
 ---
 
@@ -168,7 +175,7 @@ El resumen de cada cajero incluye:
 | `pendingAmount` | Suma de `payableAmount` de liquidaciones `PENDING`. |
 | `paidAmount` | Suma de `payableAmount` de liquidaciones `PAID`. |
 | `openProfit` | Ganancia histórica menos la ganancia ya incluida en liquidaciones no canceladas. |
-| `openCommission` | Estimación de comisión sobre `openProfit` usando la modalidad vigente. |
+| `openCommission` | Estimación de comisión sobre las ventas abiertas usando la modalidad vigente. |
 | `balanceDue` | `pendingAmount + openCommission`. |
 | `chipBalance` | Balance de fichas actual del cajero (informativo). |
 | `lastSettlementAt` | Fecha de la última liquidación no cancelada. |
@@ -187,14 +194,44 @@ premiosLiquidados = Σ totalPrizesPaid de liquidaciones no canceladas
 
 ventasAbiertas  = max(0, totalSales - ventasLiquidadas)
 premiosAbiertos = max(0, totalPrizes - premiosLiquidados)
-gananciaAbierta = ventasAbiertas - premiosAbiertos
-comisionAbierta = max(0, gananciaAbierta) × porcentajeVigente / 100
+comisionAbierta = max(0, ventasAbiertas) × porcentajeVigente / 100
 ```
 
 Por eso el saldo a favor puede mostrar dos componentes:
 
 - **liquidado**: ya existe una liquidación pendiente;
 - **abierto**: todavía no se creó la liquidación.
+
+### 5.2 Cuenta corriente diaria
+
+Además de las liquidaciones por período, el módulo incluye una **cuenta
+corriente diaria** por cajero, equivalente a la app de referencia. Se guarda una
+fila por cajero y fecha en `cashier_current_accounts`.
+
+Fórmulas:
+
+```text
+pase           = ventas del día + max(reclamos, 0)
+comisión       = pase × porcentaje / 100
+subtotal       = pase - comisión - premios pagados + min(reclamos, 0)
+saldo anterior = total del día anterior
+arrastre       = arrastre anterior + subtotal
+total          = saldo anterior + subtotal - cobros + pagos - deje
+```
+
+Campos editables por el propietario:
+
+- **Reclamos:** ajustes positivos o negativos.
+- **Cobros:** dinero cobrado al cajero.
+- **Pagos:** dinero pagado al cajero.
+- **Deje:** importe que se deja el cajero.
+
+La comisión se calcula sobre el pase (ventas). Los premios pagados por el
+cajero se restan del subtotal, pero no de la comisión. Las apuestas (`LOSS`) y
+los premios de juego sin `related_user_id` no entran en la cuenta diaria.
+
+El botón **Liquidar día** marca todas las cuentas de esa fecha como
+`is_liquidated = true` y bloquea su edición.
 
 ---
 
@@ -433,12 +470,37 @@ x-csrf-token: ...
 
 Solo se puede cancelar una liquidación pendiente.
 
+### 7.10 Cuenta corriente diaria
+
+```http
+GET  /api/cashier-accounts/daily?date=2026-11-16
+PUT  /api/cashier-accounts/daily/:id
+POST /api/cashier-accounts/daily/liquidate?date=2026-11-16
+GET  /api/cashier-accounts/daily/:id/receipt
+GET  /api/cashier-accounts/daily/summary.pdf?date=2026-11-16
+```
+
+- `GET /daily` calcula y devuelve las cuentas del día para todos los cajeros.
+- `PUT /daily/:id` actualiza reclamos, cobros, pagos y deje, y recalcula el día
+  y los días posteriores existentes.
+- `POST /daily/liquidate` marca el día como liquidado.
+- Los endpoints de PDF generan la cuenta individual y el resumen del día.
+
 ---
 
 ## 8. Interfaz del backoffice
 
 Ruta: **`/admin/cashier-accounts`**. El ítem del menú solo aparece para el rol
 `OWNER`.
+
+La página tiene tres pestañas:
+
+1. **Cuenta corriente diaria** (principal): tabla por cajero/día con pase,
+   aciertos, reclamos, subtotal, saldo anterior, cobros, pagos, total, arrastre,
+   deje, comisión y estado. Permite editar reclamos, cobros, pagos y deje,
+   guardar los cambios, liquidar el día y descargar PDFs.
+2. **Cuentas de cajeros:** resumen histórico y liquidaciones por período.
+3. **Liquidaciones:** historial de liquidaciones por período.
 
 ### 8.1 Tarjetas de resumen
 
@@ -565,9 +627,11 @@ Los tests cubren:
   paneles de fichas quedan fuera de alcance.
 - No hay pagos parciales ni en cuotas. El estado `PARTIALLY_PAID` existe en el
   enum pero el flujo actual paga el total.
-- Las pérdidas de un período no se acumulan automáticamente para el siguiente.
+- La cuenta diaria no calcula el deje automáticamente por un segundo porcentaje:
+  el deje se ingresa manualmente (como en el modo manual de la app de referencia).
+- No hay liquidación automática por cron: la cuenta se recalcula al abrir la
+  pestaña/Actualizar y el día se liquida manualmente.
 - El pago de la comisión no genera un movimiento de fichas ni afecta el balance.
-- No hay liquidación automática por cron: la crea el propietario.
 - Los juegos de proveedor no se atribuyen a un cajero, por lo que no entran en
   la fórmula de comisión.
 - No hay campo de moneda: los importes usan la unidad de fichas/valor que ya
