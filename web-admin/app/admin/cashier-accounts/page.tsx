@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { useDebounce } from "@/hooks/useDebounce"
 import { useCashierAccounts, useCashierSettlements } from "@/hooks/useCashierAccounts"
+import { CashierDailyAccounts } from "@/components/admin/cashier-daily-accounts"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
 import {
@@ -542,11 +543,16 @@ export default function CashierAccountsPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="accounts" className="space-y-4">
+        <Tabs defaultValue="daily" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="daily">Cuenta corriente diaria</TabsTrigger>
             <TabsTrigger value="accounts">Cuentas de cajeros</TabsTrigger>
             <TabsTrigger value="settlements">Liquidaciones</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="daily" className="space-y-4">
+            <CashierDailyAccounts />
+          </TabsContent>
 
           <TabsContent value="accounts" className="space-y-4">
             <Card>
