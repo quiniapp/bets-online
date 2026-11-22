@@ -5,6 +5,7 @@ import ChipMovementModel from '../../features/chips/chip-movement.model';
 import CashierCompensationModeModel from '../../features/chips/cashier-compensation-mode.model';
 import CashierSettlementModel from '../../features/chips/cashier-settlement.model';
 import CashierCurrentAccountModel from '../../features/cashier-accounts/cashier-current-account.model';
+import CashierCollectionModel from '../../features/cashier-accounts/cashier-collection.model';
 import ChipPanelModel from '../../features/chips/chip-panel.model';
 import RecoveryModel from '../../features/auth/recovery.model';
 import UserGameProviderBlocklistModel from '../../features/users/user-game-provider-blocklist.model';
@@ -83,6 +84,22 @@ UserModel.hasMany(CashierSettlementModel, {
 });
 
 CashierSettlementModel.belongsTo(UserModel, {
+  foreignKey: 'cashierId',
+  as: 'cashier'
+});
+
+// CashierSettlement -> CashierCollections (1:N)
+CashierSettlementModel.hasMany(CashierCollectionModel, {
+  foreignKey: 'settlementId',
+  as: 'collections'
+});
+
+CashierCollectionModel.belongsTo(CashierSettlementModel, {
+  foreignKey: 'settlementId',
+  as: 'settlement'
+});
+
+CashierCollectionModel.belongsTo(UserModel, {
   foreignKey: 'cashierId',
   as: 'cashier'
 });
@@ -310,6 +327,7 @@ export {
   CashierCompensationModeModel,
   CashierSettlementModel,
   CashierCurrentAccountModel,
+  CashierCollectionModel,
   ChipPanelModel,
   RecoveryModel,
   UserGameProviderBlocklistModel,
@@ -336,6 +354,7 @@ export default {
   CashierCompensationModeModel,
   CashierSettlementModel,
   CashierCurrentAccountModel,
+  CashierCollectionModel,
   ChipPanelModel,
   RecoveryModel,
   UserGameProviderBlocklistModel,

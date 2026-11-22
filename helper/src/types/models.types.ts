@@ -117,16 +117,32 @@ export interface CreateCompensationModeDto {
 }
 
 /**
- * Cashier Settlement (for percentage model)
+ * Cashier Settlement.
+ *
+ * Flujo semanal (período libre): el owner entrega fichas al cajero, el cajero
+ * las vende a sus jugadores y al cerrar el período el owner liquida:
+ *   comisión = venta de fichas × %
+ *   subtotal = venta de fichas − comisión  (lo que el cajero le debe al owner)
+ *   total    = saldo anterior (deuda arrastrada) + subtotal
+ *   arrastre = total − cobro               (pasa a la liquidación siguiente)
+ * Además se le retiran al cajero las fichas de premios (el owner le paga el
+ * premio al jugador) y, opcionalmente, las fichas no vendidas que no se le dejen.
+ *
+ * Los campos marcados como "null en liquidaciones viejas" no existían en el
+ * modelo anterior (comisión pagada al cajero) y quedan en null para esas filas.
  */
 export interface CashierSettlement {
   id: string;
   cashierId: string;
   periodStart: Date;
   periodEnd: Date;
+  /** Venta de fichas del período */
   totalSales: number;
+  /** Premios del período (fichas que el cajero retiró a jugadores ganadores) */
   totalPrizesPaid: number;
+  /** Ganancia del owner: subtotal − premios */
   profit: number;
+  /** Comisión del cajero (se mantiene por compatibilidad; igual a commission) */
   payableAmount: number;
   status: SettlementStatus;
   compensationType?: CompensationType | null;
@@ -137,6 +153,30 @@ export interface CashierSettlement {
   paymentReference?: string | null;
   createdAt: Date;
   paidAt?: Date | null;
+  /** Comisión del cajero (null en liquidaciones viejas) */
+  commission: number | null;
+  /** Venta de fichas − comisión (null en liquidaciones viejas) */
+  subtotal: number | null;
+  /** Deuda arrastrada de la liquidación anterior */
+  previousDebt: number | null;
+  /** previousDebt + subtotal */
+  totalDue: number | null;
+  /** Total cobrado al cajero por esta liquidación (incluye cobros posteriores) */
+  collected: number | null;
+  /** totalDue − collected; negativo = saldo a favor del cajero */
+  debtCarried: number | null;
+  /** Fichas que el owner le entregó al cajero en el período */
+  chipsDelivered: number | null;
+  /** Saldo de fichas del cajero al momento de liquidar (antes de retirar) */
+  chipBalanceBefore: number | null;
+  /** Fichas de premios retiradas al cajero */
+  prizeChipsRecovered: number | null;
+  /** Fichas no vendidas al momento de liquidar */
+  unsoldChips: number | null;
+  /** Fichas no vendidas que se le dejan al cajero (deje) */
+  chipsLeft: number | null;
+  /** Fichas no vendidas retiradas al cajero */
+  unsoldChipsRecovered: number | null;
 }
 
 /**
@@ -158,8 +198,8 @@ export interface CashierCompensationSummary {
 }
 
 /**
- * Current account of a cashier with the owner: chip sales, prizes paid,
- * commission accrued and the amount the owner still owes.
+ * Situación de un cajero con el owner.
+ * "open*" = movimientos todavía no liquidados.
  */
 export interface CashierAccountSummary {
   cashierId: string;
@@ -168,18 +208,26 @@ export interface CashierAccountSummary {
   firstName?: string | null;
   lastName?: string | null;
   status: UserStatus;
+  /** Fichas en poder del cajero ahora */
   chipBalance: number;
   compensation: CashierCompensationSummary | null;
+  /** Histórico (liquidado + abierto) */
   totalSales: number;
   totalPrizes: number;
-  profit: number;
-  pendingAmount: number;
-  paidAmount: number;
-  openProfit: number;
+  totalCommission: number;
+  /** Total cobrado al cajero en todas las liquidaciones */
+  totalCollected: number;
+  /** Sin liquidar */
+  openSales: number;
+  openPrizes: number;
   openCommission: number;
+  openSubtotal: number;
+  /** Deuda arrastrada de la última liquidación */
+  debt: number;
+  /** debt + openSubtotal: lo que el cajero le debe hoy al owner */
   balanceDue: number;
   lastSettlementAt: Date | null;
-  lastPaidAt: Date | null;
+  lastSettlementEnd: Date | null;
 }
 
 /**
@@ -189,11 +237,12 @@ export interface CashierAccountsSummary {
   totalCashiers: number;
   totalSales: number;
   totalPrizes: number;
-  totalProfit: number;
-  pendingAmount: number;
-  paidAmount: number;
-  openCommission: number;
+  totalCommission: number;
+  totalCollected: number;
+  openSubtotal: number;
+  debt: number;
   balanceDue: number;
+  chipBalance: number;
 }
 
 /**
@@ -205,8 +254,8 @@ export interface CashierAccountsListResult {
 }
 
 /**
- * Daily current account of a cashier, modeled after the reference operator app.
- * One row per cashier and calendar day.
+ * Daily current account of a cashier (modelo anterior, ya no se usa en la UI).
+ * @deprecated reemplazado por la cuenta corriente por período.
  */
 export interface CashierDailyAccount {
   id: string;
@@ -233,7 +282,7 @@ export interface CashierDailyAccount {
 }
 
 /**
- * Aggregated totals of the daily current accounts for one date.
+ * @deprecated reemplazado por la cuenta corriente por período.
  */
 export interface CashierDailyAccountTotals {
   pass: number;
@@ -250,7 +299,7 @@ export interface CashierDailyAccountTotals {
 }
 
 /**
- * Payload of GET /cashier-accounts/daily.
+ * @deprecated reemplazado por la cuenta corriente por período.
  */
 export interface CashierDailyAccountsResult {
   date: string;
@@ -259,7 +308,7 @@ export interface CashierDailyAccountsResult {
 }
 
 /**
- * Manual fields the owner can edit on a daily account.
+ * @deprecated reemplazado por la cuenta corriente por período.
  */
 export interface UpdateCashierDailyAccountDto {
   claims?: number;
@@ -276,15 +325,39 @@ export interface CashierSettlementWithCashier extends CashierSettlement {
 }
 
 /**
- * Movement included in a cashier account statement.
+ * Tipo de renglón en la cuenta corriente de un cajero.
+ */
+export type CashierLedgerKind =
+  | 'CHIPS_DELIVERED'        // owner → cajero
+  | 'CHIPS_RETURNED'         // retiro manual de fichas al cajero
+  | 'SALE'                   // cajero → jugador (venta de fichas)
+  | 'PRIZE'                  // jugador → cajero (fichas de premio)
+  | 'PLAYER_RETURN'          // otros retiros de fichas a jugadores (pérdida / retiro)
+  | 'PRIZE_CHIPS_RECOVERED'  // liquidación: se retiran fichas de premios
+  | 'UNSOLD_CHIPS_RECOVERED' // liquidación: se retiran fichas no vendidas
+  | 'SETTLEMENT_REVERSAL'    // anulación de liquidación: se devuelven fichas
+  | 'SETTLEMENT'             // liquidación: subtotal que el cajero debe
+  | 'COLLECTION'             // cobro al cajero
+  | 'OTHER';
+
+/**
+ * Renglón de la cuenta corriente de un cajero. Combina movimientos de fichas
+ * y movimientos de dinero (liquidaciones y cobros).
  */
 export interface CashierAccountMovement {
   id: string;
-  playerId: string;
+  kind: CashierLedgerKind;
+  type: ChipMovementType | null;
+  playerId: string | null;
   playerUsername: string | null;
-  type: ChipMovementType;
+  /** Efecto en el saldo de fichas del cajero (+ entra, − sale) */
+  chips: number;
+  /** Efecto en la deuda del cajero con el owner (+ debe más, − debe menos) */
+  money: number;
+  /** Monto original del movimiento de fichas (compatibilidad) */
   amount: number;
   description?: string | null;
+  settlementId?: string | null;
   createdAt: Date;
 }
 
@@ -298,17 +371,80 @@ export interface CashierAccountDetail {
 }
 
 /**
- * Result of previewing a settlement before creating it.
+ * Cálculo de la liquidación de un cajero para un período (todavía sin guardar).
  */
 export interface CashierSettlementPreview {
   cashierId: string;
+  cashierUsername?: string;
   periodStart: Date;
   periodEnd: Date;
   compensation: CashierCompensationSummary | null;
+  /** Fichas entregadas por el owner en el período */
+  chipsDelivered: number;
+  /** Venta de fichas */
+  totalSales: number;
+  /** Premios */
+  totalPrizes: number;
+  commission: number;
+  /** totalSales − commission */
+  subtotal: number;
+  /** Deuda arrastrada de la última liquidación (saldo anterior) */
+  previousDebt: number;
+  /** previousDebt + subtotal */
+  totalDue: number;
+  /** Fichas que tiene hoy el cajero */
+  chipBalance: number;
+  /** Fichas de premios que se le van a retirar (premios, limitado al saldo) */
+  prizeChipsToRecover: number;
+  /** chipBalance − prizeChipsToRecover */
+  unsoldChips: number;
+  /** subtotal − premios: ganancia del owner */
+  profit: number;
+  /** Igual a commission (compatibilidad) */
+  payableAmount: number;
+  /** Fin de la última liquidación del cajero */
+  lastSettlementEnd: Date | null;
+  /**
+   * Si hay un hueco sin liquidar entre la última liquidación y el inicio del
+   * período elegido, la fecha desde la que hay movimientos sin liquidar.
+   */
+  unsettledSince: Date | null;
+}
+
+/**
+ * Fila de la cuenta corriente por período: el cálculo en vivo si el período
+ * todavía no se liquidó, o la liquidación guardada si ya se liquidó.
+ */
+export interface CashierPeriodAccount {
+  preview: CashierSettlementPreview;
+  settlement: CashierSettlement | null;
+}
+
+/**
+ * Totales de la cuenta corriente por período.
+ */
+export interface CashierPeriodAccountTotals {
+  chipsDelivered: number;
   totalSales: number;
   totalPrizes: number;
-  profit: number;
-  payableAmount: number;
+  commission: number;
+  subtotal: number;
+  previousDebt: number;
+  totalDue: number;
+  collected: number;
+  debtCarried: number;
+  unsoldChips: number;
+  chipsLeft: number;
+}
+
+/**
+ * Payload of GET /cashier-accounts/period.
+ */
+export interface CashierPeriodAccountsResult {
+  periodStart: Date;
+  periodEnd: Date;
+  accounts: CashierPeriodAccount[];
+  totals: CashierPeriodAccountTotals;
 }
 
 /**
@@ -320,20 +456,105 @@ export interface UpdateCashierCompensationDto {
 }
 
 /**
- * Create a settlement for a cashier period.
+ * Liquidar un período de un cajero.
  */
 export interface CreateCashierSettlementDto {
   periodStart: Date;
   periodEnd: Date;
+  /** Monto cobrado al cajero. Por defecto, el total (saldo anterior + subtotal). */
+  collected?: number;
+  /** Fichas no vendidas que se le dejan al cajero. Por defecto, todas. */
+  chipsLeft?: number;
+  paymentReference?: string;
   notes?: string;
 }
 
 /**
- * Pay a pending settlement.
+ * Registrar un cobro posterior sobre la última liquidación de un cajero.
+ */
+export interface CollectCashierSettlementDto {
+  amount: number;
+  paymentReference?: string;
+  notes?: string;
+}
+
+/**
+ * Cobro al cajero.
+ */
+export interface CashierCollection {
+  id: string;
+  settlementId: string;
+  cashierId: string;
+  amount: number;
+  paymentReference: string | null;
+  createdBy: string | null;
+  createdAt: Date;
+}
+
+/**
+ * @deprecated el cajero ya no cobra comisión del owner: se usa CollectCashierSettlementDto.
  */
 export interface PayCashierSettlementDto {
   paymentReference?: string;
   notes?: string;
+}
+
+/**
+ * Balance y ganancias del owner.
+ */
+export interface OwnerAccountTotals {
+  settlements: number;
+  totalSales: number;
+  commission: number;
+  /** venta − comisión: ingreso neto del owner */
+  subtotal: number;
+  /** Premios que pagó el owner a los jugadores */
+  prizes: number;
+  /** subtotal − premios */
+  profit: number;
+  /** Cobros a cajeros */
+  collected: number;
+  /** cobros − premios: caja neta del período */
+  cashFlow: number;
+  chipsDelivered: number;
+  chipsRecovered: number;
+}
+
+export interface OwnerAccountMovement {
+  id: string;
+  kind: 'SETTLEMENT' | 'COLLECTION' | 'PRIZES';
+  cashierId: string;
+  cashierUsername: string;
+  settlementId: string;
+  /** Efecto en la caja del owner (+ entra, − sale); 0 para SETTLEMENT */
+  cash: number;
+  /** Efecto en la ganancia del owner */
+  profit: number;
+  description: string;
+  createdAt: Date;
+}
+
+export interface OwnerAccountSummary {
+  periodStart: Date;
+  periodEnd: Date;
+  /** Liquidaciones cerradas dentro del rango */
+  settled: OwnerAccountTotals;
+  /** Cobros registrados dentro del rango (incluye cobros de liquidaciones anteriores) */
+  collectedInRange: number;
+  /** Situación actual, independiente del rango */
+  current: {
+    /** Lo que los cajeros deben hoy (deuda arrastrada) */
+    cashierDebt: number;
+    /** Ventas aún sin liquidar, menos comisión */
+    openSubtotal: number;
+    openSales: number;
+    openPrizes: number;
+    /** Fichas en poder de cajeros */
+    cashierChips: number;
+    /** Fichas en poder de jugadores */
+    playerChips: number;
+  };
+  movements: OwnerAccountMovement[];
 }
 
 /**

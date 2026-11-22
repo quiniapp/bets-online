@@ -96,6 +96,9 @@ export class CashierAccountsController {
         {
           periodStart: req.body.periodStart,
           periodEnd: req.body.periodEnd,
+          collected: req.body.collected,
+          chipsLeft: req.body.chipsLeft,
+          paymentReference: req.body.paymentReference,
           notes: req.body.notes
         }
       );
@@ -156,40 +159,12 @@ export class CashierAccountsController {
     }
   }
 
-  async getDailyAccounts(req: Request, res: Response, next: NextFunction) {
+  async getPeriodAccounts(req: Request, res: Response, next: NextFunction) {
     try {
-      const date = req.query.date as string;
-      const result = await cashierAccountsDomain.getDailyAccounts(req.user!.userId, date);
-      return res.json(ApiResponseBuilder.success(result));
-    } catch (error) {
-      return next(error);
-    }
-  }
-
-  async updateDailyAccount(req: Request, res: Response, next: NextFunction) {
-    try {
-      const account = await cashierAccountsDomain.updateDailyAccount(
+      const result = await cashierAccountsDomain.getPeriodAccounts(
         req.user!.userId,
-        req.params.id,
-        {
-          claims: req.body.claims,
-          collections: req.body.collections,
-          paid: req.body.paid,
-          leave: req.body.leave
-        }
-      );
-      return res.json(ApiResponseBuilder.success(account));
-    } catch (error) {
-      return next(error);
-    }
-  }
-
-  async liquidateDailyAccounts(req: Request, res: Response, next: NextFunction) {
-    try {
-      const date = req.query.date as string;
-      const result = await cashierAccountsDomain.liquidateDailyAccounts(
-        req.user!.userId,
-        date
+        req.query.periodStart as string,
+        req.query.periodEnd as string
       );
       return res.json(ApiResponseBuilder.success(result));
     } catch (error) {
@@ -197,11 +172,12 @@ export class CashierAccountsController {
     }
   }
 
-  async dailyAccountReceipt(req: Request, res: Response, next: NextFunction) {
+  async periodSummaryReceipt(req: Request, res: Response, next: NextFunction) {
     try {
-      const { buffer, filename } = await cashierAccountsDomain.getDailyAccountReceipt(
+      const { buffer, filename } = await cashierAccountsDomain.getPeriodSummaryReceipt(
         req.user!.userId,
-        req.params.id
+        req.query.periodStart as string,
+        req.query.periodEnd as string
       );
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -212,28 +188,26 @@ export class CashierAccountsController {
     }
   }
 
-  async dailySummaryReceipt(req: Request, res: Response, next: NextFunction) {
+  async ownerAccount(req: Request, res: Response, next: NextFunction) {
     try {
-      const date = req.query.date as string;
-      const { buffer, filename } = await cashierAccountsDomain.getDailySummaryReceipt(
+      const result = await cashierAccountsDomain.getOwnerAccount(
         req.user!.userId,
-        date
+        req.query.periodStart as string,
+        req.query.periodEnd as string
       );
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', buffer.length);
-      return res.send(buffer);
+      return res.json(ApiResponseBuilder.success(result));
     } catch (error) {
       return next(error);
     }
   }
 
-  async paySettlement(req: Request, res: Response, next: NextFunction) {
+  async collectSettlement(req: Request, res: Response, next: NextFunction) {
     try {
-      const settlement = await cashierAccountsDomain.paySettlement(
+      const settlement = await cashierAccountsDomain.collectSettlement(
         req.user!.userId,
         req.params.id,
         {
+          amount: req.body.amount,
           paymentReference: req.body.paymentReference,
           notes: req.body.notes
         }
@@ -242,7 +216,7 @@ export class CashierAccountsController {
       return res.json(
         ApiResponseBuilder.success({
           settlement,
-          message: SUCCESS_MESSAGES.SETTLEMENT_PAID
+          message: SUCCESS_MESSAGES.SETTLEMENT_COLLECTED
         })
       );
     } catch (error) {

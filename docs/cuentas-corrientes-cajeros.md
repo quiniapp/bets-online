@@ -1,669 +1,214 @@
 # Cuentas corrientes y liquidaciones de cajeros
 
-Guía funcional y técnica del módulo con el que el **propietario** gestiona la
-cuenta corriente de sus cajeros, liquida comisiones y registra sus pagos.
+Guía funcional y técnica del módulo con el que el **propietario** entrega fichas
+a sus cajeros, liquida lo que vendieron, cobra y ve su propio balance.
 
 - **Backoffice:** `/admin/cashier-accounts`
 - **API:** `/api/cashier-accounts`
 - **Rol habilitado:** `OWNER`
-- **Migración:** `20261013000001-extend-cashier-settlements.js`
-- **Feature:** `feature/cashier-accounts`
+- **Migraciones:** `20261013000001-extend-cashier-settlements.js`,
+  `20261122000001-settlements-chip-flow-and-collections.js`
 
 ---
 
-## 1. Qué resuelve
+## 1. Flujo de negocio
 
-El módulo responde tres preguntas del dueño:
+1. **Entrega de fichas.** A principio de la semana el owner le carga fichas al
+   cajero (por ejemplo 1000) desde el panel de fichas (movimiento
+   `SELL_TO_PLAYER` con el cajero como `user_id`).
+2. **Venta de fichas.** El cajero se las vende a sus jugadores
+   (`SELL_TO_PLAYER` con el cajero como `related_user_id`).
+3. **Premios.** Si un jugador gana, el cajero le retira las fichas (`PRIZE`): las
+   fichas vuelven al saldo del cajero y **el owner le paga el premio al jugador**.
+4. **Liquidación.** Al cierre del período (generalmente los sábados, pero el
+   período es libre) el owner liquida a cada cajero:
+   - **cobra** la venta de fichas menos la comisión del cajero (puede cobrar
+     parcial: lo que falta queda como deuda para la liquidación siguiente);
+   - le **retira las fichas de premios**;
+   - de las **fichas no vendidas**, decide cuántas le **deja** (saldo pendiente
+     para la semana siguiente) y el resto se le retira.
 
-1. **¿Cuánto le debe a cada cajero por comisiones?**
-2. **¿Qué período conviene liquidar y cuánto corresponde pagar?**
-3. **¿Qué comisiones ya se pagaron y cuáles siguen pendientes?**
-
-La cuenta corriente se calcula a partir de los movimientos de fichas que el
-cajero realizó (ventas y premios) y de las liquidaciones creadas. El pago de la
-comisión se registra como un hecho administrativo: **no mueve fichas ni saldos**.
+Ejemplo: entrega 1000, vende 900, comisión 20% → comisión 180, **subtotal 720**
+(lo que se cobra) y quedan 100 fichas no vendidas que se le pueden dejar.
 
 ---
 
-## 2. Glosario
+## 2. Glosario y fórmulas
 
-| Término | Significado |
+| Concepto (columna) | Cálculo |
 |---|---|
-| **Cajero** | Usuario con rol `CASHIER` dentro del árbol del propietario. |
-| **Venta** | Movimiento `SELL_TO_PLAYER` donde el cajero es `related_user_id`. |
-| **Premio** | Movimiento `PRIZE` pagado por el cajero. En el movimiento el importe es negativo. |
-| **Ganancia** | Ventas menos premios del período o del histórico. |
-| **Comisión** | Porcentaje de las ventas que le corresponde al cajero. |
-| **Liquidación** | Snapshot de un período con ventas, premios, ganancia, porcentaje y comisión a pagar. |
-| **Comisión abierta** | Comisión estimada de movimientos que todavía no fueron liquidados. |
-| **Pago** | Marca una liquidación como pagada. No genera movimientos de fichas. |
+| **Entregadas** | Σ `SELL_TO_PLAYER` al cajero en el período (cargas del owner). Informativo. |
+| **Venta de fichas** | Σ `SELL_TO_PLAYER` del cajero a jugadores en el período. |
+| **Premios** | Σ `−amount` de `PRIZE` operados por el cajero en el período. |
+| **Comisión** | `venta × % / 100`, con el % vigente al cierre del período. |
+| **Subtotal** | `venta − comisión`. Lo que el cajero le debe al owner por el período. |
+| **Saldo ant.** | Arrastre (deuda) de la liquidación anterior del cajero. |
+| **Total** | `saldo anterior + subtotal`. |
+| **Cobro** | Lo que el owner cobra al liquidar. Editable; por defecto, el total. |
+| **Arrastre** | `total − cobro`. Pasa como saldo anterior a la próxima liquidación. Negativo = saldo a favor del cajero. |
+| **No vendidas** | `fichas del cajero − fichas de premios a retirar`. |
+| **Deje** | Fichas no vendidas que le quedan al cajero. Editable; por defecto, todas. |
+
+Fichas de premios a retirar = `min(premios, saldo del cajero)`.
+Fichas no vendidas retiradas = `no vendidas − deje`.
+Ganancia del owner por la liquidación = `subtotal − premios`.
+
+Los importes se redondean a 2 decimales. Los juegos de proveedor (`GAME_*`) no
+están atribuidos a un cajero y no entran en la cuenta.
+
+Las "no vendidas" se calculan con el saldo **actual** del cajero, así que lo
+normal es liquidar hasta hoy. Si se liquida un período viejo, ese saldo incluye
+lo que pasó después.
 
 ---
 
-## 3. Flujo operativo en el backoffice
+## 3. Backoffice
 
-### 3.1 Configurar la comisión
+Cuatro pestañas:
 
-1. Entrar a **Cuentas corrientes** desde el menú del propietario.
-2. En la fila del cajero, presionar el botón de **porcentaje**.
-3. Ingresar un valor entre `0` y `100`.
-4. Guardar.
+1. **Cuenta corriente** (principal): rango Desde/Hasta (por defecto la semana en
+   curso, domingo a hoy) y una fila por cajero con Entregadas, Venta de fichas,
+   Premios, Comisión, Subtotal, Saldo ant., Total, **Cobro**, Arrastre, No
+   vendidas, **Deje**, Estado. Cobro y Deje se editan en la fila. Botones
+   **Liquidar** por cajero, **Liquidar todos** (solo cajeros con actividad y
+   comisión configurada) y **Resumen PDF**. Las filas ya liquidadas muestran los
+   valores guardados y el comprobante. Si hay un hueco sin liquidar entre la
+   última liquidación y el inicio del rango, la fila lo avisa.
+2. **Cuentas de cajeros:** situación actual de cada cajero (fichas, venta y
+   premios sin liquidar, deuda arrastrada, total a cobrar), configurar comisión,
+   liquidar desde un diálogo y ver la **cuenta corriente** del cajero: todos los
+   movimientos de fichas (entregas, ventas, premios, retiros de liquidación) y de
+   dinero (subtotal de cada liquidación y cobros).
+3. **Liquidaciones:** historial con venta, premios, comisión, subtotal, cobrado,
+   arrastre y estado. **Cobrar** registra un cobro posterior sobre la última
+   liquidación del cajero. **Cancelar** anula la última liquidación del cajero y
+   le devuelve las fichas retiradas.
+4. **Cuenta del owner:** para un rango, ganancia (`subtotal − premios`), ingreso
+   neto, premios pagados, caja neta (`cobrado − premios`), fichas entregadas y
+   recuperadas; situación actual (deuda de cajeros, ventas sin liquidar, fichas en
+   cajeros y en jugadores) y los movimientos (liquidaciones, premios, cobros).
 
-El cambio crea una nueva modalidad de comisión desde ese momento y cierra la
-anterior. Las liquidaciones ya creadas conservan el porcentaje con el que se
-calcularon (snapshot).
-
-### 3.2 Revisar la cuenta
-
-La tabla principal muestra, por cajero:
-
-- Comisión vigente.
-- Ventas y premios acumulados.
-- Ganancia acumulada.
-- Saldo a favor del cajero:
-  - liquidaciones pendientes de pago;
-  - comisión abierta de movimientos todavía no liquidados.
-
-El botón de **detalle** abre el resumen, los movimientos recientes y el
-historial de liquidaciones del cajero.
-
-### 3.3 Crear una liquidación
-
-1. Presionar el botón de **calculadora** en la fila del cajero.
-2. Elegir **Desde** y **Hasta**.
-3. El sistema calcula automáticamente ventas, premios, ganancia y comisión.
-4. Revisar el preview y presionar **Crear liquidación**.
-
-La liquidación queda en estado `PENDING`. No se puede crear otra liquidación
-del mismo cajero con un período que se superponga, salvo que la anterior esté
-cancelada.
-
-### 3.4 Pagar la comisión
-
-1. Ir a la pestaña **Liquidaciones**.
-2. Buscar la liquidación pendiente.
-3. Presionar **Pagar**.
-4. Opcionalmente, ingresar una referencia de pago (transferencia, comprobante,
-   etc.).
-5. Confirmar.
-
-La liquidación pasa a `PAID`, se guarda la fecha de pago, el usuario que pagó y
-la referencia. **No se descuentan fichas ni se modifica el balance del cajero.**
-
-### 3.5 Cancelar una liquidación
-
-Solo se puede cancelar una liquidación `PENDING`. Al cancelarla:
-
-- pasa a `CANCELED`;
-- deja de sumar en los totales de comisiones pendientes/pagadas;
-- libera el período para volver a liquidarlo.
-
-No se puede cancelar una liquidación ya pagada.
+Estados de una liquidación: `PAID` = cobrada (sin deuda), `PARTIALLY_PAID` =
+cobro parcial, `PENDING` = sin cobrar, `CANCELED`.
 
 ---
 
-## 4. Fórmulas
+## 4. Modelo de datos
 
-### 4.1 Movimientos considerados
+### `cashier_settlements`
 
-Solo se consideran movimientos de fichas cuyo `related_user_id` es el cajero:
+Columnas originales: período, `total_sales`, `total_prizes_paid`, `profit`
+(ahora `subtotal − premios`), `payable_amount` (ahora igual a la comisión),
+`status`, `percentage`, `notes`, `created_by`, `paid_by`, `payment_reference`,
+`paid_at`.
 
-```text
-ventas   = Σ amount de movimientos SELL_TO_PLAYER
-premios  = Σ (-amount) de movimientos PRIZE
-ganancia = ventas - premios
-comisión = ventas × porcentaje / 100
-```
+Columnas del flujo de fichas (null en liquidaciones del modelo anterior):
+`commission`, `subtotal`, `previous_debt`, `total_due`, `collected`,
+`debt_carried`, `chips_delivered`, `chip_balance_before`,
+`prize_chips_recovered`, `unsold_chips`, `chips_left`, `unsold_chips_recovered`.
 
-Los importes se redondean a **2 decimales**.
+### `cashier_collections`
 
-La comisión se calcula **sobre las ventas (pase)**, no sobre la ganancia. Los
-premios se informan por separado y no reducen la comisión del cajero; en la
-cuenta diaria sí afectan el subtotal y el saldo a liquidar.
+Un registro por cobro: el inicial de la liquidación y los posteriores.
+`settlement_id`, `cashier_id`, `amount`, `payment_reference`, `created_by`,
+`created_at`. Los cobros de liquidaciones canceladas no cuentan.
 
-Notas:
+### Movimientos de fichas de una liquidación
 
-- En los movimientos `PRIZE` el importe se guarda en negativo; por eso se
-  invierte el signo para obtener el premio pagado.
-- Si no hay ventas, la comisión es **0**, aunque haya premios.
-- No se incluyen en la cuenta del cajero los movimientos de juegos de proveedor
-  (`GAME_BET`, `GAME_WIN`, `GAME_REFUND`) porque no están atribuidos a un
-  cajero.
-- Tampoco se incluyen premios automáticos de juegos nativos que no tengan
-  `related_user_id`.
+Se registran en `chip_movements` sobre el cajero, con el owner como
+`related_user_id`, y se vinculan a la liquidación por `idempotency_key`:
 
-### 4.2 Ejemplo con ventas y premios
+| Key | Tipo | Efecto |
+|---|---|---|
+| `settlement:<id>:prizes` | `RECOVERY` | Retiro de fichas de premios |
+| `settlement:<id>:unsold` | `RECOVERY` | Retiro de fichas no vendidas |
+| `settlement:<id>:reversal` | `ADJUSTMENT` | Devolución al cancelar |
 
-| Concepto | Importe |
-|---|---:|
-| Ventas del período | 150.000,00 |
-| Premios pagados | 90.000,00 |
-| Ganancia | 60.000,00 |
-| Porcentaje sobre ventas | 25% |
-| **Comisión a pagar** | **37.500,00** |
+### Legado
 
-### 4.3 Ejemplo con premios mayores a las ventas
-
-| Concepto | Importe |
-|---|---:|
-| Ventas del período | 50.000,00 |
-| Premios pagados | 70.000,00 |
-| Ganancia | -20.000,00 |
-| Porcentaje sobre ventas | 25% |
-| **Comisión a pagar** | **12.500,00** |
-
-La comisión no se pone en cero por una ganancia negativa: se calcula igual sobre
-las ventas. En la cuenta diaria, el exceso de premios reduce el subtotal y el
-saldo a liquidar.
-
-### 4.4 Período sin ventas
-
-Si no hay ventas, la comisión es `0`, aunque haya premios. En el backoffice el
-botón **Crear liquidación** se deshabilita para evitar liquidaciones vacías.
+`cashier_current_accounts` (cuenta diaria) queda sin uso: ni la API ni la UI la
+leen. Se puede eliminar con una migración cuando ya no haga falta su historial.
 
 ---
 
-## 5. Cómo se arma la cuenta corriente
+## 5. API
 
-El resumen de cada cajero incluye:
-
-| Campo | Cálculo |
-|---|---|
-| `totalSales` | Suma histórica de ventas del cajero. |
-| `totalPrizes` | Suma histórica de premios pagados por el cajero. |
-| `profit` | `totalSales - totalPrizes`. |
-| `pendingAmount` | Suma de `payableAmount` de liquidaciones `PENDING`. |
-| `paidAmount` | Suma de `payableAmount` de liquidaciones `PAID`. |
-| `openProfit` | Ganancia histórica menos la ganancia ya incluida en liquidaciones no canceladas. |
-| `openCommission` | Estimación de comisión sobre las ventas abiertas usando la modalidad vigente. |
-| `balanceDue` | `pendingAmount + openCommission`. |
-| `chipBalance` | Balance de fichas actual del cajero (informativo). |
-| `lastSettlementAt` | Fecha de la última liquidación no cancelada. |
-| `lastPaidAt` | Fecha del último pago. |
-
-Las liquidaciones canceladas **no** se restan de los totales históricos. Las
-liquidaciones `PENDING` y `PAID` sí forman parte de lo ya liquidado.
-
-### 5.1 Comisión abierta
-
-La comisión abierta es una **estimación**, no una deuda formal. Se calcula así:
-
-```text
-ventasLiquidadas  = Σ totalSales de liquidaciones no canceladas
-premiosLiquidados = Σ totalPrizesPaid de liquidaciones no canceladas
-
-ventasAbiertas  = max(0, totalSales - ventasLiquidadas)
-premiosAbiertos = max(0, totalPrizes - premiosLiquidados)
-comisionAbierta = max(0, ventasAbiertas) × porcentajeVigente / 100
-```
-
-Por eso el saldo a favor puede mostrar dos componentes:
-
-- **liquidado**: ya existe una liquidación pendiente;
-- **abierto**: todavía no se creó la liquidación.
-
-### 5.2 Cuenta corriente diaria
-
-Además de las liquidaciones por período, el módulo incluye una **cuenta
-corriente diaria** por cajero, equivalente a la app de referencia. Se guarda una
-fila por cajero y fecha en `cashier_current_accounts`.
-
-Fórmulas:
-
-```text
-pase           = ventas del día + max(reclamos, 0)
-comisión       = pase × porcentaje / 100
-subtotal       = pase - comisión - premios pagados + min(reclamos, 0)
-saldo anterior = total del día anterior
-arrastre       = arrastre anterior + subtotal
-total          = saldo anterior + subtotal - cobros + pagos - deje
-```
-
-Campos editables por el propietario:
-
-- **Reclamos:** ajustes positivos o negativos.
-- **Cobros:** dinero cobrado al cajero.
-- **Pagos:** dinero pagado al cajero.
-- **Deje:** importe que se deja el cajero.
-
-La comisión se calcula sobre el pase (ventas). Los premios pagados por el
-cajero se restan del subtotal, pero no de la comisión. Las apuestas (`LOSS`) y
-los premios de juego sin `related_user_id` no entran en la cuenta diaria.
-
-El botón **Liquidar día** marca todas las cuentas de esa fecha como
-`is_liquidated = true` y bloquea su edición.
-
----
-
-## 6. Modelo de datos
-
-### 6.1 `chip_movements`
-
-Es la fuente de verdad de ventas y premios. El módulo no duplica esos importes
-en otra tabla: los agrega por `related_user_id` y tipo de movimiento.
-
-### 6.2 `cashier_compensation_modes`
-
-Historial de modalidades de comisión del cajero:
-
-| Campo | Descripción |
-|---|---|
-| `cashier_id` | Cajero. |
-| `type` | `PERCENTAGE` (única modalidad implementada). |
-| `percentage` | Porcentaje entre 0 y 100. |
-| `active_from` | Inicio de vigencia. |
-| `active_to` | Fin de vigencia; `NULL` si sigue vigente. |
-
-Al cambiar el porcentaje se crea una modalidad nueva y se cierra la anterior.
-La liquidación aplica la modalidad vigente al cierre del período y guarda una
-copia del porcentaje.
-
-### 6.3 `cashier_settlements`
-
-| Campo | Descripción |
-|---|---|
-| `cashier_id` | Cajero liquidado. |
-| `period_start`, `period_end` | Período liquidado. |
-| `total_sales` | Ventas del período. |
-| `total_prizes_paid` | Premios del período. |
-| `profit` | Ganancia del período. |
-| `payable_amount` | Comisión a pagar. |
-| `status` | `PENDING`, `PAID` o `CANCELED`. |
-| `compensation_type` | Tipo aplicado (`PERCENTAGE`). |
-| `percentage` | Porcentaje aplicado (snapshot). |
-| `notes` | Notas de creación, pago o cancelación. |
-| `created_by` | Usuario que creó la liquidación. |
-| `paid_by` | Usuario que registró el pago. |
-| `payment_reference` | Referencia externa del pago. |
-| `created_at` | Fecha de creación. |
-| `paid_at` | Fecha de pago. |
-
-### 6.4 Estados
-
-```text
-PENDING ──► PAID
-   │
-   └──────► CANCELED
-```
-
-- `PAID` y `CANCELED` son estados finales.
-- Una liquidación cancelada libera su período.
-- Una liquidación pagada no se puede cancelar.
-
----
-
-## 7. API
-
-Todas las rutas requieren sesión autenticada y rol `OWNER`. Las mutaciones
-requieren el header `x-csrf-token`, igual que el resto de la API.
-
-### 7.1 Listar cuentas
+Todas requieren sesión y rol `OWNER`; las mutaciones, `x-csrf-token`.
 
 ```http
-GET /api/cashier-accounts?page=1&limit=20&search=jota
+GET  /api/cashier-accounts?page=&limit=&search=          # cuentas de cajeros + resumen
+GET  /api/cashier-accounts/:cashierId                     # cuenta corriente del cajero
+PUT  /api/cashier-accounts/:cashierId/compensation        # { type: "PERCENTAGE", percentage }
+GET  /api/cashier-accounts/:cashierId/preview?periodStart=&periodEnd=
+POST /api/cashier-accounts/:cashierId/settlements         # liquidar
+GET  /api/cashier-accounts/period?periodStart=&periodEnd= # cuenta corriente de todos los cajeros
+GET  /api/cashier-accounts/period/summary.pdf?periodStart=&periodEnd=
+GET  /api/cashier-accounts/owner?periodStart=&periodEnd=  # cuenta del owner
+GET  /api/cashier-accounts/settlements?status=&cashierId=&search=
+GET  /api/cashier-accounts/settlements/:id/receipt
+POST /api/cashier-accounts/settlements/:id/collect        # { amount, paymentReference?, notes? }
+POST /api/cashier-accounts/settlements/:id/cancel         # { reason? }
 ```
 
-Respuesta:
+Body de liquidar:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "accounts": [
-      {
-        "cashierId": "uuid",
-        "username": "cajero1",
-        "compensation": {
-          "type": "PERCENTAGE",
-          "percentage": 25,
-          "activeFrom": "2026-10-01T12:00:00.000Z"
-        },
-        "totalSales": 150000,
-        "totalPrizes": 90000,
-        "profit": 60000,
-        "pendingAmount": 15000,
-        "paidAmount": 0,
-        "openProfit": 0,
-        "openCommission": 0,
-        "balanceDue": 15000
-      }
-    ],
-    "summary": {
-      "totalCashiers": 1,
-      "totalSales": 150000,
-      "totalPrizes": 90000,
-      "totalProfit": 60000,
-      "pendingAmount": 15000,
-      "paidAmount": 0,
-      "openCommission": 0,
-      "balanceDue": 15000
-    }
-  },
-  "meta": {
-    "page": 1,
-    "limit": 20,
-    "total": 1,
-    "totalPages": 1
-  }
+  "periodStart": "2026-11-15T03:00:00.000Z",
+  "periodEnd": "2026-11-22T02:59:59.999Z",
+  "collected": 700,
+  "chipsLeft": 60,
+  "paymentReference": "efectivo",
+  "notes": "Semana 47"
 }
 ```
 
-### 7.2 Detalle de una cuenta
+`collected` y `chipsLeft` son opcionales (por defecto: total y todas las no
+vendidas). La operación corre en una transacción con lock sobre el saldo del
+cajero.
 
-```http
-GET /api/cashier-accounts/:cashierId
-```
-
-Devuelve:
-
-- `account`: el resumen de la cuenta.
-- `settlements`: todas las liquidaciones del cajero.
-- `movements`: últimos 50 movimientos de venta/premio, con el jugador asociado.
-
-### 7.3 Configurar comisión
-
-```http
-PUT /api/cashier-accounts/:cashierId/compensation
-Content-Type: application/json
-x-csrf-token: ...
-
-{
-  "type": "PERCENTAGE",
-  "percentage": 30
-}
-```
-
-### 7.4 Preview de liquidación
-
-```http
-GET /api/cashier-accounts/:cashierId/preview?periodStart=2026-10-01T00:00:00.000Z&periodEnd=2026-10-07T23:59:59.999Z
-```
-
-Respuesta:
-
-```json
-{
-  "success": true,
-  "data": {
-    "cashierId": "uuid",
-    "periodStart": "2026-10-01T00:00:00.000Z",
-    "periodEnd": "2026-10-07T23:59:59.999Z",
-    "compensation": {
-      "type": "PERCENTAGE",
-      "percentage": 25,
-      "activeFrom": "2026-10-01T12:00:00.000Z"
-    },
-    "totalSales": 150000,
-    "totalPrizes": 90000,
-    "profit": 60000,
-    "payableAmount": 15000
-  }
-}
-```
-
-No persiste nada.
-
-### 7.5 Crear liquidación
-
-```http
-POST /api/cashier-accounts/:cashierId/settlements
-Content-Type: application/json
-x-csrf-token: ...
-
-{
-  "periodStart": "2026-10-01T00:00:00.000Z",
-  "periodEnd": "2026-10-07T23:59:59.999Z",
-  "notes": "Semana 40"
-}
-```
-
-Errores esperables:
-
-- `400`: período inválido o cajero sin comisión configurada para el período.
-- `409`: ya existe una liquidación no cancelada que se superpone.
-
-### 7.6 Listar liquidaciones
-
-```http
-GET /api/cashier-accounts/settlements?page=1&limit=20&status=PENDING&cashierId=uuid&search=cajero
-```
-
-Filtros opcionales: `status`, `cashierId`, `search` por username del cajero.
-
-### 7.7 Pagar liquidación
-
-```http
-POST /api/cashier-accounts/settlements/:settlementId/pay
-Content-Type: application/json
-x-csrf-token: ...
-
-{
-  "paymentReference": "TRANSFER-1234",
-  "notes": "Pagado por transferencia"
-}
-```
-
-La liquidación debe estar pendiente. Si ya está pagada o cancelada, devuelve
-`409`.
-
-### 7.8 Descargar comprobante PDF
-
-```http
-GET /api/cashier-accounts/settlements/:settlementId/receipt
-```
-
-Devuelve un PDF con fecha, hora, usuario, monto, período, estado y datos de la
-comisión. El backoffice lo descarga automáticamente al crear una liquidación y
-también permite descargarlo desde la tabla de liquidaciones.
-
-### 7.9 Cancelar liquidación
-
-```http
-POST /api/cashier-accounts/settlements/:settlementId/cancel
-Content-Type: application/json
-x-csrf-token: ...
-
-{
-  "reason": "Período cargado por error"
-}
-```
-
-Solo se puede cancelar una liquidación pendiente.
-
-### 7.10 Cuenta corriente diaria
-
-```http
-GET  /api/cashier-accounts/daily?date=2026-11-16
-PUT  /api/cashier-accounts/daily/:id
-POST /api/cashier-accounts/daily/liquidate?date=2026-11-16
-GET  /api/cashier-accounts/daily/:id/receipt
-GET  /api/cashier-accounts/daily/summary.pdf?date=2026-11-16
-```
-
-- `GET /daily` calcula y devuelve las cuentas del día para todos los cajeros.
-- `PUT /daily/:id` actualiza reclamos, cobros, pagos y deje, y recalcula el día
-  y los días posteriores existentes.
-- `POST /daily/liquidate` marca el día como liquidado.
-- Los endpoints de PDF generan la cuenta individual y el resumen del día.
+Se eliminaron `POST /settlements/:id/pay` (el owner ya no le paga comisión al
+cajero: el cajero la retiene) y los endpoints `/daily/*`.
 
 ---
 
-## 8. Interfaz del backoffice
+## 6. Reglas
 
-Ruta: **`/admin/cashier-accounts`**. El ítem del menú solo aparece para el rol
-`OWNER`.
-
-La página tiene tres pestañas:
-
-1. **Cuenta corriente diaria** (principal): tabla por cajero/día con pase,
-   aciertos, reclamos, subtotal, saldo anterior, cobros, pagos, total, arrastre,
-   deje, comisión y estado. Permite editar reclamos, cobros, pagos y deje,
-   guardar los cambios, liquidar el día y descargar PDFs.
-2. **Cuentas de cajeros:** resumen histórico y liquidaciones por período.
-3. **Liquidaciones:** historial de liquidaciones por período.
-
-### 8.1 Tarjetas de resumen
-
-- **Cuentas de cajeros:** cantidad de cajeros en el árbol.
-- **Ganancia acumulada:** ventas menos premios de todos los cajeros.
-- **Comisiones por pagar:** liquidaciones pendientes + comisión abierta.
-- **Comisiones pagadas:** histórico de liquidaciones pagadas.
-
-### 8.2 Pestaña “Cuentas de cajeros”
-
-Columnas:
-
-- Cajero, estado, balance de fichas.
-- Comisión vigente y fecha desde.
-- Ventas / premios.
-- Ganancia.
-- Saldo a favor (liquidado + abierto).
-- Acciones: configurar comisión, crear liquidación, ver detalle.
-
-### 8.3 Pestaña “Liquidaciones”
-
-Muestra todas las liquidaciones con:
-
-- cajero;
-- período;
-- ventas, premios, ganancia;
-- comisión y porcentaje aplicado;
-- estado;
-- fecha/referencia de pago;
-- acciones **Pagar**, **Cancelar** y **Descargar comprobante PDF**.
-
-Filtro por estado: todas, pendientes, pagadas o canceladas.
-
-Al crear una liquidación, el comprobante PDF se descarga automáticamente.
-
-### 8.4 Movimientos de un cajero
-
-En el detalle de usuario y en el historial de movimientos se incluyen las ventas
-y premios **operados** por el cajero, además de sus propias cargas y retiros.
-En esas filas el usuario que se muestra es el jugador afectado y el balance
-corresponde al jugador; por eso las columnas de balance se muestran como `—`
-para los movimientos relacionados.
-
-### 8.5 Diálogo de detalle
-
-Incluye:
-
-- resumen de la cuenta;
-- movimientos recientes de ventas y premios;
-- historial de liquidaciones.
+- Solo el owner, y solo sobre cajeros de su árbol.
+- Hace falta comisión configurada para el período.
+- No se superponen liquidaciones no canceladas de un cajero, y un período nuevo
+  tiene que empezar después de la última liquidación.
+- El deje no puede superar las fichas no vendidas.
+- Cobros posteriores y cancelaciones: solo sobre la **última** liquidación del
+  cajero (en las anteriores el saldo ya se arrastró).
+- Auditoría: `cashier-accounts.compensation.update`,
+  `cashier-accounts.settlement.create`, `cashier-accounts.settlement.collect`,
+  `cashier-accounts.settlement.cancel`.
 
 ---
 
-## 9. Reglas y validaciones
-
-- Solo el **propietario** puede acceder. La API lo valida con `requireRole` y
-  además en el dominio.
-- El cajero debe existir, tener rol `CASHIER` y estar dentro del árbol del
-  propietario.
-- El porcentaje debe estar entre 0 y 100.
-- `periodEnd` debe ser posterior a `periodStart`.
-- No se permiten liquidaciones superpuestas no canceladas para el mismo cajero.
-- No se puede crear una liquidación sin modalidad de comisión vigente para el
-  período.
-- No se puede pagar una liquidación ya pagada o cancelada.
-- No se puede cancelar una liquidación pagada.
-- Los importes se redondean a 2 decimales.
-- Cada operación relevante escribe auditoría:
-  - `cashier-accounts.compensation.update`
-  - `cashier-accounts.settlement.create`
-  - `cashier-accounts.settlement.pay`
-  - `cashier-accounts.settlement.cancel`
-
----
-
-## 10. Operación y despliegue
-
-### 10.1 Aplicar la migración
-
-```bash
-APP_ENV=development pnpm --filter api db:migrate
-```
-
-Para producción:
+## 7. Operación
 
 ```bash
 APP_ENV=production pnpm --filter api db:migrate
-```
-
-La migración agrega a `cashier_settlements`:
-
-- `compensation_type`
-- `percentage`
-- `notes`
-- `created_by`
-- `paid_by`
-- `payment_reference`
-- índice `idx_cashier_settlements_cashier_period`
-- constraint `check_settlement_percentage`
-
-### 10.2 Tests
-
-```bash
 pnpm --filter helper build
-pnpm --filter api test -- tests/domain/cashier-accounts.domain.test.ts
+pnpm --filter api test -- tests/domain/cashier-accounts.domain.test.ts tests/utils/settlement-receipt.test.ts
 ```
 
-Los tests cubren:
-
-- cálculo de cuenta corriente;
-- snapshot de comisión al crear una liquidación;
-- rechazo de períodos superpuestos;
-- rechazo sin comisión configurada;
-- pago de liquidaciones;
-- doble pago;
-- actualización de modalidad;
-- acceso solo para `OWNER`.
-
 ---
 
-## 11. Limitaciones actuales
-
-- Solo está implementada la modalidad **`PERCENTAGE`**. `FIXED`, `HYBRID` y
-  paneles de fichas quedan fuera de alcance.
-- No hay pagos parciales ni en cuotas. El estado `PARTIALLY_PAID` existe en el
-  enum pero el flujo actual paga el total.
-- La cuenta diaria no calcula el deje automáticamente por un segundo porcentaje:
-  el deje se ingresa manualmente (como en el modo manual de la app de referencia).
-- No hay liquidación automática por cron: la cuenta se recalcula al abrir la
-  pestaña/Actualizar y el día se liquida manualmente.
-- El pago de la comisión no genera un movimiento de fichas ni afecta el balance.
-- Los juegos de proveedor no se atribuyen a un cajero, por lo que no entran en
-  la fórmula de comisión.
-- No hay campo de moneda: los importes usan la unidad de fichas/valor que ya
-  maneja la plataforma.
-
----
-
-## 12. Problemas frecuentes
-
-| Síntoma | Causa probable | Solución |
-|---|---|---|
-| `403` | El usuario no es `OWNER` o el cajero no está en su árbol. | Usar la cuenta del propietario. |
-| `404 Cashier not found` | El usuario no existe o no es `CASHIER`. | Verificar el rol y el árbol. |
-| `400` al crear liquidación | Período inválido o cajero sin comisión configurada. | Configurar el porcentaje y revisar las fechas. |
-| `409` al crear liquidación | Ya existe una liquidación no cancelada superpuesta. | Cancelar la existente o elegir otro período. |
-| `409` al pagar | La liquidación ya fue pagada o cancelada. | Refrescar la lista. |
-| `409` al cancelar | La liquidación ya fue pagada o cancelada. | Refrescar la lista. |
-| No aparece el botón Crear liquidación | No hay movimientos o no hay comisión configurada. | Revisar el preview y configurar la comisión. |
-| El saldo no coincide con lo esperado | Hay movimientos posteriores al último cierre o comisiones estimadas. | Crear una liquidación del período faltante y revisar el detalle. |
-| `401` / `CSRF_INVALID` | Sesión vencida o falta el token CSRF. | Volver a iniciar sesión; usar `apiService` para las mutaciones. |
-
----
-
-## 13. Referencias de código
+## 8. Referencias de código
 
 - Dominio: `api/src/features/cashier-accounts/cashier-accounts.domain.ts`
 - Repositorio: `api/src/features/cashier-accounts/cashier-accounts.repository.ts`
-- Rutas: `api/src/features/cashier-accounts/cashier-accounts.routes.ts`
-- Controlador: `api/src/features/cashier-accounts/cashier-accounts.controller.ts`
-- Modelo de liquidación: `api/src/features/chips/cashier-settlement.model.ts`
-- Migración: `api/src/persistence/migrations/20261013000001-extend-cashier-settlements.js`
-- Página del backoffice: `web-admin/app/admin/cashier-accounts/page.tsx`
-- Hook: `web-admin/hooks/useCashierAccounts.ts`
-- Tests: `api/tests/domain/cashier-accounts.domain.test.ts`
-- Diseño original: `docs/superpowers/specs/2026-10-13-cashier-accounts-design.md`
+- Modelos: `api/src/features/chips/cashier-settlement.model.ts`,
+  `api/src/features/cashier-accounts/cashier-collection.model.ts`
+- PDFs: `api/src/utils/settlement-receipt.utils.ts`
+- Tipos y validadores: `helper/src/types/models.types.ts`,
+  `helper/src/validators/cashier-account.validator.ts`
+- Backoffice: `web-admin/app/admin/cashier-accounts/page.tsx`,
+  `web-admin/components/admin/cashier-period-accounts.tsx`,
+  `web-admin/components/admin/owner-account.tsx`,
+  `web-admin/hooks/useCashierPeriodAccounts.ts`
+- Tests: `api/tests/domain/cashier-accounts.domain.test.ts`,
+  `api/tests/utils/settlement-receipt.test.ts`

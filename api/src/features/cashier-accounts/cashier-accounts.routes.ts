@@ -2,14 +2,13 @@ import { Router } from 'express';
 import {
   cancelCashierSettlementSchema,
   cashierAccountListQuerySchema,
-  cashierDailyAccountQuerySchema,
+  cashierPeriodQuerySchema,
   cashierSettlementListQuerySchema,
+  collectCashierSettlementSchema,
   createCashierSettlementSchema,
   idParamSchema,
-  payCashierSettlementSchema,
   previewCashierSettlementSchema,
   updateCashierCompensationSchema,
-  updateCashierDailyAccountSchema,
   UserRole
 } from 'helper';
 import { authMiddleware, requireRole } from '../../middleware/auth.middleware';
@@ -21,37 +20,24 @@ const router = Router();
 router.use(authMiddleware);
 router.use(requireRole(UserRole.OWNER));
 
-// Daily current accounts. Declared before '/:id' routes so "daily" is not
-// interpreted as a cashier uuid.
+// Cuenta corriente por período y cuenta del owner. Declaradas antes de '/:id'
+// para que "period" y "owner" no se interpreten como uuid de cajero.
 router.get(
-  '/daily',
-  validateQuery(cashierDailyAccountQuerySchema),
-  cashierAccountsController.getDailyAccounts.bind(cashierAccountsController)
-);
-
-router.get(
-  '/daily/summary.pdf',
-  validateQuery(cashierDailyAccountQuerySchema),
-  cashierAccountsController.dailySummaryReceipt.bind(cashierAccountsController)
+  '/period',
+  validateQuery(cashierPeriodQuerySchema),
+  cashierAccountsController.getPeriodAccounts.bind(cashierAccountsController)
 );
 
 router.get(
-  '/daily/:id/receipt',
-  validateParams(idParamSchema),
-  cashierAccountsController.dailyAccountReceipt.bind(cashierAccountsController)
+  '/period/summary.pdf',
+  validateQuery(cashierPeriodQuerySchema),
+  cashierAccountsController.periodSummaryReceipt.bind(cashierAccountsController)
 );
 
-router.put(
-  '/daily/:id',
-  validateParams(idParamSchema),
-  validate(updateCashierDailyAccountSchema),
-  cashierAccountsController.updateDailyAccount.bind(cashierAccountsController)
-);
-
-router.post(
-  '/daily/liquidate',
-  validateQuery(cashierDailyAccountQuerySchema),
-  cashierAccountsController.liquidateDailyAccounts.bind(cashierAccountsController)
+router.get(
+  '/owner',
+  validateQuery(cashierPeriodQuerySchema),
+  cashierAccountsController.ownerAccount.bind(cashierAccountsController)
 );
 
 // Cashier accounts list + per-cashier detail
@@ -76,10 +62,10 @@ router.get(
 );
 
 router.post(
-  '/settlements/:id/pay',
+  '/settlements/:id/collect',
   validateParams(idParamSchema),
-  validate(payCashierSettlementSchema),
-  cashierAccountsController.paySettlement.bind(cashierAccountsController)
+  validate(collectCashierSettlementSchema),
+  cashierAccountsController.collectSettlement.bind(cashierAccountsController)
 );
 
 router.post(

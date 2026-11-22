@@ -185,6 +185,7 @@ export const SUCCESS_MESSAGES = {
   SETTLEMENT_CREATED: 'Settlement created successfully',
   SETTLEMENT_PAID: 'Settlement paid successfully',
   SETTLEMENT_CANCELED: 'Settlement canceled successfully',
+  SETTLEMENT_COLLECTED: 'Collection registered successfully',
   COMPENSATION_UPDATED: 'Compensation updated successfully'
 };
 

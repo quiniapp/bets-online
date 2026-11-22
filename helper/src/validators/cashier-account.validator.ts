@@ -14,12 +14,37 @@ export const updateCashierCompensationSchema = z.object({
 });
 
 /**
- * Create a settlement for a cashier period.
+ * Liquidar un período de un cajero.
+ * collected: cobro al cajero (por defecto el total adeudado).
+ * chipsLeft: fichas no vendidas que se le dejan (por defecto todas).
  */
 export const createCashierSettlementSchema = z.object({
   periodStart: z.coerce.date(),
   periodEnd: z.coerce.date(),
+  collected: z.number().finite().min(0).optional(),
+  chipsLeft: z.number().finite().min(0).optional(),
+  paymentReference: z.string().max(255).optional(),
   notes: z.string().max(1000).optional()
+}).refine(data => data.periodEnd > data.periodStart, {
+  message: 'Period end must be after period start',
+  path: ['periodEnd']
+});
+
+/**
+ * Registrar un cobro posterior sobre una liquidación.
+ */
+export const collectCashierSettlementSchema = z.object({
+  amount: z.number().finite().positive(),
+  paymentReference: z.string().max(255).optional(),
+  notes: z.string().max(1000).optional()
+});
+
+/**
+ * Rango de fechas para la cuenta corriente por período y la cuenta del owner.
+ */
+export const cashierPeriodQuerySchema = z.object({
+  periodStart: z.coerce.date(),
+  periodEnd: z.coerce.date()
 }).refine(data => data.periodEnd > data.periodStart, {
   message: 'Period end must be after period start',
   path: ['periodEnd']
