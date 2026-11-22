@@ -14,20 +14,20 @@ export const updateCashierCompensationSchema = z.object({
 });
 
 /**
- * Liquidar un período de un cajero.
+ * Liquidar a un cajero hasta una fecha de corte.
+ * El inicio lo calcula el servidor: el fin de la última liquidación del
+ * cajero, o su primer movimiento si nunca se liquidó. periodStart se acepta
+ * por compatibilidad y se ignora.
  * collected: cobro al cajero (por defecto el total adeudado).
  * chipsLeft: fichas no vendidas que se le dejan (por defecto todas).
  */
 export const createCashierSettlementSchema = z.object({
-  periodStart: z.coerce.date(),
+  periodStart: z.coerce.date().optional(),
   periodEnd: z.coerce.date(),
   collected: z.number().finite().min(0).optional(),
   chipsLeft: z.number().finite().min(0).optional(),
   paymentReference: z.string().max(255).optional(),
   notes: z.string().max(1000).optional()
-}).refine(data => data.periodEnd > data.periodStart, {
-  message: 'Period end must be after period start',
-  path: ['periodEnd']
 });
 
 /**
@@ -40,7 +40,7 @@ export const collectCashierSettlementSchema = z.object({
 });
 
 /**
- * Rango de fechas para la cuenta corriente por período y la cuenta del owner.
+ * Rango de fechas para la cuenta del owner.
  */
 export const cashierPeriodQuerySchema = z.object({
   periodStart: z.coerce.date(),
@@ -51,15 +51,18 @@ export const cashierPeriodQuerySchema = z.object({
 });
 
 /**
- * Preview a settlement before persisting it.
+ * Fecha de corte de la liquidación (preview y cuenta corriente).
+ * periodStart se acepta por compatibilidad y se ignora.
  */
-export const previewCashierSettlementSchema = z.object({
-  periodStart: z.coerce.date(),
+export const cashierCutoffQuerySchema = z.object({
+  periodStart: z.coerce.date().optional(),
   periodEnd: z.coerce.date()
-}).refine(data => data.periodEnd > data.periodStart, {
-  message: 'Period end must be after period start',
-  path: ['periodEnd']
 });
+
+/**
+ * @deprecated usar cashierCutoffQuerySchema.
+ */
+export const previewCashierSettlementSchema = cashierCutoffQuerySchema;
 
 /**
  * Pay a pending settlement.

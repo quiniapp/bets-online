@@ -178,7 +178,7 @@ export function generateSettlementReceiptPdf(data: SettlementReceiptData): Buffe
 }
 
 /**
- * Resumen de la cuenta corriente de todos los cajeros en un período (A4 apaisado).
+ * Resumen de la cuenta corriente de todos los cajeros a una fecha de corte (A4 apaisado).
  */
 export function generatePeriodSummaryPdf(data: {
   periodStart: Date;
@@ -191,7 +191,7 @@ export function generatePeriodSummaryPdf(data: {
   content += '30 30 782 525 re S\n';
   content += pdfText('Cuenta corriente de cajeros', 40, 565, 18, true);
   content += pdfText(
-    `Periodo: ${formatDate(data.periodStart)} al ${formatDate(data.periodEnd)}`,
+    `Corte: ${formatDate(data.periodEnd)} ${formatTime(data.periodEnd)} - cada cajero desde su ultima liquidacion`,
     40,
     548,
     10

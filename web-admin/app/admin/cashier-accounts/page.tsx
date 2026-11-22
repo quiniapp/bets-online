@@ -26,30 +26,22 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { useDebounce } from "@/hooks/useDebounce"
 import { useCashierAccounts, useCashierSettlements } from "@/hooks/useCashierAccounts"
 import {
-  currentWeekRange,
-  endOfDayIso,
-  startOfDayIso,
-  toDateInput
-} from "@/hooks/useCashierPeriodAccounts"
-import { CashierPeriodAccounts } from "@/components/admin/cashier-period-accounts"
+  CashierPeriodAccounts,
+  type CashierRowTarget
+} from "@/components/admin/cashier-period-accounts"
 import { OwnerAccount } from "@/components/admin/owner-account"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
 import {
-  AlertTriangle,
-  Calculator,
   ChevronLeft,
   ChevronRight,
   Coins,
   Download,
-  Eye,
   HandCoins,
   Loader2,
   Percent,
-  Search,
   Wallet,
   XCircle
 } from "lucide-react"
@@ -61,10 +53,8 @@ import {
 import type {
   CashierAccountDetail,
   CashierAccountMovement,
-  CashierAccountSummary,
   CashierLedgerKind,
   CashierSettlement,
-  CashierSettlementPreview,
   CashierSettlementWithCashier
 } from "helper"
 
@@ -132,24 +122,11 @@ export default function CashierAccountsPage() {
   const { toast } = useToast()
   const { role, isLoading: authLoading } = useAuth()
 
-  const [searchTerm, setSearchTerm] = useState("")
-  const debouncedSearch = useDebounce(searchTerm, 350)
-  const [accountsPage, setAccountsPage] = useState(1)
   const [settlementsPage, setSettlementsPage] = useState(1)
   const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>("ALL")
 
-  const {
-    accounts,
-    summary,
-    loading: accountsLoading,
-    error: accountsError,
-    pagination: accountsPagination,
-    reload: reloadAccounts
-  } = useCashierAccounts({
-    page: accountsPage,
-    limit: ITEMS_PER_PAGE,
-    search: debouncedSearch.trim() || undefined
-  })
+  // Solo para las tarjetas de resumen (el resumen suma todos los cajeros).
+  const { summary, reload: reloadAccounts } = useCashierAccounts({ page: 1, limit: 1 })
 
   const {
     settlements,
@@ -166,10 +143,6 @@ export default function CashierAccountsPage() {
   })
 
   useEffect(() => {
-    setAccountsPage(1)
-  }, [debouncedSearch])
-
-  useEffect(() => {
     setSettlementsPage(1)
   }, [settlementStatusFilter])
 
@@ -179,19 +152,9 @@ export default function CashierAccountsPage() {
     }
   }, [authLoading, role, router])
 
-  const [compensationAccount, setCompensationAccount] = useState<CashierAccountSummary | null>(null)
+  const [compensationAccount, setCompensationAccount] = useState<CashierRowTarget | null>(null)
   const [compensationPercentage, setCompensationPercentage] = useState("")
   const [savingCompensation, setSavingCompensation] = useState(false)
-
-  const [settlementAccount, setSettlementAccount] = useState<CashierAccountSummary | null>(null)
-  const [settlementStart, setSettlementStart] = useState("")
-  const [settlementEnd, setSettlementEnd] = useState("")
-  const [settlementNotes, setSettlementNotes] = useState("")
-  const [settlementCollected, setSettlementCollected] = useState("")
-  const [settlementChipsLeft, setSettlementChipsLeft] = useState("")
-  const [preview, setPreview] = useState<CashierSettlementPreview | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [creatingSettlement, setCreatingSettlement] = useState(false)
 
   const [collectingSettlement, setCollectingSettlement] = useState<CashierSettlementWithCashier | null>(null)
   const [collectAmount, setCollectAmount] = useState("")
@@ -202,7 +165,7 @@ export default function CashierAccountsPage() {
   const [cancelReason, setCancelReason] = useState("")
   const [canceling, setCanceling] = useState(false)
 
-  const [detailAccount, setDetailAccount] = useState<CashierAccountSummary | null>(null)
+  const [detailAccount, setDetailAccount] = useState<CashierRowTarget | null>(null)
   const [detail, setDetail] = useState<CashierAccountDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null)
@@ -237,13 +200,9 @@ export default function CashierAccountsPage() {
     }
   }
 
-  const openCompensation = (account: CashierAccountSummary) => {
-    setCompensationAccount(account)
-    setCompensationPercentage(
-      account.compensation?.percentage !== null && account.compensation?.percentage !== undefined
-        ? String(account.compensation.percentage)
-        : ""
-    )
+  const openCompensation = (target: CashierRowTarget) => {
+    setCompensationAccount(target)
+    setCompensationPercentage(target.percentage !== null ? String(target.percentage) : "")
   }
 
   const saveCompensation = async () => {
@@ -284,133 +243,6 @@ export default function CashierAccountsPage() {
       })
     } finally {
       setSavingCompensation(false)
-    }
-  }
-
-  const openSettlement = (account: CashierAccountSummary) => {
-    // Por defecto: desde el día siguiente a la última liquidación (o la semana
-    // en curso si nunca se liquidó) hasta hoy.
-    const week = currentWeekRange()
-    let start = week.from
-    if (account.lastSettlementEnd) {
-      const next = new Date(new Date(account.lastSettlementEnd).getTime() + 1)
-      start = toDateInput(next)
-    }
-
-    setSettlementAccount(account)
-    setSettlementStart(start)
-    setSettlementEnd(week.to)
-    setSettlementNotes("")
-    setSettlementCollected("")
-    setSettlementChipsLeft("")
-    setPreview(null)
-  }
-
-  useEffect(() => {
-    if (!settlementAccount || !settlementStart || !settlementEnd) return
-    if (settlementStart > settlementEnd) {
-      setPreview(null)
-      return
-    }
-
-    let cancelled = false
-    const timeout = setTimeout(async () => {
-      setPreviewLoading(true)
-      try {
-        const query = new URLSearchParams({
-          periodStart: startOfDayIso(settlementStart),
-          periodEnd: endOfDayIso(settlementEnd)
-        })
-        const response = await apiService.get<CashierSettlementPreview>(
-          `/cashier-accounts/${settlementAccount.cashierId}/preview?${query.toString()}`
-        )
-        if (cancelled) return
-        if (response.success && response.data) {
-          setPreview(response.data)
-          setSettlementCollected(String(Math.max(response.data.totalDue, 0)))
-          setSettlementChipsLeft(String(response.data.unsoldChips))
-        } else {
-          setPreview(null)
-          toast({
-            variant: "destructive",
-            title: "No se pudo calcular el período",
-            description: response.error?.message || "Error desconocido"
-          })
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setPreview(null)
-          toast({
-            variant: "destructive",
-            title: "No se pudo calcular el período",
-            description: error instanceof Error ? error.message : "Error de conexión"
-          })
-        }
-      } finally {
-        if (!cancelled) setPreviewLoading(false)
-      }
-    }, 350)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timeout)
-    }
-    // toast es un helper sin identidad estable: no debe re-disparar el preview.
-  }, [settlementAccount, settlementStart, settlementEnd])
-
-  const collectedValue = parseNumber(settlementCollected)
-  const chipsLeftValue = parseNumber(settlementChipsLeft)
-  const settlementInputError = (() => {
-    if (!preview) return null
-    if (!Number.isFinite(collectedValue) || collectedValue < 0) return "Cobro inválido"
-    if (!Number.isFinite(chipsLeftValue) || chipsLeftValue < 0) return "Deje inválido"
-    if (chipsLeftValue > preview.unsoldChips) {
-      return `El deje no puede superar las ${formatChipsAmount(preview.unsoldChips)} fichas no vendidas`
-    }
-    return null
-  })()
-
-  const createSettlement = async () => {
-    if (!settlementAccount || creatingSettlement || !preview || settlementInputError) return
-    const cashierUsername = settlementAccount.username
-    setCreatingSettlement(true)
-    try {
-      const response = await apiService.post<{
-        settlement: CashierSettlement
-        message: string
-      }>(
-        `/cashier-accounts/${settlementAccount.cashierId}/settlements`,
-        {
-          periodStart: startOfDayIso(settlementStart),
-          periodEnd: endOfDayIso(settlementEnd),
-          collected: collectedValue,
-          chipsLeft: chipsLeftValue,
-          notes: settlementNotes.trim() || undefined
-        }
-      )
-
-      if (response.success && response.data) {
-        toast({ title: "Liquidación creada" })
-        setSettlementAccount(null)
-        setPreview(null)
-        await refreshAll()
-        setPeriodRefreshKey(key => key + 1)
-        await downloadReceipt(response.data.settlement.id, cashierUsername)
-      } else {
-        toast({
-          variant: "destructive",
-          title: "No se pudo crear la liquidación",
-          description: response.error?.message || "Error desconocido"
-        })
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "No se pudo crear la liquidación",
-        description: error instanceof Error ? error.message : "Error de conexión"
-      })
-    } finally {
-      setCreatingSettlement(false)
     }
   }
 
@@ -492,7 +324,7 @@ export default function CashierAccountsPage() {
     }
   }
 
-  const openDetail = async (account: CashierAccountSummary) => {
+  const openDetail = async (account: CashierRowTarget) => {
     setDetailAccount(account)
     setDetail(null)
     setDetailLoading(true)
@@ -520,15 +352,7 @@ export default function CashierAccountsPage() {
     }
   }
 
-  const totalPagesAccounts = accountsPagination?.totalPages ?? 1
   const totalPagesSettlements = settlementsPagination?.totalPages ?? 1
-
-  const accountsRangeLabel = useMemo(() => {
-    if (!accountsPagination || accountsPagination.total === 0) return "Sin cajeros"
-    const from = (accountsPagination.page - 1) * accountsPagination.limit + 1
-    const to = Math.min(accountsPagination.page * accountsPagination.limit, accountsPagination.total)
-    return `${from}-${to} de ${accountsPagination.total}`
-  }, [accountsPagination])
 
   const settlementsRangeLabel = useMemo(() => {
     if (!settlementsPagination || settlementsPagination.total === 0) return "Sin liquidaciones"
@@ -540,13 +364,6 @@ export default function CashierAccountsPage() {
   if (!authLoading && role !== UserRole.OWNER) {
     return null
   }
-
-  const previewDebt = preview && Number.isFinite(collectedValue)
-    ? preview.totalDue - collectedValue
-    : 0
-  const previewUnsoldRecovered = preview && Number.isFinite(chipsLeftValue)
-    ? Math.max(preview.unsoldChips - chipsLeftValue, 0)
-    : 0
 
   const ledgerRow = (movement: CashierAccountMovement) => (
     <div
@@ -640,161 +457,18 @@ export default function CashierAccountsPage() {
 
         <Tabs defaultValue="period" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="period">Cuenta corriente</TabsTrigger>
-            <TabsTrigger value="accounts">Cuentas de cajeros</TabsTrigger>
-            <TabsTrigger value="settlements">Liquidaciones</TabsTrigger>
+            <TabsTrigger value="period">Liquidar</TabsTrigger>
+            <TabsTrigger value="settlements">Historial de liquidaciones</TabsTrigger>
             <TabsTrigger value="owner">Cuenta del owner</TabsTrigger>
           </TabsList>
 
           <TabsContent value="period" className="space-y-4">
-            <CashierPeriodAccounts key={periodRefreshKey} onChanged={refreshAll} />
-          </TabsContent>
-
-          <TabsContent value="accounts" className="space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={searchTerm}
-                    onChange={event => setSearchTerm(event.target.value)}
-                    placeholder="Buscar cajero por usuario, nombre o email..."
-                    className="pl-9"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-0">
-                {accountsLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Cargando cuentas...
-                  </div>
-                ) : accountsError ? (
-                  <div className="py-16 text-center text-sm text-red-600">{accountsError}</div>
-                ) : accounts.length === 0 ? (
-                  <div className="py-16 text-center text-sm text-muted-foreground">
-                    No hay cajeros que coincidan con la búsqueda.
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[1050px]">
-                      <div className="grid grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        <div className="col-span-3">Cajero</div>
-                        <div className="col-span-1">Comisión</div>
-                        <div className="col-span-2">Sin liquidar</div>
-                        <div className="col-span-2">Deuda arrastrada</div>
-                        <div className="col-span-2">A cobrar</div>
-                        <div className="col-span-2 text-right">Acciones</div>
-                      </div>
-                      {accounts.map(account => (
-                        <div
-                          key={account.cashierId}
-                          className="grid grid-cols-12 items-center gap-3 border-b px-4 py-3 text-sm last:border-b-0 hover:bg-muted/20"
-                        >
-                          <div className="col-span-3 min-w-0">
-                            <button
-                              onClick={() => openDetail(account)}
-                              className="truncate text-left font-semibold text-blue-600 hover:underline"
-                            >
-                              {account.username}
-                            </button>
-                            <div className="truncate text-xs text-muted-foreground">
-                              {[account.firstName, account.lastName].filter(Boolean).join(" ") || account.email || "Sin datos"}
-                            </div>
-                            <div className="mt-1 flex items-center gap-1">
-                              <Badge variant="outline" className="text-[10px]">
-                                {account.status === "ACTIVE" ? "Activo" : "Bloqueado"}
-                              </Badge>
-                              <span className="text-[10px] text-muted-foreground">
-                                {formatChipsAmount(account.chipBalance)} fichas
-                                {account.lastSettlementEnd && ` · liquidado hasta ${formatDate(account.lastSettlementEnd)}`}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="col-span-1">
-                            {account.compensation ? (
-                              <div className="font-semibold">{account.compensation.percentage ?? 0}%</div>
-                            ) : (
-                              <Badge variant="outline" className="border-amber-200 text-amber-700">
-                                Sin configurar
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="col-span-2 text-xs">
-                            <div>venta <span className="font-medium text-emerald-600">{formatMoney(account.openSales)}</span></div>
-                            <div className="text-muted-foreground">
-                              premios {formatMoney(account.openPrizes)} · subtotal {formatMoney(account.openSubtotal)}
-                            </div>
-                          </div>
-                          <div className="col-span-2 font-semibold tabular-nums">
-                            {formatMoney(account.debt)}
-                          </div>
-                          <div className="col-span-2">
-                            <div className="font-semibold text-amber-700">{formatMoney(account.balanceDue)}</div>
-                            <div className="text-[11px] text-muted-foreground">
-                              cobrado histórico {formatMoney(account.totalCollected)}
-                            </div>
-                          </div>
-                          <div className="col-span-2 flex flex-wrap justify-end gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openCompensation(account)}
-                              title="Configurar comisión"
-                            >
-                              <Percent className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openSettlement(account)}
-                              title="Liquidar"
-                            >
-                              <Calculator className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openDetail(account)}
-                              title="Ver cuenta corriente"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between border-t bg-muted/20 px-4 py-3 text-sm">
-                  <span className="text-muted-foreground">{accountsRangeLabel}</span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={accountsPage <= 1}
-                      onClick={() => setAccountsPage(page => Math.max(1, page - 1))}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-xs text-muted-foreground">
-                      Página {accountsPagination?.page ?? 1} de {totalPagesAccounts}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={accountsPage >= totalPagesAccounts}
-                      onClick={() => setAccountsPage(page => Math.min(totalPagesAccounts, page + 1))}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <CashierPeriodAccounts
+              key={periodRefreshKey}
+              onChanged={refreshAll}
+              onCompensation={openCompensation}
+              onDetail={openDetail}
+            />
           </TabsContent>
 
           <TabsContent value="settlements" className="space-y-4">
@@ -998,157 +672,6 @@ export default function CashierAccountsPage() {
             <Button onClick={saveCompensation} disabled={savingCompensation}>
               {savingCompensation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Guardar comisión
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(settlementAccount)} onOpenChange={open => !open && setSettlementAccount(null)}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Liquidar a {settlementAccount?.username}</DialogTitle>
-            <DialogDescription>
-              Se cobra la venta de fichas menos la comisión, se retiran las fichas de premios y
-              se decide cuántas fichas no vendidas le quedan al cajero.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="settlement-start">Desde</Label>
-              <Input
-                id="settlement-start"
-                type="date"
-                value={settlementStart}
-                onChange={event => setSettlementStart(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="settlement-end">Hasta</Label>
-              <Input
-                id="settlement-end"
-                type="date"
-                value={settlementEnd}
-                onChange={event => setSettlementEnd(event.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-muted/20 p-4">
-            {previewLoading ? (
-              <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Calculando período...
-              </div>
-            ) : preview ? (
-              <div className="space-y-4">
-                {preview.unsettledSince && (
-                  <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                    <AlertTriangle className="h-4 w-4" />
-                    Hay movimientos sin liquidar desde el {formatDate(preview.unsettledSince, true)}. Revisá la fecha de inicio.
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Venta de fichas</div>
-                    <div className="font-semibold text-emerald-600">{formatMoney(preview.totalSales)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">
-                      Comisión ({preview.compensation?.percentage ?? 0}%)
-                    </div>
-                    <div className="font-semibold">{formatMoney(preview.commission)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Subtotal</div>
-                    <div className="font-semibold">{formatMoney(preview.subtotal)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground">Saldo anterior</div>
-                    <div className="font-semibold">{formatMoney(preview.previousDebt)}</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between rounded border bg-background px-3 py-2">
-                  <span className="text-sm text-muted-foreground">Total a cobrar</span>
-                  <span className="text-lg font-bold text-amber-700">{formatMoney(preview.totalDue)}</span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="settlement-collected">Cobro</Label>
-                    <Input
-                      id="settlement-collected"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={settlementCollected}
-                      onChange={event => setSettlementCollected(event.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Arrastre a la próxima liquidación: <span className="font-semibold">{formatMoney(previewDebt)}</span>
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="settlement-chips-left">Deje (fichas no vendidas que se queda)</Label>
-                    <Input
-                      id="settlement-chips-left"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={settlementChipsLeft}
-                      onChange={event => setSettlementChipsLeft(event.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Tiene {formatChipsAmount(preview.chipBalance)} fichas: {formatChipsAmount(preview.prizeChipsToRecover)} de premios
-                      (se retiran) y {formatChipsAmount(preview.unsoldChips)} no vendidas
-                      {previewUnsoldRecovered > 0 && ` · se retiran ${formatChipsAmount(previewUnsoldRecovered)}`}
-                    </p>
-                  </div>
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  Entregadas en el período: {formatChipsAmount(preview.chipsDelivered)} · premios{" "}
-                  {formatMoney(preview.totalPrizes)} (los pagás vos al jugador).
-                </p>
-                {!preview.compensation && (
-                  <p className="text-xs text-amber-700">
-                    El cajero no tiene comisión configurada: configurala antes de liquidar.
-                  </p>
-                )}
-                {settlementInputError && (
-                  <p className="text-xs text-red-600">{settlementInputError}</p>
-                )}
-              </div>
-            ) : (
-              <p className="py-2 text-sm text-muted-foreground">
-                Elegí un rango de fechas para calcular la liquidación.
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="settlement-notes">Notas (opcional)</Label>
-            <Input
-              id="settlement-notes"
-              value={settlementNotes}
-              onChange={event => setSettlementNotes(event.target.value)}
-              placeholder="Observaciones de la liquidación"
-            />
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSettlementAccount(null)}>Cancelar</Button>
-            <Button
-              onClick={createSettlement}
-              disabled={
-                creatingSettlement ||
-                previewLoading ||
-                !preview ||
-                !preview.compensation ||
-                Boolean(settlementInputError)
-              }
-            >
-              {creatingSettlement && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Liquidar
             </Button>
           </DialogFooter>
         </DialogContent>

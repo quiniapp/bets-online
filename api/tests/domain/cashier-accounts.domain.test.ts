@@ -56,6 +56,7 @@ jest.mock('../../src/features/cashier-accounts/cashier-accounts.repository', () 
     getMovementTotals: jest.fn(),
     getPeriodFlows: jest.fn(),
     findLedgerChipMovements: jest.fn(),
+    findFirstMovementAt: jest.fn(),
     findSettlementChipMovements: jest.fn(),
     findSettlements: jest.fn()
   }
@@ -324,21 +325,54 @@ describe('CashierAccountsDomain', () => {
       expect(repo.createSettlement).not.toHaveBeenCalled();
     });
 
-    it('rechaza liquidaciones superpuestas', async () => {
-      repo.findOverlappingSettlement.mockResolvedValue(makeSettlement());
+    it('arranca justo después de la última liquidación, sin importar el inicio que mande el cliente', async () => {
+      await domain.createSettlement('owner-1', 'cashier-1', {
+        periodStart: '2026-11-21T03:00:00.000Z',
+        periodEnd: periodEnd.toISOString()
+      });
 
-      await expect(
-        domain.createSettlement('owner-1', 'cashier-1', { periodStart, periodEnd })
-      ).rejects.toMatchObject({ statusCode: 409, code: ErrorCode.ALREADY_EXISTS });
+      expect(repo.getPeriodFlows).toHaveBeenCalledWith(
+        'cashier-1',
+        new Date('2026-11-15T03:00:00.000Z'),
+        periodEnd,
+        expect.anything()
+      );
     });
 
-    it('rechaza un período anterior a la última liquidación', async () => {
+    it('la primera liquidación arranca en el primer movimiento del cajero', async () => {
+      repo.findLastSettlement.mockResolvedValue(null);
+      repo.findFirstMovementAt.mockResolvedValue(new Date('2026-11-15T13:00:00.000Z'));
+
+      await domain.createSettlement('owner-1', 'cashier-1', { periodEnd });
+
+      expect(repo.createSettlement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          periodStart: new Date('2026-11-15T13:00:00.000Z'),
+          previousDebt: 0
+        }),
+        expect.anything()
+      );
+    });
+
+    it('rechaza si el cajero ya está liquidado hasta el corte', async () => {
+      repo.findLastSettlement.mockResolvedValue(
+        makeSettlement({ periodEnd: new Date('2026-11-22T10:00:00.000Z') })
+      );
+
       await expect(
-        domain.createSettlement('owner-1', 'cashier-1', {
-          periodStart: new Date('2026-11-01T03:00:00.000Z'),
-          periodEnd: new Date('2026-11-05T03:00:00.000Z')
-        })
+        domain.createSettlement('owner-1', 'cashier-1', { periodEnd })
       ).rejects.toMatchObject({ statusCode: 409, code: ErrorCode.ALREADY_EXISTS });
+      expect(repo.createSettlement).not.toHaveBeenCalled();
+    });
+
+    it('un corte en el futuro se recorta a ahora', async () => {
+      const before = Date.now();
+      await domain.createSettlement('owner-1', 'cashier-1', {
+        periodEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+      const saved = repo.createSettlement.mock.calls[0][0] as { periodEnd: Date };
+      expect(saved.periodEnd.getTime() <= Date.now()).toBe(true);
+      expect(saved.periodEnd.getTime() >= before).toBe(true);
     });
 
     it('rechaza liquidar sin comisión configurada', async () => {
@@ -347,6 +381,37 @@ describe('CashierAccountsDomain', () => {
       await expect(
         domain.createSettlement('owner-1', 'cashier-1', { periodStart, periodEnd })
       ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+    });
+  });
+
+  describe('cuenta corriente a una fecha de corte', () => {
+    it('muestra en vivo desde la última liquidación y la liquidación si ya cubre el corte', async () => {
+      const other = { ...cashier, id: 'cashier-2', username: 'cajero2' };
+      (usersRepository.findDescendants as jest.Mock).mockResolvedValue([cashier, other]);
+      repo.findLastSettlement.mockImplementation((id: string) =>
+        Promise.resolve(
+          id === 'cashier-1'
+            ? makeSettlement()
+            : makeSettlement({ id: 'settlement-9', cashierId: 'cashier-2', periodEnd: new Date('2026-11-22T10:00:00.000Z') })
+        )
+      );
+      repo.getPeriodFlows.mockResolvedValue({ chipsDelivered: 60000, totalSales: 50000, totalPrizes: 0 });
+      (balancesRepository.findByUserId as jest.Mock).mockResolvedValue({ userId: 'cashier-1', chipBalance: 10000 });
+
+      const result = await domain.getPeriodAccounts('owner-1', periodEnd);
+      const [first, second] = result.accounts;
+
+      expect(first.settlement).toBe(null);
+      expect(first.preview).toMatchObject({
+        periodStart: new Date('2026-11-15T03:00:00.000Z'),
+        totalSales: 50000,
+        commission: 10000,
+        subtotal: 40000,
+        previousDebt: 30,
+        totalDue: 40030,
+        unsoldChips: 10000
+      });
+      expect(second.settlement?.id).toBe('settlement-9');
     });
   });
 

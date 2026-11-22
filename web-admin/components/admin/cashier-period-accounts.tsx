@@ -1,20 +1,19 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import {
-  currentWeekRange,
+  cutoffQuery,
   endOfDayIso,
-  periodQuery,
-  startOfDayIso,
+  todayInput,
   useCashierPeriodAccounts
 } from "@/hooks/useCashierPeriodAccounts"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
-import { AlertTriangle, Download, FileText, Loader2, RefreshCw } from "lucide-react"
+import { Download, Eye, FileText, Loader2, Percent, RefreshCw } from "lucide-react"
 import type { CashierPeriodAccount, CashierSettlement } from "helper"
 
 const money = (value: number | null | undefined) => `$${formatChips(Number(value) || 0)}`
@@ -36,25 +35,36 @@ interface RowEdits {
   chipsLeft?: string
 }
 
+/** Lo mínimo que necesitan los diálogos de comisión y de cuenta del cajero. */
+export interface CashierRowTarget {
+  cashierId: string
+  username: string
+  percentage: number | null
+}
+
 const parseAmount = (value: string | undefined, fallback: number) => {
   if (value === undefined) return fallback
   const parsed = Number(value.replace(",", "."))
   return Number.isFinite(parsed) ? parsed : NaN
 }
 
+/** Hay algo para liquidar: ventas, premios, entregas o deuda. Solo fichas no vendidas no cuenta. */
 const hasActivity = ({ preview }: CashierPeriodAccount) =>
   preview.totalSales !== 0 ||
   preview.totalPrizes !== 0 ||
   preview.chipsDelivered !== 0 ||
-  preview.previousDebt !== 0 ||
-  preview.unsoldChips !== 0
+  preview.previousDebt !== 0
 
-export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void }) {
+interface Props {
+  onChanged?: () => void
+  onCompensation?: (target: CashierRowTarget) => void
+  onDetail?: (target: CashierRowTarget) => void
+}
+
+export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: Props) {
   const { toast } = useToast()
-  const initial = useMemo(() => currentWeekRange(), [])
-  const [from, setFrom] = useState(initial.from)
-  const [to, setTo] = useState(initial.to)
-  const { accounts, loading, error, reload } = useCashierPeriodAccounts(from, to)
+  const [cutoff, setCutoff] = useState(todayInput())
+  const { accounts, loading, error, reload } = useCashierPeriodAccounts(cutoff)
   const [edits, setEdits] = useState<Record<string, RowEdits>>({})
   const [liquidatingId, setLiquidatingId] = useState<string | null>(null)
   const [liquidatingAll, setLiquidatingAll] = useState(false)
@@ -62,7 +72,13 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
 
   useEffect(() => {
     setEdits({})
-  }, [from, to])
+  }, [cutoff])
+
+  const targetOf = ({ preview }: CashierPeriodAccount): CashierRowTarget => ({
+    cashierId: preview.cashierId,
+    username: preview.cashierUsername ?? "",
+    percentage: preview.compensation?.percentage ?? null
+  })
 
   const rowValues = (account: CashierPeriodAccount) => {
     const { preview, settlement } = account
@@ -114,12 +130,7 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
     const { collected, chipsLeft } = rowValues(account)
     const response = await apiService.post<{ settlement: CashierSettlement }>(
       `/cashier-accounts/${account.preview.cashierId}/settlements`,
-      {
-        periodStart: startOfDayIso(from),
-        periodEnd: endOfDayIso(to),
-        collected,
-        chipsLeft
-      }
+      { periodEnd: endOfDayIso(cutoff), collected, chipsLeft }
     )
     if (response.success && response.data) return response.data.settlement
     toast({
@@ -140,7 +151,8 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
     const { preview } = account
     const recoveredUnsold = round(preview.unsoldChips - chipsLeft)
     const message = [
-      `Liquidar a ${preview.cashierUsername} del ${shortDate(startOfDayIso(from))} al ${shortDate(endOfDayIso(to))}:`,
+      `Liquidar a ${preview.cashierUsername} del ${shortDate(preview.periodStart)} al ${shortDate(preview.periodEnd)}:`,
+      `• Venta de fichas ${money(preview.totalSales)} − comisión ${money(preview.commission)} = ${money(preview.subtotal)}`,
       `• Cobro: ${money(collected)} (queda debiendo ${money(round(preview.totalDue - collected))})`,
       `• Se le retiran ${chips(preview.prizeChipsToRecover)} fichas de premios`,
       recoveredUnsold > 0
@@ -182,9 +194,10 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
       })
       return
     }
+    const names = pendingToLiquidate.map(account => account.preview.cashierUsername).join(", ")
     if (
       !window.confirm(
-        `¿Liquidar ${pendingToLiquidate.length} cajero(s) del ${shortDate(startOfDayIso(from))} al ${shortDate(endOfDayIso(to))} con los cobros y dejes de la tabla?`
+        `¿Liquidar hasta el ${shortDate(endOfDayIso(cutoff))} a ${pendingToLiquidate.length} cajero(s) (${names}) con los cobros y dejes de la tabla?`
       )
     ) {
       return
@@ -212,10 +225,8 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
 
   const downloadSummary = async () => {
     try {
-      const blob = await apiService.getBlob(
-        `/cashier-accounts/period/summary.pdf?${periodQuery(from, to)}`
-      )
-      downloadBlob(blob, `cuenta-corriente-${from}-a-${to}.pdf`)
+      const blob = await apiService.getBlob(`/cashier-accounts/period/summary.pdf?${cutoffQuery(cutoff)}`)
+      downloadBlob(blob, `cuenta-corriente-al-${cutoff}.pdf`)
     } catch (err) {
       toast({
         variant: "destructive",
@@ -232,7 +243,7 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
       const blob = await apiService.getBlob(
         `/cashier-accounts/settlements/${account.settlement.id}/receipt`
       )
-      downloadBlob(blob, `liquidacion-${account.preview.cashierUsername}-${from}.pdf`)
+      downloadBlob(blob, `liquidacion-${account.preview.cashierUsername}.pdf`)
     } catch (err) {
       toast({
         variant: "destructive",
@@ -292,32 +303,16 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
     />
   )
 
-  const invalidRange = !from || !to || from > to
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-wrap items-end gap-2">
           <div className="space-y-1">
-            <div className="text-xs font-medium text-muted-foreground">Desde</div>
-            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-40" />
+            <div className="text-xs font-medium text-muted-foreground">Liquidar hasta</div>
+            <Input type="date" value={cutoff} max={todayInput()} onChange={e => setCutoff(e.target.value)} className="w-44" />
           </div>
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-muted-foreground">Hasta</div>
-            <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="w-40" />
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const week = currentWeekRange()
-              setFrom(week.from)
-              setTo(week.to)
-            }}
-          >
-            Esta semana
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading || invalidRange}>
+          <Button variant="ghost" size="sm" onClick={() => setCutoff(todayInput())}>Hoy</Button>
+          <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading || !cutoff}>
             {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
             Actualizar
           </Button>
@@ -327,7 +322,7 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
             variant="outline"
             size="sm"
             onClick={downloadSummary}
-            disabled={loading || invalidRange || accounts.length === 0}
+            disabled={loading || !cutoff || accounts.length === 0}
           >
             <FileText className="mr-1 h-4 w-4" />
             Resumen PDF
@@ -345,20 +340,21 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
       </div>
 
       <p className="text-xs text-muted-foreground">
+        Cada cajero se liquida desde su última liquidación (o su primer movimiento) hasta la fecha de corte.
         Comisión sobre la venta de fichas · Subtotal = venta − comisión · Total = saldo anterior + subtotal ·
-        Arrastre = total − cobro (pasa a la próxima liquidación). Al liquidar se le retiran al cajero las fichas
-        de premios; de las no vendidas, lo que no se deje también se retira.
+        Arrastre = total − cobro. Al liquidar se le retiran al cajero las fichas de premios; de las no vendidas,
+        lo que no se deje también se retira.
       </p>
 
-      {invalidRange ? (
+      {!cutoff ? (
         <div className="rounded-lg border py-10 text-center text-sm text-muted-foreground">
-          Elegí un rango de fechas válido.
+          Elegí una fecha de corte.
         </div>
       ) : error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
       ) : loading ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border py-16 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Calculando cuentas del período...
+          <Loader2 className="h-4 w-4 animate-spin" /> Calculando cuentas...
         </div>
       ) : accounts.length === 0 ? (
         <div className="rounded-lg border py-16 text-center text-sm text-muted-foreground">
@@ -366,7 +362,7 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full min-w-[1350px] text-xs">
+          <table className="w-full min-w-[1450px] text-xs">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Cajero</th>
@@ -391,24 +387,26 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
                 const values = rowValues(account)
                 const problem = rowError(account)
                 const status = settlement ? SETTLEMENT_STATUS[settlement.status] : null
+                const target = targetOf(account)
                 return (
                   <tr key={preview.cashierId} className="hover:bg-muted/20">
                     <td className="px-3 py-2">
-                      <div className="font-medium">{preview.cashierUsername}</div>
+                      <button
+                        className="font-medium text-blue-600 hover:underline"
+                        onClick={() => onDetail?.(target)}
+                        title="Ver cuenta corriente del cajero"
+                      >
+                        {preview.cashierUsername}
+                      </button>
                       <div className="text-[10px] text-muted-foreground">
                         {preview.compensation
                           ? `${preview.compensation.percentage ?? 0}% comisión`
                           : "sin comisión"}
-                        {settlement && (
-                          <> · {shortDate(settlement.periodStart)} al {shortDate(settlement.periodEnd)}</>
-                        )}
+                        {" · "}
+                        {settlement
+                          ? <>liquidado {shortDate(settlement.periodStart)} al {shortDate(settlement.periodEnd)}</>
+                          : <>desde {shortDate(preview.periodStart)}</>}
                       </div>
-                      {preview.unsettledSince && !settlement && (
-                        <div className="flex items-center gap-1 text-[10px] text-amber-600">
-                          <AlertTriangle className="h-3 w-3" />
-                          sin liquidar desde {shortDate(preview.unsettledSince)}
-                        </div>
-                      )}
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums">{chips(preview.chipsDelivered)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{money(preview.totalSales)}</td>
@@ -440,32 +438,52 @@ export function CashierPeriodAccounts({ onChanged }: { onChanged?: () => void })
                         </Badge>
                       )}
                     </td>
-                    <td className="px-2 py-2 text-right">
-                      {settlement ? (
+                    <td className="px-2 py-2">
+                      <div className="flex justify-end gap-1">
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-7 px-2"
-                          disabled={downloadingId === settlement.id}
-                          onClick={() => downloadReceipt(account)}
-                          title="Descargar comprobante"
+                          onClick={() => onCompensation?.(target)}
+                          title="Configurar comisión"
                         >
-                          {downloadingId === settlement.id
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <Download className="h-3.5 w-3.5" />}
+                          <Percent className="h-3.5 w-3.5" />
                         </Button>
-                      ) : (
                         <Button
+                          variant="outline"
                           size="sm"
                           className="h-7 px-2"
-                          disabled={Boolean(problem) || liquidatingId === preview.cashierId || liquidatingAll}
-                          title={problem ?? "Liquidar este cajero"}
-                          onClick={() => liquidateOne(account)}
+                          onClick={() => onDetail?.(target)}
+                          title="Ver cuenta corriente del cajero"
                         >
-                          {liquidatingId === preview.cashierId && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
-                          Liquidar
+                          <Eye className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                        {settlement ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2"
+                            disabled={downloadingId === settlement.id}
+                            onClick={() => downloadReceipt(account)}
+                            title="Descargar comprobante"
+                          >
+                            {downloadingId === settlement.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Download className="h-3.5 w-3.5" />}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="h-7 px-2"
+                            disabled={Boolean(problem) || liquidatingId === preview.cashierId || liquidatingAll}
+                            title={problem ?? "Liquidar este cajero"}
+                            onClick={() => liquidateOne(account)}
+                          >
+                            {liquidatingId === preview.cashierId && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                            Liquidar
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )

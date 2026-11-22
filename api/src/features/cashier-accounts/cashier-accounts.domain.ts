@@ -159,58 +159,51 @@ export class CashierAccountsDomain {
   async previewSettlement(
     requesterId: string,
     cashierId: string,
-    periodStart: Date | string,
     periodEnd: Date | string
   ): Promise<CashierSettlementPreview> {
     await this.assertOwner(requesterId);
     const cashier = await this.getCashierInOwnerTree(requesterId, cashierId);
 
-    const start = this.normalizeDate(periodStart);
-    const end = this.normalizeDate(periodEnd);
-    this.assertValidPeriod(start, end);
-
-    return this.buildLivePreview(cashier, start, end);
+    const cutoff = this.normalizeCutoff(periodEnd);
+    const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashier.id);
+    if (lastSettlement && lastSettlement.periodEnd >= cutoff) {
+      return this.previewFromSettlement(cashier, lastSettlement);
+    }
+    const start = await this.resolvePeriodStart(cashier.id, cutoff, lastSettlement);
+    return this.buildLivePreview(cashier, start, cutoff, lastSettlement);
   }
 
   /**
-   * Cuenta corriente de todos los cajeros para un período: los que ya se
-   * liquidaron muestran su liquidación; el resto, el cálculo en vivo.
+   * Cuenta corriente de todos los cajeros a una fecha de corte. Cada cajero
+   * va desde el fin de su última liquidación (o su primer movimiento) hasta
+   * el corte; si su última liquidación ya cubre el corte, se muestra esa.
    */
-  async getPeriodAccounts(
-    requesterId: string,
-    periodStart: Date | string,
-    periodEnd: Date | string
-  ) {
+  async getPeriodAccounts(requesterId: string, periodEnd: Date | string) {
     await this.assertOwner(requesterId);
-    const start = this.normalizeDate(periodStart);
-    const end = this.normalizeDate(periodEnd);
-    this.assertValidPeriod(start, end);
+    const cutoff = this.normalizeCutoff(periodEnd);
 
     const cashiers = await this.getOwnerCashiers(requesterId);
-    const overlapping = await cashierAccountsRepository.findSettlementsOverlapping(
-      cashiers.map(cashier => cashier.id),
-      start,
-      end
-    );
-    const settlementByCashier = new Map<string, CashierSettlement>();
-    for (const settlement of overlapping) {
-      if (!settlementByCashier.has(settlement.cashierId)) {
-        settlementByCashier.set(settlement.cashierId, settlement);
-      }
-    }
-
     const accounts: CashierPeriodAccount[] = [];
     for (const cashier of cashiers) {
-      const settlement = settlementByCashier.get(cashier.id) ?? null;
-      const preview = settlement
-        ? this.previewFromSettlement(cashier, settlement)
-        : await this.buildLivePreview(cashier, start, end);
-      accounts.push({ preview, settlement });
+      const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashier.id);
+      if (lastSettlement && lastSettlement.periodEnd >= cutoff) {
+        accounts.push({
+          preview: this.previewFromSettlement(cashier, lastSettlement),
+          settlement: lastSettlement
+        });
+        continue;
+      }
+      const start = await this.resolvePeriodStart(cashier.id, cutoff, lastSettlement);
+      accounts.push({
+        preview: await this.buildLivePreview(cashier, start, cutoff, lastSettlement),
+        settlement: null
+      });
     }
 
+    const starts = accounts.map(account => account.preview.periodStart.getTime());
     return {
-      periodStart: start,
-      periodEnd: end,
+      periodStart: new Date(starts.length > 0 ? Math.min(...starts) : cutoff.getTime()),
+      periodEnd: cutoff,
       accounts,
       totals: this.sumPeriodAccounts(accounts)
     };
@@ -220,7 +213,8 @@ export class CashierAccountsDomain {
     requesterId: string,
     cashierId: string,
     data: {
-      periodStart: Date | string;
+      /** Ignorado: el inicio lo calcula el servidor. */
+      periodStart?: Date | string;
       periodEnd: Date | string;
       collected?: number;
       chipsLeft?: number;
@@ -233,10 +227,9 @@ export class CashierAccountsDomain {
 
     // Express deja las fechas del body como string: validate() valida pero no
     // reemplaza req.body. El dominio normaliza para que el cálculo y el INSERT
-    // reciban siempre Date.
-    const periodStart = this.normalizeDate(data.periodStart);
-    const periodEnd = this.normalizeDate(data.periodEnd);
-    this.assertValidPeriod(periodStart, periodEnd);
+    // reciban siempre Date. El corte nunca pasa de ahora: lo que entre después
+    // va a la próxima liquidación.
+    const periodEnd = this.normalizeCutoff(data.periodEnd);
 
     const settlementId = randomUUID();
 
@@ -248,28 +241,16 @@ export class CashierAccountsDomain {
         throw new AppError(404, ErrorCode.NOT_FOUND, 'Cashier balance not found');
       }
 
-      const overlapping = await cashierAccountsRepository.findOverlappingSettlement(
-        cashierId,
-        periodStart,
-        periodEnd,
-        t
-      );
-      if (overlapping) {
-        throw new AppError(
-          409,
-          ErrorCode.ALREADY_EXISTS,
-          'Ya existe una liquidación para ese período. Cancelala antes de crear una nueva.'
-        );
-      }
-
       const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashierId, t);
-      if (lastSettlement && periodStart < lastSettlement.periodEnd) {
+      if (lastSettlement && lastSettlement.periodEnd >= periodEnd) {
         throw new AppError(
           409,
           ErrorCode.ALREADY_EXISTS,
-          'El período tiene que empezar después de la última liquidación del cajero.'
+          `El cajero ya está liquidado hasta el ${this.shortDate(lastSettlement.periodEnd)}.`
         );
       }
+      // El período arranca donde terminó la última liquidación: no quedan huecos.
+      const periodStart = await this.resolvePeriodStart(cashierId, periodEnd, lastSettlement, t);
 
       const compensation = await cashierAccountsRepository.findCompensationModeForPeriod(
         cashierId,
@@ -403,8 +384,8 @@ export class CashierAccountsDomain {
       entityId: result.id,
       newValues: {
         cashierId,
-        periodStart,
-        periodEnd,
+        periodStart: result.periodStart,
+        periodEnd: result.periodEnd,
         totalSales: result.totalSales,
         totalPrizes: result.totalPrizesPaid,
         commission: result.commission,
@@ -641,16 +622,12 @@ export class CashierAccountsDomain {
     };
   }
 
-  async getPeriodSummaryReceipt(
-    requesterId: string,
-    periodStart: Date | string,
-    periodEnd: Date | string
-  ) {
-    const result = await this.getPeriodAccounts(requesterId, periodStart, periodEnd);
+  async getPeriodSummaryReceipt(requesterId: string, periodEnd: Date | string) {
+    const result = await this.getPeriodAccounts(requesterId, periodEnd);
     const stamp = (date: Date) => date.toISOString().slice(0, 10);
     return {
       buffer: generatePeriodSummaryPdf(result),
-      filename: `cuenta-corriente-${stamp(result.periodStart)}-a-${stamp(result.periodEnd)}.pdf`
+      filename: `cuenta-corriente-al-${stamp(result.periodEnd)}.pdf`
     };
   }
 
@@ -790,12 +767,12 @@ export class CashierAccountsDomain {
   private async buildLivePreview(
     cashier: User,
     periodStart: Date,
-    periodEnd: Date
+    periodEnd: Date,
+    lastSettlement: CashierSettlement | null
   ): Promise<CashierSettlementPreview> {
-    const [compensation, flows, lastSettlement, balance] = await Promise.all([
+    const [compensation, flows, balance] = await Promise.all([
       cashierAccountsRepository.findCompensationModeForPeriod(cashier.id, periodStart, periodEnd),
       cashierAccountsRepository.getPeriodFlows(cashier.id, periodStart, periodEnd),
-      cashierAccountsRepository.findLastSettlement(cashier.id),
       balancesRepository.findByUserId(cashier.id)
     ]);
 
@@ -808,6 +785,37 @@ export class CashierAccountsDomain {
       lastSettlement,
       chipBalance: balance?.chipBalance ?? 0
     });
+  }
+
+  /**
+   * Inicio del período a liquidar: justo después de la última liquidación; si
+   * nunca se liquidó, el primer movimiento del cajero (o el día del corte si
+   * no tiene movimientos).
+   */
+  private async resolvePeriodStart(
+    cashierId: string,
+    cutoff: Date,
+    lastSettlement: CashierSettlement | null,
+    transaction?: Transaction
+  ): Promise<Date> {
+    if (lastSettlement) {
+      return new Date(lastSettlement.periodEnd.getTime() + 1);
+    }
+    const first = await cashierAccountsRepository.findFirstMovementAt(cashierId, transaction);
+    if (first && first < cutoff) return first;
+    const startOfDay = new Date(cutoff);
+    startOfDay.setHours(0, 0, 0, 0);
+    return startOfDay < cutoff ? startOfDay : new Date(cutoff.getTime() - 1);
+  }
+
+  /** Fecha de corte válida y nunca posterior a ahora. */
+  private normalizeCutoff(value: Date | string): Date {
+    const cutoff = this.normalizeDate(value);
+    if (Number.isNaN(cutoff.getTime())) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, 'Invalid period dates');
+    }
+    const now = new Date();
+    return cutoff > now ? now : cutoff;
   }
 
   /**
