@@ -405,15 +405,15 @@ export interface CashierSettlementPreview {
   /** Fin de la última liquidación del cajero */
   lastSettlementEnd: Date | null;
   /**
-   * Si hay un hueco sin liquidar entre la última liquidación y el inicio del
-   * período elegido, la fecha desde la que hay movimientos sin liquidar.
+   * @deprecated el inicio ya no lo elige el owner, así que no puede quedar un
+   * hueco sin liquidar. Siempre null.
    */
   unsettledSince: Date | null;
 }
 
 /**
- * Fila de la cuenta corriente por período: el cálculo en vivo si el período
- * todavía no se liquidó, o la liquidación guardada si ya se liquidó.
+ * Fila de la cuenta corriente: el cálculo en vivo desde la última liquidación
+ * hasta el corte, o la última liquidación si ya cubre la fecha de corte.
  */
 export interface CashierPeriodAccount {
   preview: CashierSettlementPreview;
@@ -456,10 +456,12 @@ export interface UpdateCashierCompensationDto {
 }
 
 /**
- * Liquidar un período de un cajero.
+ * Liquidar a un cajero hasta una fecha de corte. El inicio lo calcula el
+ * servidor (fin de la última liquidación o primer movimiento).
  */
 export interface CreateCashierSettlementDto {
-  periodStart: Date;
+  /** Ignorado: se acepta por compatibilidad. */
+  periodStart?: Date;
   periodEnd: Date;
   /** Monto cobrado al cajero. Por defecto, el total (saldo anterior + subtotal). */
   collected?: number;

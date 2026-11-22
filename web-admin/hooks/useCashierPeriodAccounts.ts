@@ -27,19 +27,30 @@ export const currentWeekRange = (today = new Date()) => {
   return { from: toDateInput(start), to: toDateInput(today) };
 };
 
+/** Hoy, en YYYY-MM-DD local. */
+export const todayInput = () => toDateInput(new Date());
+
+/** Query de la fecha de corte: fin del día elegido (el servidor lo recorta a ahora). */
+export const cutoffQuery = (cutoff: string) =>
+  new URLSearchParams({ periodEnd: endOfDayIso(cutoff) }).toString();
+
 export const periodQuery = (from: string, to: string) =>
   new URLSearchParams({
     periodStart: startOfDayIso(from),
     periodEnd: endOfDayIso(to)
   }).toString();
 
-export function useCashierPeriodAccounts(from: string, to: string) {
+/**
+ * Cuenta corriente de todos los cajeros a una fecha de corte: cada cajero va
+ * desde su última liquidación (o su primer movimiento) hasta el corte.
+ */
+export function useCashierPeriodAccounts(cutoff: string) {
   const [data, setData] = useState<CashierPeriodAccountsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!from || !to || from > to) {
+    if (!cutoff) {
       setData(null);
       setLoading(false);
       return;
@@ -49,7 +60,7 @@ export function useCashierPeriodAccounts(from: string, to: string) {
     setError(null);
     try {
       const response = await apiService.get<CashierPeriodAccountsResult>(
-        `/cashier-accounts/period?${periodQuery(from, to)}`
+        `/cashier-accounts/period?${cutoffQuery(cutoff)}`
       );
       if (response.success && response.data) {
         setData(response.data);
@@ -61,7 +72,7 @@ export function useCashierPeriodAccounts(from: string, to: string) {
     } finally {
       setLoading(false);
     }
-  }, [from, to]);
+  }, [cutoff]);
 
   useEffect(() => {
     load();

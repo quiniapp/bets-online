@@ -72,14 +72,10 @@ export class CashierAccountsController {
 
   async previewSettlement(req: Request, res: Response, next: NextFunction) {
     try {
-      const periodStart = req.query.periodStart as unknown as Date;
-      const periodEnd = req.query.periodEnd as unknown as Date;
-
       const preview = await cashierAccountsDomain.previewSettlement(
         req.user!.userId,
         req.params.id,
-        periodStart,
-        periodEnd
+        req.query.periodEnd as string
       );
 
       return res.json(ApiResponseBuilder.success(preview));
@@ -163,7 +159,6 @@ export class CashierAccountsController {
     try {
       const result = await cashierAccountsDomain.getPeriodAccounts(
         req.user!.userId,
-        req.query.periodStart as string,
         req.query.periodEnd as string
       );
       return res.json(ApiResponseBuilder.success(result));
@@ -176,7 +171,6 @@ export class CashierAccountsController {
     try {
       const { buffer, filename } = await cashierAccountsDomain.getPeriodSummaryReceipt(
         req.user!.userId,
-        req.query.periodStart as string,
         req.query.periodEnd as string
       );
       res.setHeader('Content-Type', 'application/pdf');

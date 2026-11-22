@@ -20,8 +20,10 @@ a sus cajeros, liquida lo que vendieron, cobra y ve su propio balance.
    (`SELL_TO_PLAYER` con el cajero como `related_user_id`).
 3. **Premios.** Si un jugador gana, el cajero le retira las fichas (`PRIZE`): las
    fichas vuelven al saldo del cajero y **el owner le paga el premio al jugador**.
-4. **Liquidación.** Al cierre del período (generalmente los sábados, pero el
-   período es libre) el owner liquida a cada cajero:
+4. **Liquidación.** El owner elige una **fecha de corte** (generalmente el
+   sábado) y liquida a cada cajero desde su última liquidación (o desde su primer
+   movimiento, si nunca se liquidó) hasta el corte. El inicio no se elige: así no
+   quedan movimientos sin liquidar entre una liquidación y la siguiente.
    - **cobra** la venta de fichas menos la comisión del cajero (puede cobrar
      parcial: lo que falta queda como deuda para la liquidación siguiente);
    - le **retira las fichas de premios**;
@@ -56,34 +58,31 @@ Ganancia del owner por la liquidación = `subtotal − premios`.
 Los importes se redondean a 2 decimales. Los juegos de proveedor (`GAME_*`) no
 están atribuidos a un cajero y no entran en la cuenta.
 
-Las "no vendidas" se calculan con el saldo **actual** del cajero, así que lo
-normal es liquidar hasta hoy. Si se liquida un período viejo, ese saldo incluye
-lo que pasó después.
+El corte nunca pasa de "ahora": si se elige hoy, se liquida hasta el momento de
+liquidar y lo que entre después va a la próxima liquidación. Las "no vendidas"
+se calculan con el saldo **actual** del cajero, así que lo normal es liquidar
+hasta hoy.
 
 ---
 
 ## 3. Backoffice
 
-Cuatro pestañas:
+Tres pestañas:
 
-1. **Cuenta corriente** (principal): rango Desde/Hasta (por defecto la semana en
-   curso, domingo a hoy) y una fila por cajero con Entregadas, Venta de fichas,
-   Premios, Comisión, Subtotal, Saldo ant., Total, **Cobro**, Arrastre, No
-   vendidas, **Deje**, Estado. Cobro y Deje se editan en la fila. Botones
-   **Liquidar** por cajero, **Liquidar todos** (solo cajeros con actividad y
-   comisión configurada) y **Resumen PDF**. Las filas ya liquidadas muestran los
-   valores guardados y el comprobante. Si hay un hueco sin liquidar entre la
-   última liquidación y el inicio del rango, la fila lo avisa.
-2. **Cuentas de cajeros:** situación actual de cada cajero (fichas, venta y
-   premios sin liquidar, deuda arrastrada, total a cobrar), configurar comisión,
-   liquidar desde un diálogo y ver la **cuenta corriente** del cajero: todos los
-   movimientos de fichas (entregas, ventas, premios, retiros de liquidación) y de
-   dinero (subtotal de cada liquidación y cobros).
-3. **Liquidaciones:** historial con venta, premios, comisión, subtotal, cobrado,
+1. **Liquidar** (principal): fecha de corte "Liquidar hasta" (por defecto hoy) y
+   una fila por cajero con su período (desde su última liquidación), Entregadas,
+   Venta de fichas, Premios, Comisión, Subtotal, Saldo ant., Total, **Cobro**,
+   Arrastre, No vendidas, **Deje** y Estado. Cobro y Deje se editan en la fila.
+   Acciones por fila: configurar comisión (%), ver la **cuenta corriente** del
+   cajero (todos sus movimientos de fichas y de dinero) y **Liquidar**, o el
+   comprobante si ya está liquidado hasta el corte. **Liquidar todos** liquida a
+   los cajeros con ventas, premios, entregas o deuda (no a los que solo tienen
+   fichas no vendidas). **Resumen PDF** de todos los cajeros al corte.
+2. **Historial de liquidaciones:** venta, premios, comisión, subtotal, cobrado,
    arrastre y estado. **Cobrar** registra un cobro posterior sobre la última
    liquidación del cajero. **Cancelar** anula la última liquidación del cajero y
    le devuelve las fichas retiradas.
-4. **Cuenta del owner:** para un rango, ganancia (`subtotal − premios`), ingreso
+3. **Cuenta del owner:** para un rango, ganancia (`subtotal − premios`), ingreso
    neto, premios pagados, caja neta (`cobrado − premios`), fichas entregadas y
    recuperadas; situación actual (deuda de cajeros, ventas sin liquidar, fichas en
    cajeros y en jugadores) y los movimientos (liquidaciones, premios, cobros).
@@ -139,10 +138,10 @@ Todas requieren sesión y rol `OWNER`; las mutaciones, `x-csrf-token`.
 GET  /api/cashier-accounts?page=&limit=&search=          # cuentas de cajeros + resumen
 GET  /api/cashier-accounts/:cashierId                     # cuenta corriente del cajero
 PUT  /api/cashier-accounts/:cashierId/compensation        # { type: "PERCENTAGE", percentage }
-GET  /api/cashier-accounts/:cashierId/preview?periodStart=&periodEnd=
+GET  /api/cashier-accounts/:cashierId/preview?periodEnd=
 POST /api/cashier-accounts/:cashierId/settlements         # liquidar
-GET  /api/cashier-accounts/period?periodStart=&periodEnd= # cuenta corriente de todos los cajeros
-GET  /api/cashier-accounts/period/summary.pdf?periodStart=&periodEnd=
+GET  /api/cashier-accounts/period?periodEnd=              # cuenta corriente de todos los cajeros al corte
+GET  /api/cashier-accounts/period/summary.pdf?periodEnd=
 GET  /api/cashier-accounts/owner?periodStart=&periodEnd=  # cuenta del owner
 GET  /api/cashier-accounts/settlements?status=&cashierId=&search=
 GET  /api/cashier-accounts/settlements/:id/receipt
@@ -154,7 +153,6 @@ Body de liquidar:
 
 ```json
 {
-  "periodStart": "2026-11-15T03:00:00.000Z",
   "periodEnd": "2026-11-22T02:59:59.999Z",
   "collected": 700,
   "chipsLeft": 60,
@@ -163,7 +161,8 @@ Body de liquidar:
 }
 ```
 
-`collected` y `chipsLeft` son opcionales (por defecto: total y todas las no
+El inicio lo calcula el servidor (`periodStart`, si llega, se ignora) y
+`periodEnd` se recorta a ahora. `collected` y `chipsLeft` son opcionales (por defecto: total y todas las no
 vendidas). La operación corre en una transacción con lock sobre el saldo del
 cajero.
 
@@ -176,8 +175,9 @@ cajero: el cajero la retiene) y los endpoints `/daily/*`.
 
 - Solo el owner, y solo sobre cajeros de su árbol.
 - Hace falta comisión configurada para el período.
-- No se superponen liquidaciones no canceladas de un cajero, y un período nuevo
-  tiene que empezar después de la última liquidación.
+- Cada liquidación empieza justo después de la anterior (o en el primer
+  movimiento del cajero): no hay huecos ni superposiciones. Si el cajero ya está
+  liquidado hasta el corte, se rechaza con `409`.
 - El deje no puede superar las fichas no vendidas.
 - Cobros posteriores y cancelaciones: solo sobre la **última** liquidación del
   cajero (en las anteriores el saldo ya se arrastró).

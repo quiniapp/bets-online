@@ -2,12 +2,12 @@ import { Router } from 'express';
 import {
   cancelCashierSettlementSchema,
   cashierAccountListQuerySchema,
+  cashierCutoffQuerySchema,
   cashierPeriodQuerySchema,
   cashierSettlementListQuerySchema,
   collectCashierSettlementSchema,
   createCashierSettlementSchema,
   idParamSchema,
-  previewCashierSettlementSchema,
   updateCashierCompensationSchema,
   UserRole
 } from 'helper';
@@ -20,17 +20,17 @@ const router = Router();
 router.use(authMiddleware);
 router.use(requireRole(UserRole.OWNER));
 
-// Cuenta corriente por período y cuenta del owner. Declaradas antes de '/:id'
+// Cuenta corriente a una fecha de corte y cuenta del owner. Declaradas antes de '/:id'
 // para que "period" y "owner" no se interpreten como uuid de cajero.
 router.get(
   '/period',
-  validateQuery(cashierPeriodQuerySchema),
+  validateQuery(cashierCutoffQuerySchema),
   cashierAccountsController.getPeriodAccounts.bind(cashierAccountsController)
 );
 
 router.get(
   '/period/summary.pdf',
-  validateQuery(cashierPeriodQuerySchema),
+  validateQuery(cashierCutoffQuerySchema),
   cashierAccountsController.periodSummaryReceipt.bind(cashierAccountsController)
 );
 
@@ -84,7 +84,7 @@ router.get(
 router.get(
   '/:id/preview',
   validateParams(idParamSchema),
-  validateQuery(previewCashierSettlementSchema),
+  validateQuery(cashierCutoffQuerySchema),
   cashierAccountsController.previewSettlement.bind(cashierAccountsController)
 );
 

@@ -451,6 +451,21 @@ export class CashierAccountsRepository {
   }
 
   /**
+   * Fecha del primer movimiento de fichas del cajero (propio o con sus
+   * jugadores). Es el inicio de su primera liquidación.
+   */
+  async findFirstMovementAt(cashierId: string, transaction?: Transaction): Promise<Date | null> {
+    const rows = await sequelize.query<{ first_at: Date | null }>(
+      `SELECT MIN(created_at) AS first_at
+         FROM chip_movements
+        WHERE user_id = :cashierId OR related_user_id = :cashierId`,
+      { replacements: { cashierId }, type: QueryTypes.SELECT, transaction }
+    );
+    const first = rows[0]?.first_at;
+    return first ? new Date(first) : null;
+  }
+
+  /**
    * Movimientos de fichas que forman la cuenta corriente del cajero:
    * los suyos (cargas, retiros, recuperos de liquidación) y los que operó
    * con sus jugadores (ventas, premios, pérdidas, retiros).
