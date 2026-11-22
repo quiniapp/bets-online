@@ -20,6 +20,18 @@ export class CashierSettlementModel extends Model {
   declare paymentReference: string | null;
   declare createdAt: Date;
   declare paidAt: Date | null;
+  declare commission: number | null;
+  declare subtotal: number | null;
+  declare previousDebt: number | null;
+  declare totalDue: number | null;
+  declare collected: number | null;
+  declare debtCarried: number | null;
+  declare chipsDelivered: number | null;
+  declare chipBalanceBefore: number | null;
+  declare prizeChipsRecovered: number | null;
+  declare unsoldChips: number | null;
+  declare chipsLeft: number | null;
+  declare unsoldChipsRecovered: number | null;
 }
 
 CashierSettlementModel.init(
@@ -130,6 +142,66 @@ CashierSettlementModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       field: 'paid_at'
+    },
+    commission: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'commission'
+    },
+    subtotal: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'subtotal'
+    },
+    previousDebt: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'previous_debt'
+    },
+    totalDue: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'total_due'
+    },
+    collected: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'collected'
+    },
+    debtCarried: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'debt_carried'
+    },
+    chipsDelivered: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'chips_delivered'
+    },
+    chipBalanceBefore: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'chip_balance_before'
+    },
+    prizeChipsRecovered: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'prize_chips_recovered'
+    },
+    unsoldChips: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'unsold_chips'
+    },
+    chipsLeft: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'chips_left'
+    },
+    unsoldChipsRecovered: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'unsold_chips_recovered'
     }
   },
   {

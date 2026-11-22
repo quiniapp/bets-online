@@ -20,11 +20,12 @@ const EMPTY_SUMMARY: CashierAccountsSummary = {
   totalCashiers: 0,
   totalSales: 0,
   totalPrizes: 0,
-  totalProfit: 0,
-  pendingAmount: 0,
-  paidAmount: 0,
-  openCommission: 0,
-  balanceDue: 0
+  totalCommission: 0,
+  totalCollected: 0,
+  openSubtotal: 0,
+  debt: 0,
+  balanceDue: 0,
+  chipBalance: 0
 };
 
 export function useCashierAccounts(options: UseCashierAccountsOptions = {}) {

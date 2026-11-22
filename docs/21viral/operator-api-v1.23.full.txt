@@ -1,0 +1,3996 @@
+Operator API
+   Development
+
+
+
+
+  29 September, 2026
+                                                                                                                           Development – Operator API
+
+
+
+
+Table of Contents
+
+1     General ................................................................................................................................................ 8
+
+1.1   Terms used ......................................................................................................................................... 8
+
+1.2   Purpose and overview ........................................................................................................................ 9
+
+2     Launching a game ............................................................................................................................ 11
+
+2.1   Tokens ............................................................................................................................................... 11
+
+2.2   OperatorGamesRequest (from Operator to Provider) .................................................................... 11
+
+2.3   OperatorStartGameUrlRequest (from Operator to Provider) ......................................................... 13
+
+3     Provider API....................................................................................................................................... 15
+
+3.1   ProviderGetBalanceRequest (from Provider to Operator).............................................................. 15
+
+3.2   Game round/bet types...................................................................................................................... 16
+
+3.3   ProviderTransactionRequest ........................................................................................................... 16
+
+3.4   Idempotence ..................................................................................................................................... 18
+
+3.5   Bet outcome event data ................................................................................................................... 19
+
+3.6   Error handling .................................................................................................................................... 21
+
+4     Frontend integration ......................................................................................................................... 23
+
+4.1   UI fallback redirection logic via iframe post message ................................................................... 23
+
+5     Jackpot API ....................................................................................................................................... 25
+
+5.1   Jackpot API ....................................................................................................................................... 25
+
+5.2   OperatorActiveJackpotsRequest (from Operator to Provider) ...................................................... 25
+
+5.3   OperatorJackpotWinnersRequest (from Operator to Provider)..................................................... 27
+
+5.4   Authentication and Security ............................................................................................................. 29
+
+5.5   Error Handling ................................................................................................................................... 29
+
+5.6   Implementation Notes...................................................................................................................... 29
+
+6     Pragmatic Live Games Integration Guide ....................................................................................... 31
+
+6.1   Introduction ....................................................................................................................................... 31
+
+6.2   Fullscreen Support............................................................................................................................ 31
+
+6.3   Dynamic Games Access (DGA) ....................................................................................................... 32
+
+6.4   Testing Guidelines ............................................................................................................................ 38
+
+6.5   Performance Testing ........................................................................................................................ 39
+
+
+
+
+                                                                                                                                                             2
+                                                                                                                            Development – Operator API
+
+
+
+
+6.6       Security Considerations ................................................................................................................... 39
+
+6.7       Support and Troubleshooting .......................................................................................................... 40
+
+6.8       Sample Implementation Code ......................................................................................................... 40
+
+7         Free Spin Bonus API's....................................................................................................................... 42
+
+7.1       Table of Contents ............................................................................................................................. 42
+
+7.2       Introduction ....................................................................................................................................... 42
+
+7.2.1 Key Features...................................................................................................................................... 43
+
+7.2.2 Integration Overview......................................................................................................................... 43
+
+7.3       Provider Support ............................................................................................................................... 43
+
+7.3.1 Currently Supported Providers ......................................................................................................... 43
+
+7.3.2 Provider Validation............................................................................................................................ 44
+
+7.4       Authentication and Security ............................................................................................................. 44
+
+7.4.1 Quick Reference ................................................................................................................................ 44
+
+7.4.2 Environment Configuration .............................................................................................................. 44
+
+7.5       API Endpoints.................................................................................................................................... 45
+
+7.5.1 1. Create FSB Campaign................................................................................................................... 45
+
+7.5.2 2. Cancel FSB Campaign .................................................................................................................. 47
+
+7.5.3 3. Create Player-Specific FSB........................................................................................................... 49
+
+7.5.4 4. Get Player FSB .............................................................................................................................. 52
+
+7.5.5 5. Add Players to Campaign............................................................................................................. 53
+
+7.5.6 6. Remove Players from Campaign ................................................................................................. 54
+
+7.5.7 7. Get Bet Scales............................................................................................................................... 55
+
+7.6       Data Models ...................................................................................................................................... 58
+
+7.6.1 Bonus Type........................................................................................................................................ 58
+
+7.6.2 Bet Type............................................................................................................................................. 58
+
+7.6.3 Duration Type .................................................................................................................................... 58
+
+7.6.4 Duration Object Structure................................................................................................................. 58
+
+7.6.5 Bet Object Structure.......................................................................................................................... 59
+
+7.7       Error Handling ................................................................................................................................... 59
+
+7.7.1 Error Response Format..................................................................................................................... 59
+
+7.7.2 FSB Error Codes ................................................................................................................................ 60
+
+7.7.3 Important Notes on Error Code 5..................................................................................................... 60
+
+
+
+
+                                                                                                                                                              3
+                                                                                                                            Development – Operator API
+
+
+
+
+7.8       Campaign Status .............................................................................................................................. 61
+
+7.9       Usage Examples ............................................................................................................................... 62
+
+7.9.1 Creating an FSB Campaign .............................................................................................................. 62
+
+7.9.2 Creating Player-Specific FSB............................................................................................................ 62
+
+7.9.3 Managing Campaign Players ........................................................................................................... 63
+
+7.10      Best Practices ................................................................................................................................... 63
+
+7.10.1 Campaign Naming ............................................................................................................................ 63
+
+7.10.2 Provider name ................................................................................................................................... 64
+
+7.10.3 Timestamp Handling ........................................................................................................................ 64
+
+7.10.4 Duration Type Selection ................................................................................................................... 64
+
+7.10.5 Handling Duplicate bonusId ............................................................................................................. 64
+
+7.10.6 Error Handling ................................................................................................................................... 65
+
+7.10.7 Rate Limiting ..................................................................................................................................... 65
+
+7.10.8 Logging.............................................................................................................................................. 65
+
+7.11      Support and Troubleshooting .......................................................................................................... 66
+
+7.11.1 Common Issues ................................................................................................................................ 66
+
+7.11.2 Contact .............................................................................................................................................. 66
+
+7.12      Summary of All Endpoints................................................................................................................ 66
+
+8         Usage of "/games" API method ....................................................................................................... 68
+
+
+
+
+                                                                                                                                                             4
+                                                                              Development – Operator API
+
+
+
+
+Document information
+
+
+Document name:         Operator API   Revision interval:    Ad hoc
+
+
+Document version:      1.23           Approved version:
+
+
+Document owner:        Serik          Approved by:
+                       Aliarystan
+
+
+Information            Public         Date of approval:
+classification:
+
+
+Reference:                            Internal reference:
+
+
+Revision history
+
+
+Author:                Version:       Date:                 Change history:
+
+
+Srdjan (Unlicensed)    1.0            2024-12-01            Initial release
+
+
+Srdjan (Unlicensed)    1.1            2024-12-07            Added HMAC requests signing
+
+
+Srdjan (Unlicensed)    1.2            2024-12-18            Added 21Viral staging environment
+                                                            information
+
+
+Srdjan (Unlicensed)    1.3            2024-12-30            Added betOutcomeEventData
+
+
+Srdjan (Unlicensed)    1.4            2025-03-05            Error handling
+
+
+Srdjan (Unlicensed)    1.5            2025-03-08            Idempotence
+
+
+Srdjan (Unlicensed)    1.6            2025-04-23                 Add type of reversal for Reversal
+                                                                 transactions.
+                                                                 Add GameRoundNotFound error.
+                                                                 Add lobbyUrl and depositUrl to
+                                                                 start game request.
+
+
+
+
+                                                                                                    –5
+                                                          Development – Operator API
+
+
+
+
+Srdjan (Unlicensed)   1.6.1   2025-06-02       Add campaignWins and
+                                                cashBonusWins to
+                                                betOutcomeEventData
+                                               UI iframe postMessage for
+                                               fallback redirection logic for
+                                                lobbyUrl and depositUrl
+
+
+Serik Aliarystan      1.7     2025-07-31   Add optional exitURL field to start
+                                           game request for player redirection
+                                           after closing the game.
+
+
+Serik Aliarystan      1.8     2025-08-13   Add optional providerName and
+                                           providerGameId fields in case of
+                                           gameId was not provided in request
+                                           body
+
+
+Daniyar Kazbayev      1.9     2025-08-28   Added a limitation to allow
+                                           OperatorGamesRequest to be called
+                                           only once per hour in production.
+                                           Minor styling & formatting changes.
+
+
+Serik Aliarystan      1.10    2025-09-03   Added optional promoBalance field for
+                                           promo/bonus wallet of player
+
+
+Serik Aliarystan      1.11    2025-09-13   Added Jackpot API endpoints:
+                                           OperatorActiveJackpotsRequest and
+                                           OperatorJackpotWinnersRequest.
+                                           Currently supported only for
+                                           Pragmatic Play provider.
+
+
+Serik Aliarystan      1.12    2025-09-23   Added gameRoundStatus =
+                                            Canceled
+                                           for automatically close incomplete
+                                           transactions.
+
+
+Serik Aliarystan      1.13    2026-02-12   Added providerGameId and
+                                            providerName fields to
+                                           ProviderGetBalanceRequest and
+                                           ProviderTransactionRequest as new
+                                           game identification approach.
+                                            gameId is now deprecated.
+
+
+
+
+                                                                                 –6
+                                                      Development – Operator API
+
+
+
+
+ Serik Aliarystan    1.20   2026-02-14   gameId has been deprecated, and
+                                         now providerGameId and
+                                         providerName are in use.
+
+
+ Daniyar Kazbayev    1.21   2026-03-31   improved description of the
+                                         “OperatorGamesRequest” section
+
+
+ Bekzat Stanbek      1.22   2026-06-12   Added optional rtp field to
+                                         OperatorGamesRequest response
+
+
+ Bekzat Stanbek      1.23   2026-06-19   Added hasFreeSpins field to
+                                         OperatorGamesRequest response
+
+
+Table of Contents:
+
+
+
+
+                                                                            –7
+                                                                                  Development – Operator API
+
+
+
+
+1 General
+CONFIDENTIALITY AND PROPRIETARY RIGHTS NOTICE
+
+This document and all information contained herein constitute the confidential and proprietary
+intellectual property of 21Viral ("the Company"). All rights reserved.
+
+The contents of this document, whether in whole or in part, may not be reproduced, distributed,
+transmitted, disclosed, or otherwise disseminated in any form or by any means, including but not
+limited to electronic, mechanical, photocopying, recording, or other methods, without the prior express
+written authorization of 21Viral.
+
+Unauthorized use, disclosure, or reproduction of this material may result in legal action. Any rights not
+expressly granted herein are reserved by 21Viral.
+
+
+
+1.1 Terms used
+In this document, we will refer to 21Viral as a Provider Game Server (PGS or simply Provider) and the
+party which wants to integrate 21Viral games on their system as Operator Game Server (OGS or simply
+Operator). Operator Game Server needs to be integrated with the 21Viral Provider Game Server in a
+seamless way, so player funds always reside on the Operator Game Server. All player data, except
+some basic information (playerId, currency and other relevant session related data found in start game
+url request), reside on the Operator Game Server.
+
+
+
+
+1 High level overview of involved parties
+
+
+
+
+                                                                                                General – 8
+                                                                                 Development – Operator API
+
+
+
+
+1.2 Purpose and overview
+INTRODUCTION
+
+This document outlines the integration protocol between Provider and the Operator, establishing a
+comprehensive framework for game deployment and operation.
+
+INTEGRATION COMPONENTS
+
+   1. Game Launch Protocol - The initial phase requires Provider to facilitate player access by:
+           Implementing mandatory security authentication
+           Directing the Operator player's browser to a specifically formatted URL
+   2. Operational Framework During active gameplay - The system maintains continuous
+      communication through:
+           Server-to-server requests from the Provider to Operator
+           Secure data transmission protocols
+           Real-time authentication verification
+
+This dual-component structure ensures both secure game initialization and seamless operational
+functionality while maintaining robust security standards throughout the gaming session.
+
+All interaction between the provider and the operator will happen via JSON documents sent using
+HTTP POST, over a secure HTTPS connection, using header Content-Type: application/
+json; charset=utf-8 which is also required of the response.
+
+Both parties (Provider and Operator) will always respond by returning a response JSON document, in
+the format described by this document. Each incoming request from both parties will be verified using
+the Hash Message Authentication Code (HMAC) with a SHA256 hash algorithm.
+
+Shared secrets will be exchanged securely between the Provider and Operator.
+Provider will provide an Operator, authentication username, and shared secret for each environment
+where the provider is running, staging and production, along with IP addresses for whitelisting from
+where the Provider will send requests to the Operator.
+
+In the Provider's staging environment, requests to the Operator will originate from the following IP
+addresses: 75.2.84.22 and 35.71.154.198
+
+Operator will provide OPERATOR_BASE_API_URL for each environment, and the Provider will use it
+in each request, as explained in further sections.
+
+Every API request from Provider or from Operator, contains the following HTTP header:
+
+
+   Authorization: HMAC-SHA256
+   <authenticationUsername>:<hexEncodedHmacRequestSignature>
+
+
+
+Each HMAC signature is built with request body complying to RFC 8785 ( JSON Canonicalization
+Scheme ) based on which hex-encoded HMAC signature is generated.
+
+
+
+
+                                                                                               General – 9
+                                                                       Development – Operator API
+
+
+
+
+Having authenticationUsername as app-id-1 and operatorSharedSecret as app-
+secret and having following request body:
+
+
+  {
+      "playerId":"1",
+      "currency":"EUR",
+      "providerName":"pragmatic",
+      "providerGameId":"vs20olympgate",
+      "gameMode":"Real",
+      "timestamp":1734904927,
+      "language":"en",
+      "playerDeviceType":"Desktop",
+      "balance":"504.44",
+      "playerUserName":"player1"
+  }
+
+
+
+canonical form of above JSON request body would be following string:
+
+
+  {"balance":"504.44","currency":"EUR","gameMode":"Real","language":"en","playerDeviceTyp
+  e":"Desktop","playerId":"1","playerUserName":"player1","providerGameId":"vs20olympgate"
+  ,"providerName":"pragmatic","timestamp":1734904927}
+
+
+
+and request Authorization header would be created as:
+
+
+  Authorization: HMAC-SHA256
+  app-id-1:1e06d2f27b2deee94aae1b09230a1027afc58da7aeae9311bc8ceb2d8e21bf5b
+
+
+
+
+                                                                                    General – 10
+                                                                                          Development – Operator API
+
+
+
+
+2 Launching a game
+All games supported by the Provider will be provided to the Operator via Provider API described below.
+Those include all necessary game information to start game, such as game names, game categories,
+game identifiers and default game thumbnails assets.
+
+Beside basic game information which is available through Provider API, complete games configuration
+can be provided as separate documentation.
+
+As discussed previously, each request from Operator to Provider (same applies to Provider, needs to
+include a well formed Authorization header ).
+
+
+
+2.1 Tokens
+The tokens are always created by the Provider. Provider is acting as an authentication server and it
+keeps track of player sessions on behalf of the Operator. All requests during the game session,
+besides the token, will contain additional information, such as the game being played and player's id.
+All tokens will expire after a period of unused time within the game session. Player in-game actions
+will always reset the token expiration timer. Provider generates random and unpredictable tokens.
+Tokens will be generated by Provider with the same rigorous level of randomness and security that
+one would use for encryption keys.
+
+
+
+2.2 OperatorGamesRequest (from Operator to Provider)
+Provider returns a list of the all available games to the Operator system. The list contains game details
+needed to launch a game via OperatorStartGameUrlRequest.
+
+
+
+         In production, the request is limited to one call per hour to maintain the Provider’s platform
+         performance.
+
+
+
+
+         We recommend fetching the games regularly, for example once a day.
+         This way, you’ll always be in sync with updates such as:
+              new game releases;
+              new game providers added;
+              disabled or removed games;
+              renamed games, etc.
+
+         The list of games returned via the API is sorted by game ID, making it easy to compare it with your
+         own list, either automatically or manually.
+
+
+
+
+                                                                                              Launching a game – 11
+                                                                                    Development – Operator API
+
+
+
+
+  POST https://api.stg.games-viral.com/v1/games
+
+
+
+
+ Request body field name     Typ    Requ     Request body field value
+                             e      ired
+
+
+  timestamp                  Inte   Requ     Timestamp of when request was sent. Unix epoch. Required in
+                             ger    ired     each request towards the provider.
+
+
+Operator to receive an array of games available in the provider system. As mentioned previously,
+Operator will receive full game configuration information in separate game documentation.
+
+
+ Response body field name                  Type    Response body field value
+
+
+  id                                       Integ   Unique game identifier in Provider system.
+                                           er
+
+
+  name                                     Strin   Game name in Provider system.
+                                           g
+
+
+  type                                     Strin   Game type in Provider system.
+                                           g
+
+
+  defaultLogo                              Strin   Game default thumbnail image in Provider system.
+                                           g
+
+
+  providerName                             Strin   Game provider name.
+                                           g
+
+
+  providerGameId                           Strin   Game identifier from the game provider’s end.
+                                           g
+
+
+  rtp                                      Num     Game RTP as a percentage. Optional - included only
+                                           ber     when available for the game; omitted otherwise.
+
+
+  hasFreeSpins                             Bool    Indicates whether the game supports free spins. true =
+                                           ean     supported, false = not supported, null = support not yet
+                                                   determined for the game. Always present in the
+                                                   response.
+
+
+
+
+                                                                                        Launching a game – 12
+                                                                                  Development – Operator API
+
+
+
+
+2.3 OperatorStartGameUrlRequest (from Operator to Provider)
+Provider returns game launch link to Operator system.
+Operation is usually performed when the Operator system needs to launch a game for the player.
+
+
+     POST https://api.stg.games-viral.com/v1/games/sessions
+
+
+
+
+ Request body     Type       Requ   Request body field value
+ field name                  ired
+
+
+  timestamp       Integer    Requ   Timestamp of when request was sent. Unix epoch. Required in each
+                             ired   request towards the provider.
+
+
+  playerId        Numeri     Requ   Unique player identifier in Operator system. Example: "123456789"
+                  c string   ired
+
+
+  playerUser      String     Requ   Unique player username in Operator system.
+                             ired
+ Name
+
+
+
+  playerDevi      String     Requ   Either "Desktop" or "Mobile" .
+                             ired
+ ceType
+
+
+
+  providerNa      String     Requ   Provider identifier for launching a game.
+                             ired
+ me
+
+
+
+  providerGa      String     Requ   Game identifier for launching a game.
+                             ired
+ meId
+
+
+
+  gameMode        String     Requ   Either "Real" or "Demo" . Provider will provide separately where
+                             ired
+                                    "Demo" mode is available.
+
+
+
+  localeCod       String     Requ   Combination of language and Region/Country code. Hyphen format
+                             ired   (BCP 47). Format {ISO 639-1}-{ISO 3166-1 alpha-2 code} .
+ e
+                                    Example "en-US"
+
+
+
+  countryCod      String     Requ   Player country code. ISO 3166-1 alpha-2. Example "BR"
+                             ired
+ e
+
+
+
+
+                                                                                     Launching a game – 13
+                                                                                      Development – Operator API
+
+
+
+
+ currency       String      Requ    Player ISO 4217 currency code in Operator system. This value must
+                            ired    always be the same for one playerId. Multiple currencies per playerId are
+                                    not allowed. Example "EUR"
+
+
+
+ balance        String      Requ    Current player balance. Example: "100.00"
+                            ired
+
+
+ promoBalan     String      Optio   Current player balance from promo/bonus wallet. Example: "50.00"
+                            nal
+ ce
+
+
+
+ lobbyUrl       String      Requ    Lobby URL of the Operator.
+                            ired
+
+
+ depositUr      String      Requ    URL of the Operator website deposit page.
+                            ired
+ l
+
+
+
+ exitUrl        String      Optio   A link to the page on the Operator's website, to which the player will be
+                            nal     redirected if they choose to close the game. For iframe usage, the
+                                    following format should be used:
+                                     javascript:window.parent.location.href='{URL}' where
+                                    {URL} is the actual redirect destination.
+
+
+
+Operator receives HTTP 201 Created status code, with unique start game session url as response
+body, loaded inside iframe on desktop platforms, or inside some kind of web view on mobile
+platforms.
+
+
+ Response body field name                    Type           Response body field value
+
+
+ gameStartUrl                                String         Unique start game session url.
+
+
+
+
+                                                                                          Launching a game – 14
+                                                                                      Development – Operator API
+
+
+
+
+3 Provider API
+
+3.1 ProviderGetBalanceRequest (from Provider to Operator)
+In various stages of the game, for example when starting a new game session, or the Provider simply
+wanting to keep the session alive / prevent token expiration, the game will request account balance.
+
+
+  POST https://{OPERATOR_BASE_API_URL}/players/balance
+
+
+
+
+ Request body field    Request body field value
+ name
+
+
+  token                String. Required. Authentication token for current active player’s game session.
+
+
+
+  providerGameId       String. Game identifier from the game provider's end. Corresponds to
+                        providerGameId from OperatorGamesRequest response.
+
+
+
+  providerName         String. Game provider name. Corresponds to providerName from
+                       OperatorGamesRequest response.
+
+
+  timestamp            Integer. Required.
+
+
+
+  playerId             Numeric string. Required. Unique player identifier in Operator system. Example:
+                       "123456789"
+
+
+
+Provider expects to receive HTTP 200 OK status code and an JSON document as follows:
+
+
+ Response body field name   Response body field value
+
+
+  balance                   String. Required. Current player balance. Example: "100.00"
+
+
+
+  promoBalance              String. Optional. Current player balance from promo/bonus wallet. Example:
+                             "50.00"
+
+
+
+  currency                  String. Required. Player ISO 4217 currency code in operator system.
+
+
+
+
+                                                                                               Provider API – 15
+                                                                                      Development – Operator API
+
+
+
+
+  freeSpins                 Integer. Optional. Value indicating the number of free spins available, given by
+                            the Operator, if any.
+
+
+  freeStake                 String. Optional. Required if freeSpins is provided. Value of one freeSpin
+                            in given currency. Example: "1.00"
+
+
+
+If Operator supports and maintains the player's promo wallets, or any kind of user wallet other than
+regular real cash wallet, balance is always the total amount across all user wallets that Operator
+supports.
+
+
+
+3.2 Game round/bet types
+The Provider game system considers that there are four possible types of game rounds:
+
+   1. Cash round. The bet is paid with cash money.
+
+   2. Promo round. The bet is paid with promo money, provided by the Operator, for example first
+      deposit bonus. Possible only if Operator supports promo wallets.
+   3. OperatorFreeSpinBonus round. Bet is paid with a free credit provided and tracked by the
+      Operator, for example as part of a marketing campaign, or as a deposit bonus mechanism.
+      Possible if Operator supports this and if target games support this. Defined with freeSpins
+      and freeStake response fields in ProviderGetBalanceRequest and
+      ProviderGameTransactionRequest .
+
+   4. ProviderFreeSpinBonus round. The bet is paid with a free credit provided
+      and tracked by the Provider, for example as part of a free spins marketing campaign.
+
+
+
+
+3.3 ProviderTransactionRequest
+
+  POST https://{OPERATOR_BASE_API_URL}/players/transactions
+
+
+
+
+ Request body field name         Request body field value
+
+
+  transactionType                Either Credit , Debit or Reversal .
+
+
+
+
+                                                                                               Provider API – 16
+                                                                              Development – Operator API
+
+
+
+
+betType                 Either Cash , Promo , OperatorFreeSpinBonus or
+                         ProviderFreeSpinBonus. Check Game round/bet types above
+                        section.
+
+
+gameRoundStatus         Either Started , InProgress , None or Completed . Bet status in
+                        Provider system.
+                        If gameRoundStatus = InProgress , then more wins are still expected
+                        from this same game round. However if the value is Completed , then this
+                        operation will both award the specified win and conclude the current game
+                        round in one operation.
+
+                        If the value is Cancelled, then this game round has been automatically
+                        cancelled due to incomplete transactions (e.g., pending bets without
+                        corresponding wins/losses after 1 week for Slot and VideoPoker games).
+
+
+providerGameId          String. Game identifier from the game provider's end. Corresponds to
+                         providerGameId from OperatorGamesRequest response.
+
+
+
+providerName            String. Game provider name. Corresponds to providerName from
+                        OperatorGamesRequest response.
+
+
+timestamp               Integer. Required.
+
+
+
+playerId                Numeric string. Required. Unique player identifier in Operator system.
+                        Example: "123456789"
+
+
+
+token                   String. Authentication token for current active player’s game session.
+                        Always required for Debit transactionType . In case of special Credit
+                        wins like Jackpot, and Reversal transactionType it may be optional.
+
+
+
+amount                  String. Required. Current bet amount.
+                        Example: "1.00".
+
+
+
+currency                String. Required. Player ISO 4217 currency code in operator system. Will
+                        not be passed only in case of cashBonusWins .
+
+
+
+providerGameRoundId     String. Required. Game round id in provider system.
+
+
+
+providerTransactionId   String. Required. Transaction id in provider system, related to
+                         providerGameRoundId . In case of Reversal transactionType it is
+                        identifier of transaction that needs to be reversed.
+
+
+
+
+                                                                                       Provider API – 17
+                                                                                       Development – Operator API
+
+
+
+
+  betOutcomeEventData             Object. Optional. Check the Bet outcome event data section below.
+
+
+
+Provider expects to receive HTTP 200 OK status code and an JSON document as follows:
+
+
+ Response body field   Response body field value
+ name
+
+
+  balance              String. Required. Current player balance after bet has been made. Example:
+                        "100.00"
+
+
+
+  promoBalance         String. Optional. Current player balance from promo/bonus wallet. Example:
+                        "50.00"
+
+
+
+  currency             String. Required. Player ISO 4217 currency code in operator system.
+
+
+
+  operatorTransa       String. Required. Transaction id in Operator system.
+ ctionId
+
+
+
+  promo                String. Optional. Indicating how much of the Cash bet placed was paid from the
+                       player’s promo account, instead of cash. Available only if Operator and target games
+                       support this.
+                       Example: "10.00"
+
+
+
+  freeSpins            Integer. Optional. Value indicating the number of free spins available after bet has
+                       been made, given by the Operator.
+
+
+  freeStake            String. Optional. Required if freeSpins is provided. Value of one freeSpin in
+                       given currency. Example: "1.00"
+
+
+
+  alreadyProcess       Boolean. Optional. See Idempotence chapter.
+ ed
+
+
+
+
+3.4 Idempotence
+When sending API requests, if anything goes wrong, or simply getting the response takes too long,
+Provider will re-send the same request. Therefore the Operator must expect to receive the same
+request multiple times. In such case, the operation requested must only be performed once. Upon
+requesting the same operation twice, the second request should be responded to identically as the
+first response, but the operation should not modify anything.
+
+
+
+                                                                                                Provider API – 18
+                                                                                Development – Operator API
+
+
+
+
+Idempotence should not be applied at all to ProviderGetBalanceRequest. Each such request should be
+processed as a new request.
+
+Example:
+
+   1. Game starts, Provider sends ProviderGetBalanceRequest
+
+   2. Operator responds with player balance "100.00"
+
+   3. Provider sends ProviderTransactionRequest of type "Debit" with amount "1.00"
+      and providerTransactionId being "10001:43827022-9b1e-42b2-
+      a2d8-3288ec02f6e9"
+
+   4. Operator deducts the player's account, and responds with success and balance "99.00"
+   5. The above response is lost due to any kind of network error
+   6. Provider will again request ProviderTransactionRequest of type "Debit" with amount
+      "1.00" and providerTransactionId being "10001:43827022-9b1e-42b2-
+      a2d8-3288ec02f6e9"
+
+   7. Operator notes that bet reference "10001:43827022-9b1e-42b2-a2d8-3288ec02f6e9"
+      of type "Debit" has already been successfully processed, and has not been canceled, and the
+      requesting user and amount are identical to the earlier request, therefore the Operator does not
+      deduct the bet second time, and responds with success and balance being "99.00" and with
+      alreadyProcessed being true .
+
+   8. Operator should not rely providerTransactionId being only information based on which
+      idempotency should be performed. In some case providerTransactionId will be the same
+      for "Debit" , "Credit" and "Reversal" , best to check against
+      providerTransactionId and transactionType , other relevant player information like
+      game being played and unique playerId.
+
+
+
+3.5 Bet outcome event data
+Optional and used for special kinds of events, in the current version of Provider API 1.6.1, for Credit
+related transactions either jackpotWins , tournamentWins , campaignWins ,
+ cashBonusWins with target games that supports either jackpot, tournament, campaign and
+cashBonus winnings.
+
+
+  "betOutcomeEventData":{
+     "jackpotWins":[
+       {
+         "amount":"100.06",
+         "awardType":"Money",
+         "id":"1001:1319",
+         "type":"GlobalJackpot"
+       }
+
+
+
+
+                                                                                         Provider API – 19
+                                                                                    Development – Operator API
+
+
+
+
+        ]
+    }
+
+
+
+or in case of tournamentWins (same format applies for campaignWins and cashBonusWins )
+
+
+  "betOutcomeEventData":{
+     "tournamentWins":[
+       {
+         "amount":"100.06",
+         "awardType":"Money",
+         "id":"1001:1319"
+       }
+     ]
+   }
+
+
+
+
+ Request body field name        Request body field value
+
+
+  amount                        String. Required in case when betOutcomeEventData is defined and
+                                 transactionType being Credit . Theoretically it is possible that a
+                                single Credit transaction leads to more than one winning. Parent
+                                transaction amount request field will contain aggregated amount
+                                winnings, while each win will contain winning amount of specific winning.
+
+
+  awardType                     String. Required in case when betOutcomeEventData is defined and
+                                 transactionType being Credit . In current version of API 1.6.1,
+                                 awardType is always Money (real cash).
+
+
+
+  id                            String. Required in case when betOutcomeEventData is defined and
+                                 transactionType being Credit. Id of winning outcome in Provider
+                                system.
+
+
+  type                          String. Required in case when betOutcomeEventData is defined in case
+                                of jackpotWins . Either Jackpot or GlobalJackpot . With other
+                                winnings different then jackpotWins , type is not defined.
+
+
+
+The operator should account for the possibility that multiple types of winnings, such as
+jackpotWins and campaignWins , may occur within a single transaction.
+
+In case of transactionType being Reversal , betOutcomeEventData will contain
+information about transaction type that needs to be reversed.
+
+
+
+
+                                                                                             Provider API – 20
+                                                                                  Development – Operator API
+
+
+
+
+  "betOutcomeEventData":{
+     "reversalOfType": "Credit" or "Debit"
+   }
+
+
+
+
+3.6 Error handling
+If the Operator encounters an error while processing a request from the Provider API, it must return an
+error with appropriate HTTP status code and with appropriate response body as follows:
+
+
+  {
+      "viralErrorCode": "{VIRAL_ERROR_CODE}",
+      "message": "{ERROR_MESSAGE}"
+  }
+
+
+
+{ERROR_MESSAGE} is an human readable string to assist in debugging and troubleshooting.
+
+
+ {VIRAL_ERROR_CODE}             HTTP Status Code                 Description
+
+
+  GeneralFailure                 Internal Server Error           Any kind of general failure.
+                                500
+
+
+
+  AuthenticationFailure          Unauthorized 401                If Operator is not able to successfully
+                                                                 verify HMAC signature for any request.
+
+
+  RequestValidationFailu         Unprocessable Content           Request body does not comply with API
+                                                                 specification.
+ re                             422
+
+
+
+  InsufficientFunds              Unprocessable Content           When it is not possible to Debit player
+                                                                 wallet due to insufficient funds.
+                                422
+
+
+
+  PlayerSelfExclusion            Unprocessable Content           Group of related errors affecting player
+                                                                 account.
+                                422
+
+
+
+  PlayerBlocked                  Unprocessable Content
+                                422
+
+
+
+
+                                                                                            Provider API – 21
+                                                                 Development – Operator API
+
+
+
+
+PlayerFrozen             Unprocessable Content
+                         422
+
+
+
+PlayerNotActive          Unprocessable Content
+                         422
+
+
+
+LossLimitExceeded        Unprocessable Content
+                         422
+
+
+
+SpendLimitExceeded       Unprocessable Content
+                         422
+
+
+
+GameDisabled             Unprocessable Content   In case Operator disabled given game
+                                                 for any reason.
+                         422
+
+
+
+CurrencyMismatch         Unprocessable Content   When request contains currency that
+                         422                     does not match player wallet currency.
+
+
+
+DoubleTransactionWithD   Unprocessable Content   In case that given transaction was
+                                                 already successfully processed, and
+ifferentAmount           422                     there is request for same transaction
+                                                 but with different amount.
+
+
+RealMoneyNotAllowed      Unprocessable Content   When target game supports demo
+                                                 mode.
+                         422
+
+
+
+GameRoundNotFound        Unprocessable Content   Reserved for Credit or Reversal
+                         422                     type of transaction with betType
+                                                 being Cash . Operator is not able to
+                                                 find previous Debit .
+
+
+
+
+                                                                          Provider API – 22
+                                                                              Development – Operator API
+
+
+
+
+4 Frontend integration
+
+4.1 UI fallback redirection logic via iframe post message
+In addition to providing lobbyUrl and depositUrl in the OperatorStartGameUrlRequest ,
+the Operator is advised to handle redirection logic by listening to message events sent from the
+iframe to the parent window using postMessage , enabling more precise control over navigation
+flows such as returning to the lobby or to a deposit/cashier page.
+
+
+  window.addEventListener('message', (event: MessageEvent) => { ... });
+
+
+
+https://developer.mozilla.org/en-US/docs/Web/API/MessageEvent
+
+The structure of event.data depends on the underlying game provider and may vary between
+different underlying providers. In API version 1.6.1, event.data can be one of the following formats:
+
+
+  {
+      "type": string
+  }
+
+
+
+The type field can be either rgs-backToHome or rgs-deposit , allowing the Operator to
+implement custom redirection logic when these events occur.
+
+
+  window.addEventListener('message', (event: MessageEvent) => {
+    const { type } = event.data;
+
+    if (type === 'rgs-backToHome') {
+      /**
+       * Operator specific logic to handle redirect to lobbyUrl
+       * example: window.location.href = operatorLobbyUrl
+       * Same logic applies for 'rgs-deposit'
+       */
+    }
+  });
+
+
+
+Or event.data may be an object defined as:
+
+
+  {
+      "exi_fMessageType_str": string
+  }
+
+
+
+
+                                                                                Frontend integration – 23
+                                                                         Development – Operator API
+
+
+
+
+Where exi_fMessageType_str field can be either exi_onHomeUserAction or
+exi_onCashierUserAction
+
+
+  window.addEventListener('message', (event: MessageEvent) => {
+    if (event.data?.exi_fMessageType_str === 'exi_fMessageType_str') {
+      /**
+       * Operator specific logic to handle redirect to lobbyUrl
+       * example: window.location.href = operatorLobbyUrl
+       * Same logic applies for 'exi_onCashierUserAction'
+       */
+    }
+  });
+
+
+
+
+                                                                           Frontend integration – 24
+                                                                                    Development – Operator API
+
+
+
+
+5 Jackpot API
+      OperatorActiveJackpotsRequest (from Operator to Provider)
+      OperatorJackpotWinnersRequest (from Operator to Provider)
+
+
+
+5.1 Jackpot API
+The Provider now supports jackpot-related operations through dedicated API endpoints. These
+endpoints allow operators to retrieve information about active jackpots and jackpot winners from
+supported game providers.
+
+Current Provider Support:
+
+      Pragmatic Play: Fully supported
+      Other providers: Not yet implemented
+
+
+
+5.2 OperatorActiveJackpotsRequest (from Operator to Provider)
+Provider returns a list of currently active jackpots from the specified game provider. This operation
+allows operators to display real-time jackpot information to players.
+
+
+   POST https://api.stg.games-viral.com/v1/jackpots/active
+
+
+
+
+ Request body field                      Require
+                            Type                    Request body field value
+ name                                    d
+
+
+ providerName               String      Required    Name of the game provider. Currently only "pragmatic"
+                                                    is supported.
+
+
+ currency                   String      Optional    ISO 4217 currency code to filter jackpots. If not
+                                                    provided, returns jackpots for all currencies. Example:
+                                                    "USD", "EUR"
+
+
+ timestamp                  Integer     Required    Timestamp of when request was sent. Unix epoch.
+                                                    Required in each request towards the provider.
+
+
+Response:
+
+Operator receives HTTP 200 OK status code with jackpot information as response body.
+
+
+
+
+                                                                                              Jackpot API – 25
+                                                                                   Development – Operator API
+
+
+
+
+ Response body
+                   Type      Response body field value
+ field name
+
+
+ jackpots          Array     List of active jackpot objects (see JackpotData structure below)
+
+
+ success           Boolean   Indicates if the request was successful
+
+
+ timestamp         Long      Response timestamp
+
+
+ providerName      String    Name of the provider that provided the data
+
+
+ count             Integer   Number of jackpots returned
+
+
+ errorMessage      String    Error message if success is false
+
+
+JackpotData Structure:
+
+
+ Field name        Type                     Field value
+
+
+ id                String                  Unique jackpot identifier in provider system
+
+
+ name              String                  Display name of the jackpot
+
+
+ amount            Double                  Current jackpot amount
+
+
+ totalAmount       Double                  Total accumulated amount across all tiers
+
+
+ maxAmount         Double                  Maximum possible jackpot amount
+
+
+ currency          String                  ISO 4217 currency code
+
+
+ games             Array                   List of game IDs that contribute to this jackpot
+
+
+ level             String                  Jackpot level (e.g., "Local", "Network", "Global")
+
+
+ status            String                  Current status of the jackpot
+
+
+ tiersNumber       Integer                 Number of jackpot tiers
+
+
+
+
+                                                                                                Jackpot API – 26
+                                                                                        Development – Operator API
+
+
+
+
+ Field name          Type                         Field value
+
+
+ tiers               Array                        List of jackpot tier objects (see JackpotTierData structure
+                                                  below)
+
+
+ lastUpdated         Long                         Unix timestamp of last update
+
+
+JackpotTierData Structure:
+
+
+ Field name         Type                   Field value
+
+
+ tierId             String                Unique identifier for this tier
+
+
+ tier               Integer               Tier number (1 = highest tier)
+
+
+ tierName           String                Display name for this tier
+
+
+ amount             Double                Current amount for this tier
+
+
+
+
+5.3 OperatorJackpotWinnersRequest (from Operator to Provider)
+Provider returns a list of jackpot winners from the specified game provider within a given time period.
+This operation allows operators to display recent jackpot wins and maintain winner records.
+
+
+  POST https://api.stg.games-viral.com/v1/jackpots/winners
+
+
+
+
+ Request body                   Require
+                    Type                      Request body field value
+ field name                     d
+
+
+ providerName       String      Require       Name of the game provider. Currently only "pragmatic" is
+                                d             supported.
+
+
+ currency           String      Optional      ISO 4217 currency code to filter winners. If not provided, returns
+                                              winners for all currencies.
+
+
+ startTime          String      Require       Start time for winner search. Unix timestamp in milliseconds as
+                                d             string. Example: "1694592000000"
+
+
+ endTime            String      Require       End time for winner search. Unix timestamp in milliseconds as
+                                d             string. Example: "1694678400000"
+
+
+
+
+                                                                                                  Jackpot API – 27
+                                                                                            Development – Operator API
+
+
+
+
+ Request body                           Require
+                       Type                         Request body field value
+ field name                             d
+
+
+ timestamp         Integer              Require    Timestamp of when request was sent. Unix epoch. Required in
+                                        d          each request towards the provider.
+
+
+Response:
+
+Operator receives HTTP 200 OK status code with winner information as response body.
+
+
+ Response body field
+                              Type            Response body field value
+ name
+
+
+ winners                      Array           List of jackpot winner objects (see JackpotWinner structure below)
+
+
+ success                      Boolean         Indicates if the request was successful
+
+
+ timestamp                    Long            Response timestamp
+
+
+ providerName                 String          Name of the provider that provided the data
+
+
+ count                        Integer         Number of winners returned
+
+
+ errorMessage                 String          Error message if success is false
+
+
+JackpotWinner Structure:
+
+
+ Field name      Type                             Field value
+
+
+ playerId        String                           Unique player identifier
+
+
+ jackpotId       String                           Identifier of the won jackpot
+
+
+ jackpotTierId   String                           Identifier of the specific tier won
+
+
+ amount          Double                           Amount won
+
+
+ winDate         Long                             Unix timestamp of when the jackpot was won
+
+
+ playSessionId   String                           Play session identifier where the jackpot was won
+
+
+
+
+                                                                                                      Jackpot API – 28
+                                                                                     Development – Operator API
+
+
+
+
+ Field name        Type                  Field value
+
+
+ currency         String                 ISO 4217 currency code of the win
+
+
+ winType          String                 Type of jackpot win (e.g., "Jackpot", "GlobalJackpot")
+
+
+
+
+5.4 Authentication and Security
+Both jackpot API endpoints follow the same HMAC-SHA256 authentication mechanism as other
+Provider APIs:
+
+
+   Authorization: HMAC-SHA256 <authenticationUsername>:<hexEncodedHmacRequestSignature>
+
+
+
+The HMAC signature is generated using the request body in canonical JSON format (RFC 8785) and
+the shared secret.
+
+
+
+5.5 Error Handling
+If the Provider encounters an error while processing a jackpot request, it returns an error response with
+appropriate HTTP status code and the standard error format:
+
+
+   {
+       "success": false,
+       "errorMessage": "{ERROR_MESSAGE}",
+       "timestamp": 1694592000000,
+       "providerName": "pragmatic",
+       "count": 0
+   }
+
+
+
+Common error scenarios:
+
+       Provider Not Supported: When requesting jackpots from a provider that doesn't support jackpot
+       APIs
+       Invalid Time Range: When startTime is greater than endTime in winners request
+       Authentication Failure: When HMAC signature validation fails
+       Provider API Unavailable: When the underlying provider's jackpot API is temporarily unavailable
+
+
+
+5.6 Implementation Notes
+   1. Provider Support: Currently, only Pragmatic Play provider supports jackpot APIs. Other providers
+      will return empty results or appropriate error messages.
+
+
+
+                                                                                              Jackpot API – 29
+                                                                             Development – Operator API
+
+
+
+
+2. Fallback Behavior: If the underlying provider API is unavailable, the system may return mock
+   data or cached results to ensure service availability.
+3. Rate Limiting: Consider implementing appropriate rate limiting for jackpot API calls to avoid
+   overwhelming provider systems.
+4. Data Freshness: Jackpot amounts are updated in real-time from provider systems. However,
+   there may be slight delays due to network latency and caching.
+5. Currency Filtering: When currency parameter is provided, only jackpots/winners matching that
+   currency are returned. If omitted, results for all supported currencies are included.
+
+
+
+
+                                                                                      Jackpot API – 30
+                                                                                    Development – Operator API
+
+
+
+
+6 Pragmatic Live Games Integration Guide
+ Document information
+
+
+ Document name:            Pragmatic Live Games      Revision interval:            Ad hoc
+                           Integration Guide
+
+
+ Document version:         1.0                       Approved version:
+
+
+ Document owner:                                     Approved by:
+
+
+ Information               Public                    Date of approval:
+ classification:
+
+
+ Reference:                                          Internal reference:
+
+
+ Revision history
+
+
+ Author:                   Version:                  Date:                         Change history:
+
+
+ Serik Aliarystan          1.0                       21.10.2025                    Document created
+
+
+
+Table of Contents:
+
+
+
+6.1 Introduction
+This document provides comprehensive information for operators integrating Pragmatic Play Live
+Casino games, including fullscreen support and Dynamic Games Access (DGA) functionality.
+
+
+
+6.2 Fullscreen Support
+Fullscreen functionality allows Live Casino games to utilize the complete viewport, providing an
+optimal gaming experience especially on mobile devices.
+
+Implementation Requirements
+
+   1. JavaScript API Script
+      Add the following script to your HTML page:
+
+
+           <script src="https://client.pragmaticplaylive.net/desktop/assets/api/
+           fullscreenApi.js"></script>
+
+
+
+
+                                                                    Pragmatic Live Games Integration Guide – 31
+                                                                                     Development – Operator API
+
+
+
+
+   2. Iframe Attributes
+      Include these attributes in your game iframe:
+
+
+           <iframe
+             src="your-game-url"
+             allowfullscreen
+             webkitallowfullscreen
+             mozallowfullscreen>
+           </iframe>
+
+
+
+Benefits
+
+      Mobile Optimization: Essential for mobile gaming experience
+      Full Viewport: Complete screen utilization without scrolling
+      Enhanced UX: Better user interaction and game visibility
+      Cross-Browser Support: Works across all major browsers
+
+
+
+6.3 Dynamic Games Access (DGA)
+DGA provides real-time data feed for live game tables, enabling operators to display current table
+information, player counts, and game results.
+
+Production Configuration
+
+      Casino ID: ppchx00000017566
+      DGA API URL: https://dga.pragmaticplaylive.net/dgaAPI.js
+      WebSocket URL: wss://dga.pragmaticplaylive.net/ws
+      Default Currency: EUR
+
+DGA Data Types
+
+Table Information
+
+      Table name and language-specific information
+      Table limits (minimum/maximum bets)
+      Table status (open/closed)
+      Dealer information
+      New table indicator (true/false)
+
+Game Results by Type
+
+Roulette Games:
+
+      Last 20 results
+      Updated after each game round
+      Number of players in the game
+
+
+
+
+                                                                     Pragmatic Live Games Integration Guide – 32
+                                                                              Development – Operator API
+
+
+
+
+Baccarat Games:
+
+     Shuffle notifications
+     Last 21 results
+     Updated after every game
+     Baccarat shoe summary (total games, Player/Banker wins, Ties, Pairs)
+
+Blackjack Games:
+
+     Seats taken/seats open
+     Number of players in the game
+
+Game Shows:
+
+     Last 20 results
+     Slots of multipliers (if applicable)
+     Number of players in the game
+
+Other Games:
+
+     Specific result data per game type
+     Player counts and statistics
+
+JavaScript API Usage
+
+  1. Connect to DGA server
+
+
+        dga.connect("wss://dga.pragmaticplaylive.net/ws")
+
+
+
+  2. Get available tables for your casino
+
+
+        dga.available("ppchx00000017566")
+
+
+
+  3. Subscribe to specific tables
+
+
+        dga.subscribe("ppchx00000017566", "201", "EUR") // Roulette Green
+        dga.subscribe("ppchx00000017566", "401", "EUR") // Baccarat 1
+        dga.subscribe("ppchx00000017566", "901", "EUR") // ONE Blackjack
+
+
+
+  4. Handle incoming data
+
+
+        dga.onMessage(data) {
+          console.log('Table data received:', data);
+          updateTableInfo(data);
+
+
+
+
+                                                              Pragmatic Live Games Integration Guide – 33
+                                                                               Development – Operator API
+
+
+
+
+         }
+
+
+
+  5. Disconnect when done
+
+
+         dga.disconnect()
+
+
+
+Data Format Example
+
+
+  {
+      "tableId": "201",
+      "tableName": "Roulette Green",
+      "tableOpen": true,
+      "currency": "EUR",
+      "dealer": {
+         "name": "Dealer Name"
+      },
+      "tableLimits": {
+         "minBet": 0.1,
+         "maxBet": 5000.0,
+         "maxPlayers": 500,
+         "ranges": [0.1, 0.2, 0.25, 0.4, 0.5, 1.0]
+      },
+      "gameResult": [
+         {
+           "result": 15,
+           "time": "2024-01-15 10:30:00",
+           "gameId": "1234567890"
+         }
+      ],
+      "totalSeatedPlayers": 12,
+      "newTable": false,
+      "tableImage": "https://client.pragmaticplaylive.net/desktop/assets/snaps/...",
+      "languageSpecificTableInfo": "Table description in selected language"
+  }
+
+
+
+Available Live Tables
+
+Production Tables (22 tables available)
+
+
+ Game Name                                Table ID      Description
+
+
+ Roulette Games
+
+
+ Roulette Green                           201          Classic European roulette
+
+
+ Speed Roulette 1                         203          Fast roulette variant
+
+
+
+
+                                                             Pragmatic Live Games Integration Guide – 34
+                                                              Development – Operator API
+
+
+
+
+Game Name                 Table ID   Description
+
+
+Mega Roulette             204        Roulette with multipliers
+
+
+Auto Roulette             225        Automated roulette
+
+
+Powerup Roulette          240        Roulette with power-ups
+
+
+Roulette 10               230        Standard roulette table
+
+
+Baccarat Games
+
+
+Baccarat 1                401        Classic baccarat
+
+
+Speed Baccarat 1          402        Fast baccarat
+
+
+Blackjack Games
+
+
+ONE Blackjack             901        Single-hand blackjack
+
+
+ONE Blackjack 2           902        Second ONE blackjack table
+
+
+Blackjack                 303        Classic blackjack
+
+
+Game Shows & Other
+
+
+VIP Roulette - The Club   545        Exclusive VIP roulette
+
+
+Mega Sic Bo               701        Enhanced Sic Bo
+
+
+Mega Wheel                801        Wheel of fortune variant
+
+
+Andar Bahar               1024       Traditional Indian card game
+
+
+Sweet Bonanza CandyLand   1101       Candy-themed game show
+
+
+Spaceman                  1301       Space-themed game
+
+
+Big Bass Crash            1320       Fishing-themed game
+
+
+
+
+                                           Pragmatic Live Games Integration Guide – 35
+                                                                                  Development – Operator API
+
+
+
+
+ Game Name                                  Table ID         Description
+
+
+ Boom City                                 1401             City-themed game show
+
+
+ Vegas Ball Bonanza                        1501             Ball-themed game
+
+
+ Treasure Island                           1701             Treasure hunt game
+
+
+ High Flyer                                2201             Aviation-themed game
+
+
+Integration Requirements
+
+Technical Requirements
+
+  1. HTTPS Connection: All connections must use HTTPS
+  2. WebSocket Support: Required for DGA functionality
+  3. JavaScript Enabled: Both fullscreen and DGA require JavaScript
+  4. Iframe Support: Games are loaded in iframes
+
+Browser Compatibility
+
+      Desktop: Chrome, Firefox, Safari, Edge (latest versions)
+      Mobile: iOS Safari, Chrome Mobile, Samsung Internet
+      Fullscreen: Supported on all modern browsers
+      WebSocket: Supported on all browsers (IE11+)
+
+Network Requirements
+
+      Bandwidth: Minimum 2 Mbps for smooth gameplay
+      Latency: Maximum 200ms for optimal experience
+      Firewall: Allow connections to Pragmatic Play domains
+
+Technical Implementation
+
+Step-by-Step Integration
+
+For Fullscreen Support:
+
+  1. Add Script Tag
+
+
+         <script src="https://client.pragmaticplaylive.net/desktop/assets/api/
+         fullscreenApi.js"></script>
+
+
+
+  2. Configure Iframe
+
+
+
+
+                                                                  Pragmatic Live Games Integration Guide – 36
+                                                                                Development – Operator API
+
+
+
+
+        <iframe
+        id="game-iframe"
+        src="your-game-url"
+        width="100%"
+        height="600px"
+        allowfullscreen
+        webkitallowfullscreen
+        mozallowfullscreen
+        frameborder="0">
+        </iframe>
+
+
+
+  3. Test Fullscreen Button
+          Verify fullscreen button appears in game
+          Test fullscreen functionality on desktop and mobile
+          Ensure proper exit from fullscreen mode
+
+For DGA Implementation:
+
+  1. Load DGA API
+
+
+        <script src="https://dga.pragmaticplaylive.net/dgaAPI.js"></script>
+
+
+
+  2. Initialize Connection
+
+
+        window.addEventListener('load', function() {
+          dga.connect("wss://dga.pragmaticplaylive.net/ws");
+          dga.onConnect = function() {
+             console.log('Connected to DGA');
+             subscribeToTables();
+          };
+          dga.onMessage = function(data) {
+             processTableData(data);
+          };
+        });
+
+
+
+  3. Subscribe to Tables
+
+
+        function subscribeToTables() {
+          const tables = [
+             '201', // Roulette Green
+             '203', // Speed Roulette 1
+             '401', // Baccarat 1
+             '901', // ONE Blackjack
+          ];
+          tables.forEach(tableId => {
+             dga.subscribe("ppchx00000017566", tableId, "EUR");
+          });
+
+
+
+
+                                                                Pragmatic Live Games Integration Guide – 37
+                                                                           Development – Operator API
+
+
+
+
+        }
+
+
+
+  4. Process Data
+
+
+        function processTableData(data) {
+          const tableElement = document.getElementById(`table-${data.tableId}`);
+          if (tableElement) {
+            tableElement.querySelector('.player-count').textContent =
+        data.totalSeatedPlayers;
+            tableElement.querySelector('.table-status').textContent = data.tableOpen ?
+        'Open' : 'Closed';
+            if (data.gameResult && data.gameResult.length > 0) {
+              updateRecentResults(data.gameResult);
+            }
+          }
+        }
+
+
+
+
+6.4 Testing Guidelines
+Fullscreen Testing
+
+Desktop Testing:
+
+  1. Open the game in a desktop browser.
+  2. Click the fullscreen button.
+  3. Confirm that the game fills the entire screen.
+  4. Test the exit fullscreen function.
+  5. Confirm that the game returns to normal view.
+
+Mobile Testing:
+
+  1. Open the game on a mobile device.
+  2. Test the fullscreen button.
+  3. Confirm proper orientation handling.
+  4. Test touch controls in fullscreen.
+  5. Confirm that the exit fullscreen works.
+
+DGA Testing
+
+Connection Testing:
+
+  1. Confirm that the WebSocket connection establishes.
+  2. Test connection stability over time.
+  3. Confirm reconnection after network interruption.
+  4. Test multiple table subscriptions.
+
+Data Testing:
+
+
+
+                                                           Pragmatic Live Games Integration Guide – 38
+                                                                               Development – Operator API
+
+
+
+
+  1. Confirm that the data format matches the specification.
+  2. Test real-time updates.
+  3. Confirm table status changes.
+  4. Test player count updates.
+  5. Confirm game result updates.
+
+Error Handling:
+
+  1. Test connection failures.
+  2. Test invalid table IDs.
+  3. Test network timeouts.
+  4. Confirm graceful error handling.
+
+
+
+6.5 Performance Testing
+  1. Load Testing: Test multiple concurrent connections.
+  2. Memory Testing: Monitor memory usage during extended sessions.
+  3. Network Testing: Test various network conditions.
+  4. Mobile Testing: Confirm performance on mobile devices.
+
+
+
+6.6 Security Considerations
+Data Security
+
+     Use HTTPS/WSS encryption for all connections.
+     Validate all incoming DGA data.
+     Implement proper error handling.
+     Monitor for suspicious activity.
+
+Player Protection
+
+     Implement session timeouts.
+     Monitor for excessive connections.
+     Log all DGA interactions.
+     Implement rate limiting.
+
+Compliance
+
+     Ensure GDPR compliance for data handling.
+     Implement proper logging for audit trails.
+     Follow responsible gaming guidelines.
+     Maintain data privacy standards.
+
+
+
+
+                                                               Pragmatic Live Games Integration Guide – 39
+                                                                          Development – Operator API
+
+
+
+
+6.7 Support and Troubleshooting
+Common Issues
+
+Fullscreen Not Working:
+
+     Confirm that iframe attributes are correct.
+     Check if the fullscreen API script loads.
+     Test browser compatibility.
+     Confirm HTTPS connection.
+
+DGA Connection Issues:
+
+     Check the WebSocket URL.
+     Confirm that the Casino ID is correct.
+     Test network connectivity.
+     Check the browser console for errors.
+
+Data Not Updating:
+
+     Confirm table subscriptions.
+     Check data processing logic.
+     Monitor WebSocket connection status.
+     Confirm that table IDs are correct.
+
+
+
+6.8 Sample Implementation Code
+
+  <!DOCTYPE html>
+  <html>
+  <head>
+      <title>Pragmatic Live Games Integration</title>
+      <script src="https://client.pragmaticplaylive.net/desktop/assets/api/
+  fullscreenApi.js"></script>
+      <script src="https://dga.pragmaticplaylive.net/dgaAPI.js"></script>
+  </head>
+  <body>
+      <div id="game-container">
+          <iframe
+              id="game-iframe"
+              src="your-game-url"
+              width="100%"
+              height="600px"
+              allowfullscreen
+              webkitallowfullscreen
+              mozallowfullscreen
+              frameborder="0">
+          </iframe>
+      </div>
+
+
+
+
+                                                          Pragmatic Live Games Integration Guide – 40
+                                                                        Development – Operator API
+
+
+
+
+<div id="table-info">
+    <!-- DGA data will be displayed here -->
+</div>
+
+<script>
+    // DGA Implementation
+    window.addEventListener('load', function() {
+        dga.connect("wss://dga.pragmaticplaylive.net/ws");
+
+          dga.onConnect = function() {
+              console.log('DGA Connected');
+              subscribeToTables();
+          };
+
+          dga.onMessage = function(data) {
+              updateTableInfo(data);
+          };
+   });
+
+   function subscribeToTables() {
+       const tables = ['201', '203', '401', '901'];
+       tables.forEach(tableId => {
+           dga.subscribe("ppchx00000017566", tableId, "EUR");
+       });
+   }
+
+    function updateTableInfo(data) {
+        // Update your UI with table data
+        console.log('Table update:', data);
+    }
+</script>
+
+</body>
+</html>
+
+
+
+
+                                                        Pragmatic Live Games Integration Guide – 41
+                                                                             Development – Operator API
+
+
+
+
+7 Free Spin Bonus API's
+ Document information
+
+
+ Document name:           Free Spin Bonus API’s    Revision interval:       Ad hoc
+
+
+ Document version:        1.2                      Approved version:
+
+
+ Document owner:          Serik Aliarystan         Approved by:
+
+
+ Information              Public                   Date of approval:
+ classification:
+
+
+ Reference:                                        Internal reference:
+
+
+ Revision history
+
+
+ Author:                  Version:                 Date:                    Change history:
+
+
+ Serik Aliarystan         1.0                      10.12.2025               Document created
+
+
+ Serik Aliarystan         1.1                      19.05.2026               Added Habanero,
+                                                                            AirDice, Endorphina
+                                                                            provider support
+
+
+ Serik Aliarystan         1.2                      25.06.2026               Added Playnetic provider
+                                                                            support
+
+
+
+
+7.1 Table of Contents
+
+
+
+7.2 Introduction
+The Free Spins Bonus (FSB) API enables operators to create and manage free spins campaigns for
+players. The API provides endpoints for both campaign-based and player-specific free spins bonuses.
+
+
+
+
+                                                                              Free Spin Bonus API's – 42
+                                                                                Development – Operator API
+
+
+
+
+7.2.1 Key Features
+      Campaign Management: Create and cancel free spins campaigns
+      Player Management: Add/remove players from campaigns
+      Individual Bonuses: Create player-specific free spins
+      Real-time Tracking: Query active free spins for players
+      Provider Integration: Seamless integration with game providers
+      Audit Trail: Complete database logging of all campaigns
+      Duplicate Prevention: Automatic check for active campaigns with same bonusId
+
+
+7.2.2 Integration Overview
+All FSB operations are synchronized with the game provider's system and stored in the operator's
+database. Each campaign is tracked with a unique bonusId and maintains its status throughout its
+lifecycle.
+
+
+  ┌──────────┐            ┌──────────┐         ┌──────────┐
+  │ Operator │──────>     │ Provider │ ──────> │ Database │
+  │ System │ <─────       │   (FSB) │          │ (FSB)    │
+  └──────────┘            └──────────┘         └──────────┘
+
+
+
+
+7.3 Provider Support
+
+7.3.1 Currently Supported Providers
+
+ Provider                          Provider NAME                       Support Level
+
+
+ Pragmatic Play                     pragmatic                            Full Support
+
+
+
+ AirDice                           airdice                               Full Support
+
+
+ Endorphina                        endorphina                            Full Support
+
+
+ Habanero                          habanero                              Full Support
+
+
+ Playnetic                         playnetic                             Full Support
+
+
+
+
+                                                                                 Free Spin Bonus API's – 43
+                                                                                 Development – Operator API
+
+
+
+
+7.3.2 Provider Validation
+All FSB API requests require a valid providerName . The system validates:
+
+     Provider exists in the database
+     Provider name is "pragmatic" , "airdice" , "endorphina" , "habanero" ,
+      "playnetic" (case-insensitive)
+     Provider supports FSB functionality
+
+
+
+     Note: Requests with unsupported or invalid provider name's will return a validation error.
+
+
+     Note: For Playnetic, the /fsb/player-bonus/list request requires currency (players are keyed as
+  playerId_currency). Omitting it returns error 9 (Invalid Currency
+
+
+
+
+7.4 Authentication and Security
+All FSB API requests follow the same HMAC-SHA256 authentication mechanism as described in the
+Operator API documentation.
+
+
+7.4.1 Quick Reference
+All API requests must include an Authorization header:
+
+
+  Authorization: HMAC-SHA256 <authenticationUsername>:<hexEncodedHmacSignature>
+
+
+
+Important points:
+
+     HMAC signature is computed using RFC 8785 (JSON Canonicalization Scheme)
+     All JSON keys must be alphabetically sorted before generating the signature
+     See the main Operator API documentation for detailed HMAC implementation guide
+
+
+7.4.2 Environment Configuration
+Staging Environment:
+
+     Base URL: https://api.stg.games-viral.com
+
+
+
+
+                                                                                  Free Spin Bonus API's – 44
+                                                                                 Development – Operator API
+
+
+
+
+7.5 API Endpoints
+
+7.5.1 1. Create FSB Campaign
+Creates a new free spins bonus campaign that can be assigned to multiple players.
+
+Endpoint:
+
+
+     POST https://api.stg.games-viral.com/v1/fsb/create
+
+
+
+Request Headers:
+
+
+     Content-Type: application/json
+     Accept: application/json
+     Authorization: HMAC-SHA256 <app-id>:<hmac-signature>
+
+
+
+Request Body Parameters:
+
+
+ Field                     Type     Required   Description
+
+
+  bonusId                  String     Yes      Unique campaign identifier
+
+
+
+  providerName             String     Yes      Provider Name (e.g., pragmatic for Pragmatic)
+
+
+
+  startDate                Long       No       Start date (Unix timestamp in milliseconds)
+
+
+
+  duration                 Object     No       Campaign duration settings
+
+
+
+  duration.type            String     Yes*      "PERIOD" or "DATE" - applies to both expiration and
+                                               validity
+
+
+  duration.expiratio       Long       No       Minutes (if PERIOD) or Unix timestamp in seconds (if
+                                               DATE)
+ n
+
+
+
+  duration.validity        Long       No       Minutes (if PERIOD) or Unix timestamp in seconds (if
+                                               DATE)
+
+
+  bonus                    Object     Yes      Bonus configuration
+
+
+
+
+                                                                                  Free Spin Bonus API's – 45
+                                                                              Development – Operator API
+
+
+
+
+ Field                   Type    Required   Description
+
+
+ bonus.type             String     Yes       "ROUNDS" or "VALUE"
+
+
+
+ bonus.value            Long       Yes      Number of rounds or bonus value
+
+
+
+ gameList               Array      Yes      List of games for the campaign
+
+
+
+ gameList[].gameId      String     Yes      Game identifier
+
+
+
+ gameList[].bet         Object     Yes      Bet configuration
+
+
+
+ gameList[].bet.typ     String     Yes       "PER_LINE" or "TOTAL" - applies to all amounts
+ e
+
+
+
+ gameList[].bet.amo     Array      Yes      Bet amounts per currency
+ unts
+
+
+
+ gameList[].bet.amo     Doubl      Yes      Bet amount
+                        e
+ unts[].amount
+
+
+
+ gameList[].bet.amo     String     Yes      ISO 4217 currency code (e.g., "USD" )
+ unts[].currency
+
+
+
+
+  Note: duration.type is required if duration object is provided.
+
+
+
+Response:
+
+
+ Field                  Type        Description
+
+
+ error                  String     Error code ( "0" = success)
+
+
+
+ description            String     Result description ( "OK" or error message)
+
+
+
+Example Request:
+
+
+
+                                                                                 Free Spin Bonus API's – 46
+                                                                                    Development – Operator API
+
+
+
+
+  curl --location "https://api.stg.games-viral.com/v1/fsb/create" \
+  --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: HMAC-SHA256 app-
+  id-1:d01587ccdbc883ee5996f06168a329a14a893ec1a769295a8a5a83cca1d7c921" \
+  --data '{
+     "bonus": {"type": "ROUNDS", "value": 10},
+     "bonusId": "FSB_CAMPAIGN_001",
+     "duration": {
+        "type": "PERIOD",
+        "expiration": 1440,
+        "validity": 10080
+     },
+     "gameList": [{
+        "gameId": "vs20olympgate",
+        "bet": {
+          "type": "PER_LINE",
+          "amounts": [
+            {"amount": 0.05, "currency": "EUR"},
+            {"amount": 0.05, "currency": "USD"}
+          ]
+        }
+     }],
+     "providerName": "pragmatic",
+     "startDate": 1765660800
+  }'
+
+
+
+Success Response:
+
+
+  {
+      "error": "0",
+      "description": "OK"
+  }
+
+
+
+Behavior:
+
+      System checks if ACTIVE campaign with same bonusId exists in database
+
+      If ACTIVE campaign found → returns error "5" (Bonus Code Exists)
+      If no ACTIVE campaign → creates campaign in provider system (Pragmatic)
+      If provider returns success ( error: "0" ), campaign is saved to database with status
+       ACTIVE
+      If provider returns error, operation fails and nothing is saved to database
+
+
+
+
+7.5.2 2. Cancel FSB Campaign
+Cancels an existing free spins bonus campaign.
+
+
+
+                                                                                    Free Spin Bonus API's – 47
+                                                                                 Development – Operator API
+
+
+
+
+Endpoint:
+
+
+  POST https://api.stg.games-viral.com/v1/fsb/cancel
+
+
+
+Request Body Parameters:
+
+
+ Field                      Type          Required          Description
+
+
+ bonusId                    String          Yes             Campaign identifier to cancel
+
+
+
+ providerName               String          Yes             Provider Name
+
+
+
+Response:
+
+
+ Field                             Type           Description
+
+
+ error                           String           Error code ( "0" = success)
+
+
+
+ description                     String           Result description
+
+
+
+Example Request:
+
+
+  curl --location "https://api.stg.games-viral.com/v1/fsb/cancel" \
+  --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: HMAC-SHA256 app-
+  id-1:7fe49e012f49918fdfd591cb812ae0b5fdb22e3cf6dc3f639eb19c5da0ece729" \
+  --data '{
+     "bonusId": "FSB_CAMPAIGN_001",
+     "providerName": "pragmatic"
+  }'
+
+
+
+Success Response:
+
+
+  {
+      "error": "0",
+      "description": "OK"
+  }
+
+
+
+Behavior:
+
+
+
+
+                                                                                  Free Spin Bonus API's – 48
+                                                                                  Development – Operator API
+
+
+
+
+      Campaign is cancelled in provider system
+      Campaign status updated to CANCELLED in database (soft delete)
+      Players can no longer use free spins from this campaign
+      After cancellation, a new campaign with the same bonusId can be created
+
+
+
+
+7.5.3 3. Create Player-Specific FSB
+Creates a free spins bonus for a specific player (not a campaign).
+
+Endpoint:
+
+
+  POST https://api.stg.games-viral.com/v1/fsb/player-bonus/create
+
+
+
+Request Body Parameters:
+
+
+ Field                        Type      Required   Description
+
+
+  bonusId                     String      Yes      Unique bonus identifier
+
+
+
+  providerName                String      Yes      Provider Name
+
+
+
+  playerId                    String      Yes      Player identifier
+
+
+
+  currency                    String      Yes      ISO 4217 currency code (e.g., "USD" )
+
+
+
+  startDate                   Long        Yes      Start date (Unix timestamp in seconds)
+
+
+
+  duration                    Object      Yes      Duration settings (type must be DATE)
+
+
+
+  duration.type               String      Yes      Must be "DATE" (PERIOD not allowed)
+
+
+
+  duration.expiration         Long        Yes      Expiration date (Unix timestamp in seconds, max 30
+                                                   days)
+
+
+  duration.validity           Long        No       Validity end date (Unix timestamp in seconds)
+
+
+
+
+                                                                                  Free Spin Bonus API's – 49
+                                                                                    Development – Operator API
+
+
+
+
+ Field                      Type          Required    Description
+
+
+ bonus                      Object          Yes       Bonus configuration
+
+
+
+ bonus.type                 String          Yes       "ROUNDS" or "VALUE"
+
+
+
+ bonus.value                Long            Yes       Number of rounds or bonus value
+
+
+
+ gameList                   Array           Yes       List of games for the bonus
+
+
+
+ gameList[].gameId          String          Yes       Game identifier
+
+
+
+ gameList[].bet             Object          Yes       Bet configuration
+
+
+
+ gameList[].bet.type        String          Yes       "PER_LINE" or "TOTAL"
+
+
+
+ gameList[].bet.amoun       Array           Yes       Bet amounts per currency
+ ts
+
+
+
+ gameList[].bet.amoun       Double          Yes       Bet amount
+ ts[].amount
+
+
+
+ gameList[].bet.amoun       String          Yes       ISO 4217 currency code
+ ts[].currency
+
+
+
+
+     Important: For player-specific FSB, duration.type must be "DATE". Using "PERIOD" will return
+  a validation error.
+
+
+
+Response:
+
+
+ Field                             Type              Description
+
+
+ error                          String               Error code ( "0" = success)
+
+
+
+
+                                                                                    Free Spin Bonus API's – 50
+                                                                           Development – Operator API
+
+
+
+
+ Field                            Type           Description
+
+
+ description                     String          Result description
+
+
+
+Example Request:
+
+
+  curl --location "https://api.stg.games-viral.com/v1/fsb/player-bonus/create" \
+  --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: HMAC-SHA256 app-
+  id-1:d9e87fc9e18174a231385cff2f104a2357da0ee2388de8de52b4ec6e5a318f4f" \
+  --data '{
+     "bonus": {"type": "ROUNDS", "value": 15},
+     "bonusId": "PLAYER_FSB_001",
+     "currency": "USD",
+     "duration": {
+        "type": "DATE",
+        "expiration": 1766265600,
+        "validity": 1766870400
+     },
+     "gameList": [{
+        "gameId": "vs20olympgate",
+        "bet": {
+          "type": "PER_LINE",
+          "amounts": [
+            {"amount": 0.05, "currency": "USD"}
+          ]
+        }
+     }],
+     "playerId": "player_123",
+     "providerName": "pragmatic",
+     "startDate": 1765660800
+  }'
+
+
+
+Success Response:
+
+
+  {
+      "error": "0",
+      "description": "OK"
+  }
+
+
+
+Behavior:
+
+      System checks if ACTIVE bonus with same bonusId exists in database
+
+      If ACTIVE bonus found → returns error "5" (Bonus Code Exists)
+
+      Validates that duration.type is "DATE" (returns error if PERIOD)
+      If validation passes → creates bonus in provider system
+
+
+
+                                                                           Free Spin Bonus API's – 51
+                                                                                      Development – Operator API
+
+
+
+
+      If provider returns success, bonus is saved to database with status ACTIVE
+
+
+
+
+7.5.4 4. Get Player FSB
+Retrieves all active free spins bonuses for a specific player.
+
+Endpoint:
+
+
+   POST https://api.stg.games-viral.com/v1/fsb/player-bonus/list
+
+
+
+Request Body Parameters:
+
+
+ Field                               Type           Required                Description
+
+
+  playerId                           String             Yes                 Player identifier
+
+
+
+  providerName                       String             Yes                 Provider Name
+
+
+
+  currency                           String             No                  Player’s currency
+
+
+
+Response:
+
+
+ Field                             Type            Description
+
+
+  error                            String          Error code ( "0" = success)
+
+
+
+  description                      String          Result description
+
+
+
+  bonuses                          Array           List of player's active bonuses
+
+
+
+Example Request:
+
+
+   curl --location "https://api.stg.games-viral.com/v1/fsb/player-bonus/list" \
+   --header "Content-Type: application/json" \
+   --header "Accept: application/json" \
+   --header "Authorization: HMAC-SHA256 app-
+   id-1:ddfce578826e00c60fc4cf136dbe949328c5260e2f3bd9721ee910cba27d1360" \
+   --data '{
+     "playerId": "player_001",
+
+
+
+
+                                                                                       Free Spin Bonus API's – 52
+                                                                                 Development – Operator API
+
+
+
+
+        "providerName": "pragmatic"
+   }'
+
+
+
+Success Response:
+
+
+   {
+       "error": "0",
+       "description": "OK",
+       "bonuses": [
+         {
+           "bonusId": "PLAYER_FSB_001",
+           "rounds": 15,
+           "roundsLeft": 15,
+           "gameId": "vs20olympgate"
+         }
+       ]
+   }
+
+
+
+
+   Note: currency is required when providerName is playnetic. Omitting it returns error 9 (Invalid
+Currency).
+
+
+
+
+7.5.5 5. Add Players to Campaign
+Adds players to an existing free spins campaign.
+
+Endpoint:
+
+
+   POST https://api.stg.games-viral.com/v1/fsb/players/add
+
+
+
+Request Body Parameters:
+
+
+ Field                      Type                Required         Description
+
+
+  bonusId                   String                 Yes          Campaign identifier
+
+
+
+  providerName              String                 Yes          Provider Name
+
+
+
+  playerList                Array[String]          Yes          List of player IDs (max 5000)
+
+
+
+Response:
+
+
+
+
+                                                                                  Free Spin Bonus API's – 53
+                                                                               Development – Operator API
+
+
+
+
+ Field                               Type       Description
+
+
+  error                              String    Error code ( "0" = success)
+
+
+
+  description                        String    Result description
+
+
+
+Example Request:
+
+
+  curl --location "https://api.stg.games-viral.com/v1/fsb/players/add" \
+  --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: HMAC-SHA256 app-
+  id-1:88380c8247241980b1f1e66c64ac5ec79f6b09c8cb3cde67694ad8463db57cb7" \
+  --data '{
+     "bonusId": "FSB_CAMPAIGN_001",
+     "playerList": ["player_001", "player_002", "player_003"],
+     "providerName": "pragmatic"
+  }'
+
+
+
+Success Response:
+
+
+  {
+      "error": "0",
+      "description": "OK"
+  }
+
+
+
+
+7.5.6 6. Remove Players from Campaign
+Removes players from an existing free spins campaign.
+
+Endpoint:
+
+
+  POST https://api.stg.games-viral.com/v1/fsb/players/remove
+
+
+
+Request Body Parameters:
+
+
+ Field                      Type              Required         Description
+
+
+  bonusId                   String               Yes           Campaign identifier
+
+
+
+
+                                                                               Free Spin Bonus API's – 54
+                                                                                 Development – Operator API
+
+
+
+
+ Field                      Type               Required          Description
+
+
+  providerName              String                Yes            Provider Name
+
+
+
+  playerList                Array[String]         Yes            List of player IDs to remove
+
+
+
+Response:
+
+
+ Field                               Type        Description
+
+
+  error                              String      Error code ( "0" = success)
+
+
+
+  description                        String      Result description
+
+
+
+Example Request:
+
+
+  curl --location "https://api.stg.games-viral.com/v1/fsb/players/remove" \
+  --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: HMAC-SHA256 app-
+  id-1:2ed21f6270ce46978f1146ed34eab8813574ead35393d92c256209436a9ae23b" \
+  --data '{
+     "bonusId": "FSB_CAMPAIGN_001",
+     "playerList": ["player_001"],
+     "providerName": "pragmatic"
+  }'
+
+
+
+Success Response:
+
+
+  {
+      "error": "0",
+      "description": "OK"
+  }
+
+
+
+
+7.5.7 7. Get Bet Scales
+Retrieves available bet scales (bet values) for FSB-supported games. This endpoint helps operators
+understand which bet values are valid for specific games and currencies when creating FSB
+campaigns.
+
+Endpoint:
+
+
+
+                                                                                  Free Spin Bonus API's – 55
+                                                                                   Development – Operator API
+
+
+
+
+     POST https://api.stg.games-viral.com/v1/fsb/bet-scales/list
+
+
+
+Request Body Parameters:
+
+
+ Field                 Type            Required   Description
+
+
+ providerName          String            Yes      Provider Name (e.g., pragmatic for Pragmatic)
+
+
+
+ gameIds               Array[String]     No       Optional list of game IDs to filter results
+
+
+
+ currencies            Array[String]     No       Optional list of currencies to filter results
+
+
+
+Response:
+
+
+ Field                                               Type              Description
+
+
+ error                                               String            Error code ("0" = success)
+
+
+
+ description                                         String            Result description
+
+
+
+ gameList                                            Array             List of games with their bet scales
+
+
+
+ gameList[].gameId                                   String            Game identifier
+
+
+
+ gameList[].betScaleList                             Array             Bet scales per currency
+
+
+
+ gameList[].betScaleList[].currency                  String            Currency code
+
+
+
+ gameList[].betScaleList[].betPerLineScale           Array[Double      Available bet per line values
+                                                     ]
+ s
+
+
+
+ gameList[].betScaleList[].totalBetScales            Array[Double      Available total bet values
+                                                     ]
+
+
+Example Request:
+
+
+     curl --location "https://api.stg.games-viral.com/v1/fsb/bet-scales/list" \
+
+
+
+
+                                                                                   Free Spin Bonus API's – 56
+                                                                              Development – Operator API
+
+
+
+
+  --header "Content-Type: application/json" \
+  --header "Accept: application/json" \
+  --header "Authorization: HMAC-SHA256 app-
+  id-1:80355ecea993010c896490d9c3b3140149ec4b0f5d9b4adf59f6c2529e2f3c0e" \
+  --data '{
+     "currencies": ["EUR", "USD"],
+     "gameIds": ["vs20olympgate"],
+     "providerName": "pragmatic"
+  }'
+
+
+
+Success Response:
+
+
+  {
+    "error": "0",
+    "description": "OK",
+    "gameList": [
+      {
+        "gameId": "vs20olympgate",
+        "betScaleList": [
+          {
+             "currency": "EUR",
+             "betPerLineScales": [0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5,
+  0.75, 1.0, 2.0, 3.0, 4.0, 5.0],
+             "totalBetScales": [0.2, 0.4, 0.6, 0.8, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0, 15.0,
+  20.0, 40.0, 60.0, 80.0, 100.0]
+          },
+          {
+             "currency": "USD",
+             "betPerLineScales": [0.01, 0.02, 0.03, 0.04, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5,
+  0.75, 1.0, 2.0, 3.0, 4.0, 5.0],
+             "totalBetScales": [0.2, 0.4, 0.6, 0.8, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0, 15.0,
+  20.0, 40.0, 60.0, 80.0, 100.0]
+          }
+        ]
+      }
+    ]
+  }
+
+
+
+Use Case:
+
+This endpoint is useful when:
+
+      Creating FSB campaigns to validate bet values
+      Building UI for FSB campaign creation
+      Checking which bet values are supported for specific games/currencies
+
+
+
+  Note: If gameIds or currencies are not provided, bet scales for all FSB-supported games and
+  currencies will be returned.
+
+
+
+
+                                                                              Free Spin Bonus API's – 57
+                                                                                  Development – Operator API
+
+
+
+
+7.6
+       Data Models
+
+7.6.1 Bonus Type
+
+ Value                    Description
+
+
+  ROUNDS                  Free spins (number of game rounds)
+
+
+
+  VALUE                   Bonus value in currency
+
+
+
+
+7.6.2 Bet Type
+
+ Value                                      Description
+
+
+  PER_LINE                                  Bet amount per line
+
+
+
+  TOTAL                                     Total bet amount
+
+
+
+
+7.6.3 Duration Type
+
+ Value          Description                            Use Case
+
+
+  PERIOD        Duration in minutes                    Campaign FSB only
+
+
+
+  DATE          Unix timestamp in seconds              Campaign FSB and Player-Specific FSB
+
+
+
+
+7.6.4 Duration Object Structure
+Structure:
+
+
+  {
+      "type": "PERIOD" | "DATE",
+      "expiration": <number>,
+      "validity": <number>
+
+
+
+
+                                                                                  Free Spin Bonus API's – 58
+                                                                            Development – Operator API
+
+
+
+
+  }
+
+
+
+Key points:
+
+       type field applies to both expiration and validity
+
+      If type is "PERIOD" : values are in minutes
+
+      If type is "DATE" : values are Unix timestamps in seconds
+
+      For Player-Specific FSB: type must be "DATE"
+
+
+7.6.5 Bet Object Structure
+Structure:
+
+
+  {
+      "type": "PER_LINE" | "TOTAL",
+      "amounts": [
+        {
+          "amount": 0.05,
+          "currency": "USD"
+        }
+      ]
+  }
+
+
+
+Key points:
+
+       type field applies to all amounts in the array
+
+      Cannot mix PER_LINE and TOTAL in same bet
+      Each amount specifies currency and value
+
+
+
+
+7.7 Error Handling
+
+7.7.1 Error Response Format
+All FSB API errors return HTTP 200 OK with error information in the response body:
+
+
+  {
+      "error": "<ERROR_CODE>",
+      "description": "<ERROR_MESSAGE>"
+  }
+
+
+
+
+                                                                             Free Spin Bonus API's – 59
+                                                                                        Development – Operator API
+
+
+
+
+7.7.2 FSB Error Codes
+
+ Code        Description
+
+
+  0          Success - Request processed successfully
+
+
+
+  1          Authentication Failed - Invalid credentials
+
+
+
+  2          Validation Failed - Invalid request parameters or provider not supported
+
+
+
+  3          Games Not Supported - One or more games are not supported
+
+
+
+  4          Games No FSB Support - Games don't support free spins
+
+
+
+  5          Bonus Code Exists - ACTIVE campaign with this bonusId already exists
+
+
+
+  6          Bonus Not Found - Campaign not found
+
+
+
+  7          Bonus Canceled - Campaign has been cancelled
+
+
+
+  8          Bonus Closed or Started - Campaign already in progress
+
+
+
+  9          Invalid Currency - Currency not supported
+
+
+
+  10         No Active Bonuses - Player has no active bonuses
+
+
+
+  11         Expiration Limit Exceeded - Max 30 days for player FSB
+
+
+
+  12         Expiration in Past - Expiration date is in the past
+
+
+
+  1000       Internal Error - Server error
+
+
+
+
+7.7.3 Important Notes on Error Code 5
+Bonus Code Exists (Error 5):
+
+
+
+
+                                                                                        Free Spin Bonus API's – 60
+                                                                             Development – Operator API
+
+
+
+
+      Returns when trying to create a campaign/bonus with bonusId that already has an ACTIVE
+      entry in database
+      CANCELLED campaigns do NOT trigger this error
+      After cancelling a campaign, you can create a new one with the same bonusId
+
+Example:
+
+
+  {
+      "error": "5",
+      "description": "Bonus code already exists"
+  }
+
+
+
+
+7.8 Campaign Status
+Campaigns in the database maintain one of the following statuses:
+
+
+ Status                      Description
+
+
+  ACTIVE                     Campaign is active and can be used
+
+
+
+  CANCELLED                  Campaign has been cancelled (soft delete)
+
+
+
+  EXPIRED                    Campaign has expired
+
+
+
+  COMPLETED                  Campaign has been fully consumed
+
+
+
+
+  Note:
+
+          Only ACTIVE campaigns block creation of new campaigns with same bonusId
+          Status transitions are managed automatically based on provider responses
+
+
+
+
+                                                                              Free Spin Bonus API's – 61
+                                                                         Development – Operator API
+
+
+
+
+7.9 Usage Examples
+
+7.9.1 Creating an FSB Campaign
+
+  // Example: Create a free spins campaign
+  const campaignRequest = {
+     bonus: { type: "ROUNDS", value: 10 },
+     bonusId: "XMAS_2025_CAMPAIGN",
+     providerName: "pragmatic",
+     duration: {
+        type: "PERIOD", // Applies to both expiration and validity
+        expiration: 1440, // 1440 minutes
+        validity: 10080    // 10080 minutes
+     },
+     gameList: [{
+        gameId: "vs20olympgate",
+        bet: {
+          type: "PER_LINE", // Applies to all amounts
+          amounts: [
+            { amount: 0.05, currency: "USD" },
+            { amount: 0.05, currency: "EUR" }
+          ]
+        }
+     }],
+     startDate: Date.now() // Milliseconds
+  };
+
+  // POST to https://api.stg.games-viral.com/v1/fsb/create
+  // Response: { error: "0", description: "OK" }
+
+
+
+
+7.9.2 Creating Player-Specific FSB
+
+  // Example: Create individual free spins for a player
+  const playerFSBRequest = {
+    bonus: { type: "ROUNDS", value: 15 },
+    bonusId: "PLAYER_WELCOME_BONUS",
+    providerName: pragmatic,
+    playerId: "player_123", // String type
+    currency: "USD",
+    startDate: Math.floor(Date.now() / 1000), // Seconds
+    duration: {
+       type: "DATE", // Must be DATE for player FSB
+       expiration: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),   // 7 days in
+  seconds
+       validity: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60)     // 30 days in
+  seconds
+    },
+    gameList: [{
+       gameId: "vs20olympgate",
+       bet: {
+         type: "PER_LINE",
+
+
+
+
+                                                                          Free Spin Bonus API's – 62
+                                                                             Development – Operator API
+
+
+
+
+           amounts: [
+             { amount: 0.05, currency: "USD" }
+           ]
+       }
+    }]
+  };
+
+  // POST to https://api.stg.games-viral.com/v1/fsb/player-bonus/create
+  // Response: { error: "0", description: "OK" }
+
+
+
+
+7.9.3 Managing Campaign Players
+
+  // Add players to campaign
+  const addRequest = {
+     bonusId: "XMAS_2025_CAMPAIGN",
+     providerName: "pragmatic",
+     playerList: ["player_001", "player_002", "player_003"] // String array
+  };
+  // POST to https://api.stg.games-viral.com/v1/fsb/players/add
+
+  // Remove players from campaign
+  const removeRequest = {
+     bonusId: "XMAS_2025_CAMPAIGN",
+     providerName: "pragmatic",
+     playerList: ["player_001"] // String array
+  };
+  // POST to https://api.stg.games-viral.com/v1/fsb/players/remove
+
+  // Get available bet scales
+  const betScalesRequest = {
+     providerName: "pragmatic",
+     gameIds: ["vs20olympgate", "vs20doghouse"],
+     currencies: ["USD", "EUR"]
+  };
+  // POST to https://api.stg.games-viral.com/v1/fsb/bet-scales/list
+
+
+
+
+  Note: For complete HMAC signature generation and authentication implementation, refer to the main
+  Operator API documentation.
+
+
+
+
+7.10 Best Practices
+
+7.10.1 Campaign Naming
+Use descriptive and unique campaign IDs:
+
+
+
+                                                                              Free Spin Bonus API's – 63
+                                                                        Development – Operator API
+
+
+
+
+         Good: "XMAS_2025_SLOTS_CAMPAIGN"
+
+         Good: "WELCOME_BONUS_FSB_001"
+
+         Bad: "FSB1" (too generic)
+
+
+7.10.2 Provider name
+Always use the correct provider name:
+
+      Pragmatic Play: pragmatic
+
+      Airdice: airdice
+
+      Endorphina: endorphina
+
+      Habanero: habanero
+
+      Playnetic: playnetic
+      Verify provider name's before deployment
+
+
+7.10.3 Timestamp Handling
+Important distinction:
+
+      Campaign FSB /fsb/create : startDate in milliseconds
+
+      Player FSB /fsb/player-bonus/create : startDate , expiration , validity in
+      seconds
+
+
+7.10.4 Duration Type Selection
+For Campaign FSB:
+
+      Use PERIOD for relative durations (e.g., "24 hours from start")
+
+      Use DATE for absolute dates (e.g., "expires on Dec 31, 2025")
+
+For Player-Specific FSB:
+
+      Must use DATE type only
+
+      PERIOD will be rejected with validation error
+
+
+7.10.5 Handling Duplicate bonusId
+Scenario 1: Creating new campaign
+
+
+  // First call - succeeds
+  createCampaign({ bonusId: "CAMPAIGN_001", ... });
+  // Response: { error: "0", description: "OK" }
+
+
+
+
+                                                                        Free Spin Bonus API's – 64
+                                                                                 Development – Operator API
+
+
+
+
+  // Second call with same bonusId - fails
+  createCampaign({ bonusId: "CAMPAIGN_001", ... });
+  // Response: { error: "5", description: "Bonus code already exists" }
+
+
+
+Scenario 2: After cancellation
+
+
+  // Cancel the campaign
+  cancelCampaign({ bonusId: "CAMPAIGN_001", providerName: "pragmatic" });
+  // Response: { error: "0", description: "OK" }
+
+  // Now can create new campaign with same bonusId
+  createCampaign({ bonusId: "CAMPAIGN_001", ... });
+  // Response: { error: "0", description: "OK" }
+
+
+
+
+7.10.6 Error Handling
+Always check the error field in responses:
+
+
+  const response = await fsbClient.createCampaign(...);
+
+  if (response.error === "0") {
+    console.log("Success!");
+  } else if (response.error === "5") {
+    console.log("Bonus already exists. Cancel existing campaign or use different
+  bonusId.");
+  } else {
+    console.error(`FSB Error ${response.error}: ${response.description}`);
+    // Handle error appropriately
+  }
+
+
+
+
+7.10.7 Rate Limiting
+Implement appropriate rate limiting to avoid overwhelming the provider system.
+
+
+7.10.8 Logging
+Log all FSB operations for audit and troubleshooting purposes.
+
+
+
+
+                                                                                 Free Spin Bonus API's – 65
+                                                                                 Development – Operator API
+
+
+
+
+7.11 Support and Troubleshooting
+
+7.11.1 Common Issues
+HMAC validation fails
+
+      Solution: Ensure JSON keys are sorted alphabetically before generating HMAC
+      See Operator API documentation for detailed HMAC examples
+
+Provider validation error
+
+      Solution: Verify providerName is pragmatic for Pragmatic Play
+
+Campaign not found
+
+      Solution: Check that campaign was successfully created and is not cancelled
+
+"Bonus code already exists" (Error 5)
+
+      Cause: An ACTIVE campaign with the same bonusId exists
+
+      Solution: Either cancel the existing campaign or use a different bonusId
+
+"Player FSB only supports DATE type" validation error
+
+      Cause: Trying to use duration.type of "PERIOD" for player-specific FSB
+
+      Solution: Change duration.type to "DATE" and provide timestamps in seconds
+
+"Expiration date should be in the future" (Error 12)
+
+      Cause: The expiration timestamp is in the past
+      Solution: Use future timestamps for duration.expiration
+
+
+7.11.2 Contact
+For technical support or questions, please contact the integration team.
+
+
+
+
+7.12 Summary of All Endpoints
+
+ #      Endpoint                              Method     Purpose
+
+
+ 1       /v1/fsb/create                       POST       Create FSB campaign
+
+
+
+ 2       /v1/fsb/cancel                       POST       Cancel FSB campaign
+
+
+
+
+                                                                                 Free Spin Bonus API's – 66
+                                                                   Development – Operator API
+
+
+
+
+#   Endpoint                    Method   Purpose
+
+
+3   /v1/fsb/player-bonus/       POST     Create player-specific FSB
+    create
+
+
+4   /v1/fsb/player-bonus/list   POST     Get player's FSB list
+
+
+
+5   /v1/fsb/players/add         POST     Add players to campaign
+
+
+
+6   /v1/fsb/players/remove      POST     Remove players from campaign
+
+
+
+7   /v1/fsb/bet-scales/list     POST     Get available bet scales for games
+
+
+
+
+                                                                   Free Spin Bonus API's – 67
+                                                                                Development – Operator API
+
+
+
+
+8 Usage of "/games" API method
+ 1. Operator's technical team should read and follow the "Operator API" manual to integrate 21Viral
+    service into their iGaming platform.
+ 2. One of the API methods to be integrated is "/v1/games" API method, which is described in the
+    "OperatorGamesRequest" section of the document.
+    This method shall be used to fetch the list of 21Viral games via API (automatically).
+
+
+    We recommend fetching the games regularly, for example once a day.
+    This way, they will always be in sync with the game updates such as:
+         new game releases;
+         new game providers added;
+         disabled or removed games;
+         renamed games, etc.
+
+
+    For information, the list of games returned via the API is sorted by "id" parameter. "id" stands for
+    identifier.
+ 3. When Operator's platform fetches the games for 1st time, the list of game just needs to be
+    stored in Operator's Database.
+ 4. When Operator's platform fetches the games again, it should compare the new list (from "/v1/
+    games" API method) with the existing one in the Operator's Database. The comparison shall be
+    done by "id" parameter of the games.
+    Possible cases:
+         if a game is found in the new list, then it shall be added to the Operator's Database;
+         if a game from Operator's Database is not found in the new list, then it shall be disabled or
+         removed in the Operator's Database;
+         if one of the game parameters (name, type, defaultLogo, providerName, providerGameId,
+         rtp or hasFreeSpins) is changed, then it shall be changed in the Operator's Database as
+         well.
+
+
+
+
+                                                                         Usage of "/games" API method – 68
+
