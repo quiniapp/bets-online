@@ -182,6 +182,22 @@ export class CashierAccountsController {
     }
   }
 
+  async ownerAccountReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buffer, filename } = await cashierAccountsDomain.getOwnerAccountReceipt(
+        req.user!.userId,
+        req.query.periodStart as string,
+        req.query.periodEnd as string
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async ownerAccount(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await cashierAccountsDomain.getOwnerAccount(
@@ -195,15 +211,14 @@ export class CashierAccountsController {
     }
   }
 
-  async collectSettlement(req: Request, res: Response, next: NextFunction) {
+  async confirmSettlementCollection(req: Request, res: Response, next: NextFunction) {
     try {
-      const settlement = await cashierAccountsDomain.collectSettlement(
+      const settlement = await cashierAccountsDomain.confirmSettlementCollection(
         req.user!.userId,
         req.params.id,
         {
           amount: req.body.amount,
-          paymentReference: req.body.paymentReference,
-          notes: req.body.notes
+          paymentReference: req.body.paymentReference
         }
       );
 
@@ -213,6 +228,74 @@ export class CashierAccountsController {
           message: SUCCESS_MESSAGES.SETTLEMENT_COLLECTED
         })
       );
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async listOnAccountCollections(req: Request, res: Response, next: NextFunction) {
+    try {
+      const collections = await cashierAccountsDomain.listOnAccountCollections(
+        req.user!.userId,
+        req.params.id
+      );
+      return res.json(ApiResponseBuilder.success({ collections }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async createOnAccountCollection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const collection = await cashierAccountsDomain.createOnAccountCollection(
+        req.user!.userId,
+        req.params.id,
+        {
+          amount: req.body.amount,
+          paymentReference: req.body.paymentReference,
+          notes: req.body.notes
+        }
+      );
+      return res.status(201).json(ApiResponseBuilder.success({ collection }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async cancelOnAccountCollection(req: Request, res: Response, next: NextFunction) {
+    try {
+      const collection = await cashierAccountsDomain.cancelOnAccountCollection(
+        req.user!.userId,
+        req.params.id
+      );
+      return res.json(ApiResponseBuilder.success({ collection }));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async listOwnSettlements(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await cashierAccountsDomain.listOwnSettlements(req.user!.userId, {
+        page: Number(req.query.page) || 1,
+        limit: Number(req.query.limit) || 20
+      });
+      return res.json(ApiResponseBuilder.success(result));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async ownSettlementReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buffer, filename } = await cashierAccountsDomain.getOwnSettlementReceipt(
+        req.user!.userId,
+        req.params.id
+      );
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
     } catch (error) {
       return next(error);
     }

@@ -33,6 +33,7 @@ export default function CreateAdminPage() {
     password: "",
     confirmPassword: "",
     initialBalance: "",
+    commissionPercentage: "",
   });
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -68,12 +69,18 @@ export default function CreateAdminPage() {
   const maxBalance = balance?.chipBalance ?? 0;
   const balanceExceeds = !isOwner && parsedBalance > maxBalance;
 
+  const commissionInput = formData.commissionPercentage.trim().replace(',', '.');
+  const parsedCommission = commissionInput === '' ? null : Number(commissionInput);
+  const commissionInvalid =
+    parsedCommission !== null && (!Number.isFinite(parsedCommission) || parsedCommission < 0 || parsedCommission > 100);
+
   const isFormValid =
     usernameValidation.state === 'valid' &&
     (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
     passwordValid &&
     confirmValidation.state === 'valid' &&
-    !balanceExceeds;
+    !balanceExceeds &&
+    !commissionInvalid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +100,7 @@ export default function CreateAdminPage() {
       if (formData.firstName.trim()) payload.firstName = formData.firstName;
       if (formData.lastName.trim()) payload.lastName = formData.lastName;
       if (parsedBalance > 0) payload.initialBalance = parsedBalance;
+      if (parsedCommission !== null) payload.commissionPercentage = parsedCommission;
 
       const response = await apiService.post('/users', payload);
       if (response.success) {
@@ -229,6 +237,29 @@ export default function CreateAdminPage() {
               />
               {balanceExceeds && (
                 <p className="text-sm text-red-500">El saldo inicial no puede superar tu saldo disponible</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="commission-percentage">Comisión (%) (opcional)</Label>
+              <Input
+                id="commission-percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                inputMode="decimal"
+                value={formData.commissionPercentage}
+                onChange={e => setFormData(p => ({ ...p, commissionPercentage: e.target.value }))}
+                placeholder="Ej: 20"
+                className={commissionInvalid ? "border-red-500" : ""}
+              />
+              {commissionInvalid ? (
+                <p className="text-sm text-red-500">Ingresá un porcentaje entre 0 y 100</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Porcentaje sobre la venta de fichas que se queda el administrador.
+                </p>
               )}
             </div>
           </CardContent>

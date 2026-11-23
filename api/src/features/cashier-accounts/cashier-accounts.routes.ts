@@ -5,7 +5,8 @@ import {
   cashierCutoffQuerySchema,
   cashierPeriodQuerySchema,
   cashierSettlementListQuerySchema,
-  collectCashierSettlementSchema,
+  confirmCashierSettlementCollectionSchema,
+  createCashierCollectionSchema,
   createCashierSettlementSchema,
   idParamSchema,
   updateCashierCompensationSchema,
@@ -40,6 +41,12 @@ router.get(
   cashierAccountsController.ownerAccount.bind(cashierAccountsController)
 );
 
+router.get(
+  '/owner/summary.pdf',
+  validateQuery(cashierPeriodQuerySchema),
+  cashierAccountsController.ownerAccountReceipt.bind(cashierAccountsController)
+);
+
 // Cashier accounts list + per-cashier detail
 router.get(
   '/',
@@ -62,10 +69,17 @@ router.get(
 );
 
 router.post(
-  '/settlements/:id/collect',
+  '/settlements/:id/confirm-collection',
   validateParams(idParamSchema),
-  validate(collectCashierSettlementSchema),
-  cashierAccountsController.collectSettlement.bind(cashierAccountsController)
+  validate(confirmCashierSettlementCollectionSchema),
+  cashierAccountsController.confirmSettlementCollection.bind(cashierAccountsController)
+);
+
+// Anular un cobro a cuenta que todavía no se liquidó.
+router.post(
+  '/collections/:id/cancel',
+  validateParams(idParamSchema),
+  cashierAccountsController.cancelOnAccountCollection.bind(cashierAccountsController)
 );
 
 router.post(
@@ -93,6 +107,20 @@ router.put(
   validateParams(idParamSchema),
   validate(updateCashierCompensationSchema),
   cashierAccountsController.updateCompensation.bind(cashierAccountsController)
+);
+
+// Cobros a cuenta (durante la semana): se descuentan en la próxima liquidación.
+router.get(
+  '/:id/collections',
+  validateParams(idParamSchema),
+  cashierAccountsController.listOnAccountCollections.bind(cashierAccountsController)
+);
+
+router.post(
+  '/:id/collections',
+  validateParams(idParamSchema),
+  validate(createCashierCollectionSchema),
+  cashierAccountsController.createOnAccountCollection.bind(cashierAccountsController)
 );
 
 router.post(

@@ -1,6 +1,8 @@
 import { Op, QueryTypes, Transaction } from 'sequelize';
 import {
   CashierCollection,
+  CashierCollectionKind,
+  CashierCollectionStatus,
   CashierCompensationMode,
   CashierSettlement,
   ChipMovementType,
@@ -63,6 +65,21 @@ export interface CreateSettlementData {
   unsoldChips: number;
   chipsLeft: number;
   unsoldChipsRecovered: number;
+  onAccountCollected: number;
+  pendingCollection: number;
+}
+
+export interface CreateCollectionData {
+  settlementId: string | null;
+  cashierId: string;
+  kind: CashierCollectionKind;
+  status: CashierCollectionStatus;
+  amount: number;
+  paymentReference?: string | null;
+  notes?: string | null;
+  createdBy: string;
+  confirmedBy?: string | null;
+  confirmedAt?: Date | null;
 }
 
 export interface LedgerChipRow {
@@ -203,6 +220,24 @@ export class CashierAccountsRepository {
     return settlement ? this.mapSettlement(settlement) : null;
   }
 
+  /** Liquidación no cancelada inmediatamente anterior a la dada (del mismo cajero). */
+  async findPreviousSettlement(
+    settlement: CashierSettlement,
+    transaction?: Transaction
+  ): Promise<CashierSettlement | null> {
+    const previous = await CashierSettlementModel.findOne({
+      where: {
+        cashierId: settlement.cashierId,
+        id: { [Op.ne]: settlement.id },
+        status: { [Op.ne]: SettlementStatus.CANCELED },
+        periodEnd: { [Op.lt]: settlement.periodStart }
+      },
+      order: [['periodEnd', 'DESC'], ['createdAt', 'DESC']],
+      transaction
+    });
+    return previous ? this.mapSettlement(previous) : null;
+  }
+
   async findOverlappingSettlement(
     cashierId: string,
     periodStart: Date,
@@ -302,7 +337,9 @@ export class CashierAccountsRepository {
         prizeChipsRecovered: data.prizeChipsRecovered,
         unsoldChips: data.unsoldChips,
         chipsLeft: data.chipsLeft,
-        unsoldChipsRecovered: data.unsoldChipsRecovered
+        unsoldChipsRecovered: data.unsoldChipsRecovered,
+        onAccountCollected: data.onAccountCollected,
+        pendingCollection: data.pendingCollection
       },
       { transaction }
     );
@@ -315,6 +352,7 @@ export class CashierAccountsRepository {
       collected: number;
       debtCarried: number;
       status: SettlementStatus;
+      pendingCollection?: number;
       paidBy?: string | null;
       paidAt?: Date | null;
       paymentReference?: string | null;
@@ -330,6 +368,7 @@ export class CashierAccountsRepository {
         collected: data.collected,
         debtCarried: data.debtCarried,
         status: data.status,
+        pendingCollection: data.pendingCollection ?? settlement.pendingCollection,
         paidBy: data.paidBy ?? settlement.paidBy,
         paidAt: data.paidAt ?? settlement.paidAt,
         paymentReference: data.paymentReference ?? settlement.paymentReference,
@@ -359,26 +398,168 @@ export class CashierAccountsRepository {
   }
 
   async createCollection(
-    data: {
-      settlementId: string;
-      cashierId: string;
-      amount: number;
-      paymentReference?: string | null;
-      createdBy: string;
-    },
+    data: CreateCollectionData,
     transaction?: Transaction
   ): Promise<CashierCollection> {
     const collection = await CashierCollectionModel.create(
       {
         settlementId: data.settlementId,
         cashierId: data.cashierId,
+        kind: data.kind,
+        status: data.status,
         amount: data.amount,
         paymentReference: data.paymentReference || null,
-        createdBy: data.createdBy
+        notes: data.notes || null,
+        createdBy: data.createdBy,
+        confirmedBy: data.confirmedBy ?? null,
+        confirmedAt: data.confirmedAt ?? null
       },
       { transaction }
     );
     return this.mapCollection(collection);
+  }
+
+  async findCollectionById(id: string, transaction?: Transaction): Promise<CashierCollection | null> {
+    const row = await CashierCollectionModel.findByPk(id, { transaction });
+    return row ? this.mapCollection(row) : null;
+  }
+
+  async updateCollection(
+    id: string,
+    data: Partial<Pick<
+      CashierCollection,
+      'status' | 'amount' | 'paymentReference' | 'confirmedBy' | 'confirmedAt' | 'settlementId' | 'kind'
+    >>,
+    transaction?: Transaction
+  ): Promise<CashierCollection> {
+    const row = await CashierCollectionModel.findByPk(id, { transaction });
+    if (!row) throw new Error('Collection not found');
+    await row.update(data, { transaction });
+    return this.mapCollection(row);
+  }
+
+  /**
+   * Cobros a cuenta confirmados que todavía no entraron en una liquidación,
+   * registrados hasta `until` (inclusive) si se indica.
+   */
+  async findUnappliedOnAccountCollections(
+    cashierId: string,
+    until?: Date,
+    transaction?: Transaction
+  ): Promise<CashierCollection[]> {
+    const rows = await CashierCollectionModel.findAll({
+      where: {
+        cashierId,
+        settlementId: null,
+        kind: CashierCollectionKind.ON_ACCOUNT,
+        status: CashierCollectionStatus.CONFIRMED,
+        ...(until ? { createdAt: { [Op.lte]: until } } : {})
+      },
+      order: [['createdAt', 'ASC']],
+      transaction
+    });
+    return rows.map(row => this.mapCollection(row));
+  }
+
+  /** Suma de cobros a cuenta sin liquidar, por cajero. */
+  async getUnappliedOnAccountTotals(cashierIds: string[]): Promise<Map<string, number>> {
+    const totals = new Map<string, number>();
+    if (cashierIds.length === 0) return totals;
+    const rows = await CashierCollectionModel.findAll({
+      attributes: ['cashierId', [sequelize.fn('SUM', sequelize.col('amount')), 'total']],
+      where: {
+        cashierId: { [Op.in]: cashierIds },
+        settlementId: null,
+        kind: CashierCollectionKind.ON_ACCOUNT,
+        status: CashierCollectionStatus.CONFIRMED
+      },
+      group: ['cashierId'],
+      raw: true
+    });
+    for (const row of rows as unknown as Array<Record<string, unknown>>) {
+      totals.set((row.cashierId ?? row.cashier_id) as string, toNumber(row.total));
+    }
+    return totals;
+  }
+
+  async linkCollectionsToSettlement(
+    collectionIds: string[],
+    settlementId: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    if (collectionIds.length === 0) return;
+    await CashierCollectionModel.update(
+      { settlementId },
+      { where: { id: { [Op.in]: collectionIds } }, transaction }
+    );
+  }
+
+  async findSettlementCollections(
+    settlementId: string,
+    transaction?: Transaction
+  ): Promise<CashierCollection[]> {
+    const rows = await CashierCollectionModel.findAll({
+      where: { settlementId },
+      order: [['createdAt', 'ASC']],
+      transaction
+    });
+    return rows.map(row => this.mapCollection(row));
+  }
+
+  /**
+   * Al liquidar de nuevo, el cobro pendiente de la liquidación anterior ya
+   * pasó como deuda: se marca EXPIRED (se restaura si se cancela la nueva).
+   */
+  async setPendingCollectionsStatus(
+    settlementId: string,
+    from: CashierCollectionStatus,
+    to: CashierCollectionStatus,
+    transaction?: Transaction
+  ): Promise<void> {
+    await CashierCollectionModel.update(
+      { status: to },
+      {
+        where: { settlementId, kind: CashierCollectionKind.SETTLEMENT, status: from },
+        transaction
+      }
+    );
+  }
+
+  /**
+   * Al cancelar una liquidación: los cobros a cuenta vuelven a quedar sin
+   * liquidar, los cobros de liquidación ya confirmados pasan a ser cobros a
+   * cuenta (el dinero se recibió) y los pendientes se cancelan.
+   */
+  async releaseSettlementCollections(settlementId: string, transaction?: Transaction): Promise<void> {
+    await CashierCollectionModel.update(
+      { settlementId: null },
+      {
+        where: { settlementId, kind: CashierCollectionKind.ON_ACCOUNT },
+        transaction
+      }
+    );
+    await CashierCollectionModel.update(
+      { settlementId: null, kind: CashierCollectionKind.ON_ACCOUNT },
+      {
+        where: {
+          settlementId,
+          kind: CashierCollectionKind.SETTLEMENT,
+          status: CashierCollectionStatus.CONFIRMED
+        },
+        transaction
+      }
+    );
+    await CashierCollectionModel.update(
+      { status: CashierCollectionStatus.CANCELED },
+      {
+        where: {
+          settlementId,
+          kind: CashierCollectionKind.SETTLEMENT,
+          status: { [Op.in]: [CashierCollectionStatus.PENDING, CashierCollectionStatus.EXPIRED] }
+        },
+        transaction
+      }
+    );
   }
 
   async findCollectionsForCashier(cashierId: string, limit = 100): Promise<CashierCollection[]> {
@@ -391,7 +572,8 @@ export class CashierAccountsRepository {
   }
 
   /**
-   * Cobros registrados en el rango, de liquidaciones no canceladas.
+   * Cobros confirmados en el rango (por fecha de confirmación): cobros a
+   * cuenta y cobros de liquidaciones no canceladas.
    */
   async findCollectionsInRange(
     cashierIds: string[],
@@ -402,20 +584,25 @@ export class CashierAccountsRepository {
     const rows = await CashierCollectionModel.findAll({
       where: {
         cashierId: { [Op.in]: cashierIds },
-        createdAt: { [Op.gte]: rangeStart, [Op.lte]: rangeEnd }
+        status: CashierCollectionStatus.CONFIRMED,
+        confirmedAt: { [Op.gte]: rangeStart, [Op.lte]: rangeEnd }
       },
       include: [
         {
           model: CashierSettlementModel,
           as: 'settlement',
           attributes: ['id', 'status'],
-          where: { status: { [Op.ne]: SettlementStatus.CANCELED } },
-          required: true
+          required: false
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['confirmedAt', 'DESC']]
     });
-    return rows.map(row => this.mapCollection(row));
+    return rows
+      .filter(row => {
+        const plain = row.get({ plain: true }) as { settlement?: { status?: string } | null };
+        return plain.settlement?.status !== SettlementStatus.CANCELED;
+      })
+      .map(row => this.mapCollection(row));
   }
 
   async getMovementTotals(cashierIds: string[]): Promise<Map<string, MovementTotals>> {
@@ -671,14 +858,20 @@ export class CashierAccountsRepository {
 
   private mapCollection(row: CashierCollectionModel): CashierCollection {
     const plain = row.get({ plain: true }) as Record<string, unknown>;
+    const confirmedAt = plain.confirmedAt ?? plain.confirmed_at ?? null;
     return {
       id: plain.id as string,
-      settlementId: (plain.settlementId ?? plain.settlement_id) as string,
+      settlementId: (plain.settlementId ?? plain.settlement_id ?? null) as string | null,
       cashierId: (plain.cashierId ?? plain.cashier_id) as string,
+      kind: (plain.kind ?? CashierCollectionKind.SETTLEMENT) as CashierCollectionKind,
+      status: (plain.status ?? CashierCollectionStatus.CONFIRMED) as CashierCollectionStatus,
       amount: toNumber(plain.amount),
       paymentReference: (plain.paymentReference ?? plain.payment_reference ?? null) as string | null,
+      notes: (plain.notes ?? null) as string | null,
       createdBy: (plain.createdBy ?? plain.created_by ?? null) as string | null,
-      createdAt: new Date((plain.createdAt ?? plain.created_at) as string)
+      createdAt: new Date((plain.createdAt ?? plain.created_at) as string),
+      confirmedBy: (plain.confirmedBy ?? plain.confirmed_by ?? null) as string | null,
+      confirmedAt: confirmedAt ? new Date(confirmedAt as string) : null
     };
   }
 
@@ -718,7 +911,9 @@ export class CashierAccountsRepository {
       prizeChipsRecovered: toNullableNumber(pick('prizeChipsRecovered', 'prize_chips_recovered')),
       unsoldChips: toNullableNumber(pick('unsoldChips', 'unsold_chips')),
       chipsLeft: toNullableNumber(pick('chipsLeft', 'chips_left')),
-      unsoldChipsRecovered: toNullableNumber(pick('unsoldChipsRecovered', 'unsold_chips_recovered'))
+      unsoldChipsRecovered: toNullableNumber(pick('unsoldChipsRecovered', 'unsold_chips_recovered')),
+      onAccountCollected: toNullableNumber(pick('onAccountCollected', 'on_account_collected')),
+      pendingCollection: toNullableNumber(pick('pendingCollection', 'pending_collection'))
     };
   }
 }

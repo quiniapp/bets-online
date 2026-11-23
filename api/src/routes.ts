@@ -14,6 +14,7 @@ import bannersRoutes from './features/game-banners/game-banners.routes';
 import settingsRoutes from './features/settings/settings.routes';
 import lobbyRoutes from './features/lobby/lobby.routes';
 import cashierAccountsRoutes from './features/cashier-accounts/cashier-accounts.routes';
+import cashierAccountsMeRoutes from './features/cashier-accounts/cashier-accounts.me.routes';
 
 const router = Router();
 
@@ -53,6 +54,8 @@ router.use('/featured-games', featuredGamesRoutes);
 router.use('/banners', bannersRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/lobby', lobbyRoutes);
+// '/me' (cajero) antes del router del owner, que exige rol OWNER en todo '/cashier-accounts'.
+router.use('/cashier-accounts/me', cashierAccountsMeRoutes);
 router.use('/cashier-accounts', cashierAccountsRoutes);
 
 export default router;

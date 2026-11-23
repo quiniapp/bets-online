@@ -68,6 +68,28 @@ export enum SettlementStatus {
 }
 
 /**
+ * Origen de un cobro al cajero.
+ * ON_ACCOUNT: cobro a cuenta registrado durante la semana; se descuenta en la
+ * próxima liquidación. SETTLEMENT: el cobro que se fija al liquidar.
+ */
+export enum CashierCollectionKind {
+  ON_ACCOUNT = 'ON_ACCOUNT',
+  SETTLEMENT = 'SETTLEMENT'
+}
+
+/**
+ * Estado de un cobro al cajero.
+ * PENDING: cobro de liquidación esperando que el owner confirme que lo recibió.
+ * EXPIRED: cobro pendiente que quedó sin confirmar al liquidar de nuevo (pasó como deuda).
+ */
+export enum CashierCollectionStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  EXPIRED = 'EXPIRED',
+  CANCELED = 'CANCELED'
+}
+
+/**
  * Panel Status
  */
 export enum PanelStatus {

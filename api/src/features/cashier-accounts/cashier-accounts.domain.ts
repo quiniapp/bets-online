@@ -5,8 +5,11 @@ import {
   CashierAccountSummary,
   CashierAccountsSummary,
   CashierCollection,
+  CashierCollectionKind,
+  CashierCollectionStatus,
   CashierCompensationMode,
   CashierLedgerKind,
+  CashierOwnSettlementsResult,
   CashierPeriodAccount,
   CashierPeriodAccountTotals,
   CashierSettlement,
@@ -19,7 +22,8 @@ import {
   OwnerAccountTotals,
   SettlementStatus,
   User,
-  UserRole
+  UserRole,
+  settlementCollectionAmount
 } from 'helper';
 import { usersRepository } from '../users/users.repository';
 import { balancesRepository } from '../chips/balances.repository';
@@ -35,6 +39,7 @@ import { config } from '../../config';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
 import {
+  generateOwnerAccountPdf,
   generatePeriodSummaryPdf,
   generateSettlementReceiptPdf
 } from '../../utils/settlement-receipt.utils';
@@ -57,6 +62,9 @@ const settlementCommission = (settlement: CashierSettlement): number =>
 const settlementSubtotal = (settlement: CashierSettlement): number =>
   settlement.subtotal ?? roundMoney(settlement.totalSales - settlementCommission(settlement));
 
+const sumAmounts = (collections: CashierCollection[]): number =>
+  roundMoney(collections.reduce((sum, collection) => sum + collection.amount, 0));
+
 /**
  * Estado de una liquidación según lo cobrado:
  * cobrada (sin deuda), cobro parcial, o sin cobrar.
@@ -75,6 +83,8 @@ interface PreviewInputs {
   flows: PeriodFlows;
   lastSettlement: CashierSettlement | null;
   chipBalance: number;
+  /** Cobros a cuenta sin liquidar que se descuentan */
+  onAccountCollected?: number;
 }
 
 export class CashierAccountsDomain {
@@ -265,12 +275,11 @@ export class CashierAccountsDomain {
         );
       }
 
-      const flows = await cashierAccountsRepository.getPeriodFlows(
-        cashierId,
-        periodStart,
-        periodEnd,
-        t
-      );
+      const [flows, onAccountCollections] = await Promise.all([
+        cashierAccountsRepository.getPeriodFlows(cashierId, periodStart, periodEnd, t),
+        cashierAccountsRepository.findUnappliedOnAccountCollections(cashierId, periodEnd, t)
+      ]);
+      const onAccountCollected = sumAmounts(onAccountCollections);
       const preview = this.computePreview({
         cashier,
         periodStart,
@@ -278,19 +287,23 @@ export class CashierAccountsDomain {
         compensation,
         flows,
         lastSettlement,
-        chipBalance: balance.chipBalance
+        chipBalance: balance.chipBalance,
+        onAccountCollected
       });
 
-      const collected = roundMoney(data.collected ?? Math.max(preview.totalDue, 0));
+      // El cobro de la liquidación queda pendiente hasta que el owner lo
+      // confirma: lo cobrado (y la deuda) solo cuentan los cobros a cuenta.
+      const pendingCollection = roundMoney(data.collected ?? Math.max(preview.amountDue, 0));
       const chipsLeft = roundMoney(data.chipsLeft ?? preview.unsoldChips);
       if (chipsLeft > preview.unsoldChips) {
         throw new AppError(
           400,
           ErrorCode.INVALID_INPUT,
-          `El deje no puede superar las fichas no vendidas (${preview.unsoldChips}).`
+          `Las fichas no vendidas que se le dejan no pueden superar ${preview.unsoldChips}.`
         );
       }
       const unsoldChipsRecovered = roundMoney(preview.unsoldChips - chipsLeft);
+      const collected = onAccountCollected;
       const debtCarried = roundMoney(preview.totalDue - collected);
       const status = statusForCollection(collected, debtCarried);
 
@@ -356,19 +369,50 @@ export class CashierAccountsDomain {
           prizeChipsRecovered: preview.prizeChipsToRecover,
           unsoldChips: preview.unsoldChips,
           chipsLeft,
-          unsoldChipsRecovered
+          unsoldChipsRecovered,
+          onAccountCollected,
+          pendingCollection
         },
         t
       );
 
-      if (collected > 0) {
+      await cashierAccountsRepository.linkCollectionsToSettlement(
+        onAccountCollections.map(collection => collection.id),
+        settlementId,
+        t
+      );
+
+      if (pendingCollection > 0) {
         await cashierAccountsRepository.createCollection(
           {
             settlementId,
             cashierId,
-            amount: collected,
+            kind: CashierCollectionKind.SETTLEMENT,
+            status: CashierCollectionStatus.PENDING,
+            amount: pendingCollection,
             paymentReference: data.paymentReference?.trim() || null,
             createdBy: requesterId
+          },
+          t
+        );
+      }
+
+      // Lo que quedó sin confirmar en la liquidación anterior ya pasó como
+      // deuda (saldo anterior): ese cobro pendiente vence.
+      if (lastSettlement && (lastSettlement.pendingCollection ?? 0) > 0) {
+        await cashierAccountsRepository.setPendingCollectionsStatus(
+          lastSettlement.id,
+          CashierCollectionStatus.PENDING,
+          CashierCollectionStatus.EXPIRED,
+          t
+        );
+        await cashierAccountsRepository.updateSettlementCollection(
+          lastSettlement.id,
+          {
+            collected: lastSettlement.collected ?? 0,
+            debtCarried: lastSettlement.debtCarried ?? 0,
+            status: lastSettlement.status,
+            pendingCollection: 0
           },
           t
         );
@@ -391,6 +435,8 @@ export class CashierAccountsDomain {
         commission: result.commission,
         subtotal: result.subtotal,
         collected: result.collected,
+        onAccountCollected: result.onAccountCollected,
+        pendingCollection: result.pendingCollection,
         debtCarried: result.debtCarried,
         prizeChipsRecovered: result.prizeChipsRecovered,
         unsoldChipsRecovered: result.unsoldChipsRecovered,
@@ -402,32 +448,26 @@ export class CashierAccountsDomain {
   }
 
   /**
-   * Registra un cobro posterior sobre la última liquidación del cajero.
-   * Solo la última: en las anteriores el saldo ya se arrastró.
+   * Confirma que el cajero pagó el cobro pendiente de su última liquidación.
+   * `amount` es lo que se recibió (por defecto, todo lo pendiente); si es
+   * menos, la diferencia queda como deuda.
    */
-  async collectSettlement(
+  async confirmSettlementCollection(
     requesterId: string,
     settlementId: string,
-    data: { amount: number; paymentReference?: string; notes?: string }
+    data: { amount?: number; paymentReference?: string }
   ): Promise<CashierSettlement> {
     await this.assertOwner(requesterId);
     const settlement = await this.getSettlementInOwnerTree(requesterId, settlementId);
 
-    if (data.amount <= 0) {
-      throw new AppError(400, ErrorCode.INVALID_INPUT, 'El cobro tiene que ser mayor a cero');
-    }
     if (settlement.status === SettlementStatus.CANCELED) {
       throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'La liquidación está cancelada');
     }
-    if (isLegacySettlement(settlement)) {
-      throw new AppError(
-        409,
-        ErrorCode.ALREADY_EXISTS,
-        'Esta liquidación es del modelo anterior y no admite cobros'
-      );
+    if (data.amount !== undefined && data.amount <= 0) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, 'El cobro tiene que ser mayor a cero');
     }
 
-    const amount = roundMoney(data.amount);
+    let received = 0;
     const updated = await sequelize.transaction(async (t: Transaction) => {
       const current = await cashierAccountsRepository.findSettlementById(settlementId, t);
       if (!current || current.status === SettlementStatus.CANCELED) {
@@ -438,51 +478,170 @@ export class CashierAccountsDomain {
         throw new AppError(
           409,
           ErrorCode.ALREADY_EXISTS,
-          'Solo se pueden registrar cobros en la última liquidación del cajero: el saldo de las anteriores ya se arrastró.'
+          'Solo se puede confirmar el cobro de la última liquidación del cajero: lo pendiente de las anteriores ya pasó como deuda.'
+        );
+      }
+      const pending = roundMoney(current.pendingCollection ?? 0);
+      if (pending <= 0) {
+        throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'La liquidación no tiene cobros pendientes');
+      }
+
+      received = roundMoney(data.amount ?? pending);
+      const collected = roundMoney((current.collected ?? 0) + received);
+      const debtCarried = roundMoney((current.totalDue ?? 0) - collected);
+      const status = statusForCollection(collected, debtCarried);
+      const now = new Date();
+
+      const pendingRows = (await cashierAccountsRepository.findSettlementCollections(settlementId, t))
+        .filter(row =>
+          row.kind === CashierCollectionKind.SETTLEMENT &&
+          row.status === CashierCollectionStatus.PENDING
+        );
+      const [first, ...rest] = pendingRows;
+      const confirmation = {
+        status: CashierCollectionStatus.CONFIRMED,
+        amount: received,
+        confirmedBy: requesterId,
+        confirmedAt: now,
+        ...(data.paymentReference?.trim() ? { paymentReference: data.paymentReference.trim() } : {})
+      };
+      if (first) {
+        await cashierAccountsRepository.updateCollection(first.id, confirmation, t);
+        for (const row of rest) {
+          await cashierAccountsRepository.updateCollection(
+            row.id,
+            { status: CashierCollectionStatus.CANCELED },
+            t
+          );
+        }
+      } else {
+        await cashierAccountsRepository.createCollection(
+          {
+            settlementId,
+            cashierId: current.cashierId,
+            kind: CashierCollectionKind.SETTLEMENT,
+            createdBy: requesterId,
+            ...confirmation
+          },
+          t
         );
       }
 
-      const collected = roundMoney((current.collected ?? 0) + amount);
-      const debtCarried = roundMoney((current.totalDue ?? 0) - collected);
-      const status = statusForCollection(collected, debtCarried);
-      const note = data.notes?.trim() ? `[Cobro] ${data.notes.trim()}` : null;
-
-      const saved = await cashierAccountsRepository.updateSettlementCollection(
+      return cashierAccountsRepository.updateSettlementCollection(
         settlementId,
         {
           collected,
           debtCarried,
           status,
+          pendingCollection: 0,
           paidBy: requesterId,
-          paidAt: status === SettlementStatus.PAID ? new Date() : null,
-          paymentReference: data.paymentReference?.trim() || null,
-          notes: [current.notes, note].filter(Boolean).join('\n') || null
+          paidAt: status === SettlementStatus.PAID ? now : null,
+          paymentReference: data.paymentReference?.trim() || null
         },
         t
       );
-      await cashierAccountsRepository.createCollection(
-        {
-          settlementId,
-          cashierId: current.cashierId,
-          amount,
-          paymentReference: data.paymentReference?.trim() || null,
-          createdBy: requesterId
-        },
-        t
-      );
-      return saved;
     });
 
     writeAudit({
       requesterId,
-      action: 'cashier-accounts.settlement.collect',
+      action: 'cashier-accounts.settlement.confirm-collection',
       entityType: 'chips',
       entityId: settlementId,
-      oldValues: { collected: settlement.collected, debtCarried: settlement.debtCarried },
-      newValues: { amount, collected: updated.collected, debtCarried: updated.debtCarried }
+      oldValues: {
+        collected: settlement.collected,
+        pendingCollection: settlement.pendingCollection,
+        debtCarried: settlement.debtCarried
+      },
+      newValues: { received, collected: updated.collected, debtCarried: updated.debtCarried }
     });
 
     return updated;
+  }
+
+  /**
+   * Cobro a cuenta: el owner registra lo que el cajero le va pagando en la
+   * semana. Se descuenta en la próxima liquidación.
+   */
+  async createOnAccountCollection(
+    requesterId: string,
+    cashierId: string,
+    data: { amount: number; paymentReference?: string; notes?: string }
+  ): Promise<CashierCollection> {
+    await this.assertOwner(requesterId);
+    await this.getCashierInOwnerTree(requesterId, cashierId);
+    if (!(data.amount > 0)) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, 'El cobro tiene que ser mayor a cero');
+    }
+
+    const now = new Date();
+    const collection = await cashierAccountsRepository.createCollection({
+      settlementId: null,
+      cashierId,
+      kind: CashierCollectionKind.ON_ACCOUNT,
+      status: CashierCollectionStatus.CONFIRMED,
+      amount: roundMoney(data.amount),
+      paymentReference: data.paymentReference?.trim() || null,
+      notes: data.notes?.trim() || null,
+      createdBy: requesterId,
+      confirmedBy: requesterId,
+      confirmedAt: now
+    });
+
+    writeAudit({
+      requesterId,
+      action: 'cashier-accounts.collection.create',
+      entityType: 'chips',
+      entityId: collection.id,
+      newValues: { cashierId, amount: collection.amount, kind: collection.kind }
+    });
+
+    return collection;
+  }
+
+  /** Cobros a cuenta de un cajero que todavía no entraron en una liquidación. */
+  async listOnAccountCollections(requesterId: string, cashierId: string): Promise<CashierCollection[]> {
+    await this.assertOwner(requesterId);
+    await this.getCashierInOwnerTree(requesterId, cashierId);
+    const rows = await cashierAccountsRepository.findUnappliedOnAccountCollections(cashierId);
+    return [...rows].reverse();
+  }
+
+  /** Anula un cobro a cuenta cargado por error. Solo si todavía no se liquidó. */
+  async cancelOnAccountCollection(requesterId: string, collectionId: string): Promise<CashierCollection> {
+    await this.assertOwner(requesterId);
+    const collection = await cashierAccountsRepository.findCollectionById(collectionId);
+    if (!collection) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Collection not found');
+    }
+    await this.getCashierInOwnerTree(requesterId, collection.cashierId);
+    if (
+      collection.kind !== CashierCollectionKind.ON_ACCOUNT ||
+      collection.status !== CashierCollectionStatus.CONFIRMED
+    ) {
+      throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'Solo se pueden anular cobros a cuenta');
+    }
+    if (collection.settlementId) {
+      throw new AppError(
+        409,
+        ErrorCode.ALREADY_EXISTS,
+        'El cobro ya se descontó en una liquidación: cancelá la liquidación primero.'
+      );
+    }
+
+    const canceled = await cashierAccountsRepository.updateCollection(collectionId, {
+      status: CashierCollectionStatus.CANCELED
+    });
+
+    writeAudit({
+      requesterId,
+      action: 'cashier-accounts.collection.cancel',
+      entityType: 'chips',
+      entityId: collectionId,
+      oldValues: { status: collection.status },
+      newValues: { status: canceled.status, amount: collection.amount }
+    });
+
+    return canceled;
   }
 
   /**
@@ -557,6 +716,37 @@ export class CashierAccountsDomain {
           await balancesRepository.atomicIncrement(settlement.cashierId, chipsReturned, t);
         }
 
+        await cashierAccountsRepository.releaseSettlementCollections(settlementId, t);
+
+        // La liquidación anterior vuelve a ser la última: su cobro pendiente
+        // (vencido al liquidar esta) vuelve a estar pendiente.
+        const previous = await cashierAccountsRepository.findPreviousSettlement(settlement, t);
+        if (previous) {
+          const expired = (await cashierAccountsRepository.findSettlementCollections(previous.id, t))
+            .filter(row =>
+              row.kind === CashierCollectionKind.SETTLEMENT &&
+              row.status === CashierCollectionStatus.EXPIRED
+            );
+          if (expired.length > 0) {
+            await cashierAccountsRepository.setPendingCollectionsStatus(
+              previous.id,
+              CashierCollectionStatus.EXPIRED,
+              CashierCollectionStatus.PENDING,
+              t
+            );
+            await cashierAccountsRepository.updateSettlementCollection(
+              previous.id,
+              {
+                collected: previous.collected ?? 0,
+                debtCarried: previous.debtCarried ?? 0,
+                status: previous.status,
+                pendingCollection: sumAmounts(expired)
+              },
+              t
+            );
+          }
+        }
+
         return cashierAccountsRepository.markSettlementCanceled(settlementId, notes, t);
       });
     }
@@ -604,7 +794,45 @@ export class CashierAccountsDomain {
   async getSettlementReceipt(requesterId: string, settlementId: string) {
     await this.assertOwner(requesterId);
     const settlement = await this.getSettlementInOwnerTree(requesterId, settlementId);
+    return this.buildSettlementReceipt(settlement);
+  }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Vista del cajero (solo lectura de sus propias liquidaciones)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async listOwnSettlements(
+    requesterId: string,
+    options: { page?: number; limit?: number } = {}
+  ): Promise<CashierOwnSettlementsResult> {
+    await this.assertCashier(requesterId);
+    const [result, onAccountCollections] = await Promise.all([
+      cashierAccountsRepository.findSettlements({
+        cashierId: requesterId,
+        page: options.page,
+        limit: options.limit
+      }),
+      cashierAccountsRepository.findUnappliedOnAccountCollections(requesterId)
+    ]);
+    return {
+      settlements: result.settlements,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      onAccountCollections: [...onAccountCollections].reverse()
+    };
+  }
+
+  async getOwnSettlementReceipt(requesterId: string, settlementId: string) {
+    await this.assertCashier(requesterId);
+    const settlement = await cashierAccountsRepository.findSettlementById(settlementId);
+    if (!settlement || settlement.cashierId !== requesterId) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Settlement not found');
+    }
+    return this.buildSettlementReceipt(settlement);
+  }
+
+  private async buildSettlementReceipt(settlement: CashierSettlement) {
     const cashier = await usersRepository.findById(settlement.cashierId);
     if (!cashier) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Cashier not found');
@@ -634,6 +862,21 @@ export class CashierAccountsDomain {
   // ─────────────────────────────────────────────────────────────────────────
   // Cuenta del owner
   // ─────────────────────────────────────────────────────────────────────────
+
+  /** Resumen PDF de la cuenta del owner para un rango. */
+  async getOwnerAccountReceipt(
+    requesterId: string,
+    periodStart: Date | string,
+    periodEnd: Date | string
+  ) {
+    const owner = await this.assertOwner(requesterId);
+    const summary = await this.getOwnerAccount(requesterId, periodStart, periodEnd);
+    const stamp = (date: Date) => date.toISOString().slice(0, 10);
+    return {
+      buffer: generateOwnerAccountPdf({ ...summary, ownerUsername: owner.username }),
+      filename: `cuenta-del-owner-${stamp(summary.periodStart)}-al-${stamp(summary.periodEnd)}.pdf`
+    };
+  }
 
   async getOwnerAccount(
     requesterId: string,
@@ -733,10 +976,10 @@ export class CashierAccountsDomain {
         settlementId: collection.settlementId,
         cash: collection.amount,
         profit: 0,
-        description: collection.paymentReference
-          ? `Cobro al cajero · ${collection.paymentReference}`
-          : 'Cobro al cajero',
-        createdAt: collection.createdAt
+        description: `${collection.kind === CashierCollectionKind.ON_ACCOUNT ? 'Cobro a cuenta' : 'Cobro'} al cajero${
+          collection.paymentReference ? ` · ${collection.paymentReference}` : ''
+        }`,
+        createdAt: collection.confirmedAt ?? collection.createdAt
       });
     }
 
@@ -770,10 +1013,11 @@ export class CashierAccountsDomain {
     periodEnd: Date,
     lastSettlement: CashierSettlement | null
   ): Promise<CashierSettlementPreview> {
-    const [compensation, flows, balance] = await Promise.all([
+    const [compensation, flows, balance, onAccount] = await Promise.all([
       cashierAccountsRepository.findCompensationModeForPeriod(cashier.id, periodStart, periodEnd),
       cashierAccountsRepository.getPeriodFlows(cashier.id, periodStart, periodEnd),
-      balancesRepository.findByUserId(cashier.id)
+      balancesRepository.findByUserId(cashier.id),
+      cashierAccountsRepository.findUnappliedOnAccountCollections(cashier.id, periodEnd)
     ]);
 
     return this.computePreview({
@@ -783,7 +1027,8 @@ export class CashierAccountsDomain {
       compensation,
       flows,
       lastSettlement,
-      chipBalance: balance?.chipBalance ?? 0
+      chipBalance: balance?.chipBalance ?? 0,
+      onAccountCollected: sumAmounts(onAccount)
     });
   }
 
@@ -820,7 +1065,8 @@ export class CashierAccountsDomain {
 
   /**
    * comisión = venta × %; subtotal = venta − comisión;
-   * total = saldo anterior + subtotal; fichas de premios a retirar = premios
+   * total = saldo anterior + subtotal; a cobrar = total − cobros a cuenta;
+   * fichas de premios a retirar = premios
    * (sin superar el saldo del cajero); no vendidas = saldo − fichas de premios.
    */
   computePreview(inputs: PreviewInputs): CashierSettlementPreview {
@@ -833,6 +1079,7 @@ export class CashierAccountsDomain {
     const subtotal = roundMoney(totalSales - commission);
     const previousDebt = roundMoney(lastSettlement?.debtCarried ?? 0);
     const totalDue = roundMoney(previousDebt + subtotal);
+    const onAccountCollected = roundMoney(inputs.onAccountCollected ?? 0);
     const chipBalance = roundMoney(Math.max(inputs.chipBalance, 0));
     const prizeChipsToRecover = roundMoney(Math.min(totalPrizes, chipBalance));
     const unsoldChips = roundMoney(chipBalance - prizeChipsToRecover);
@@ -862,6 +1109,8 @@ export class CashierAccountsDomain {
       subtotal,
       previousDebt,
       totalDue,
+      onAccountCollected,
+      amountDue: roundMoney(totalDue - onAccountCollected),
       chipBalance,
       prizeChipsToRecover,
       unsoldChips,
@@ -878,6 +1127,8 @@ export class CashierAccountsDomain {
   ): CashierSettlementPreview {
     const commission = settlementCommission(settlement);
     const subtotal = settlementSubtotal(settlement);
+    const totalDue = settlement.totalDue ?? subtotal;
+    const onAccountCollected = settlement.onAccountCollected ?? 0;
     return {
       cashierId: cashier.id,
       cashierUsername: cashier.username,
@@ -896,7 +1147,9 @@ export class CashierAccountsDomain {
       commission,
       subtotal,
       previousDebt: settlement.previousDebt ?? 0,
-      totalDue: settlement.totalDue ?? subtotal,
+      totalDue,
+      onAccountCollected,
+      amountDue: roundMoney(totalDue - onAccountCollected),
       chipBalance: settlement.chipBalanceBefore ?? 0,
       prizeChipsToRecover: settlement.prizeChipsRecovered ?? 0,
       unsoldChips: settlement.unsoldChips ?? 0,
@@ -916,34 +1169,43 @@ export class CashierAccountsDomain {
       subtotal: 0,
       previousDebt: 0,
       totalDue: 0,
+      onAccountCollected: 0,
+      amountDue: 0,
       collected: 0,
       debtCarried: 0,
+      chipBalance: 0,
       unsoldChips: 0,
       chipsLeft: 0
+    };
+    const add = (key: keyof CashierPeriodAccountTotals, value: number) => {
+      totals[key] = roundMoney(totals[key] + value);
     };
 
     for (const { preview, settlement } of accounts) {
       // Las filas sin liquidar suman con los valores por defecto de la
-      // liquidación: cobro total y deje de todas las fichas no vendidas.
+      // liquidación: cobro de lo que queda y todas las no vendidas.
       const collected = settlement
-        ? settlement.collected ?? 0
-        : Math.max(preview.totalDue, 0);
+        ? settlementCollectionAmount(settlement)
+        : Math.max(preview.amountDue, 0);
       const chipsLeft = settlement ? settlement.chipsLeft ?? 0 : preview.unsoldChips;
       const debtCarried = settlement
         ? settlement.debtCarried ?? 0
-        : roundMoney(preview.totalDue - collected);
+        : roundMoney(preview.amountDue - collected);
 
-      totals.chipsDelivered = roundMoney(totals.chipsDelivered + preview.chipsDelivered);
-      totals.totalSales = roundMoney(totals.totalSales + preview.totalSales);
-      totals.totalPrizes = roundMoney(totals.totalPrizes + preview.totalPrizes);
-      totals.commission = roundMoney(totals.commission + preview.commission);
-      totals.subtotal = roundMoney(totals.subtotal + preview.subtotal);
-      totals.previousDebt = roundMoney(totals.previousDebt + preview.previousDebt);
-      totals.totalDue = roundMoney(totals.totalDue + preview.totalDue);
-      totals.collected = roundMoney(totals.collected + collected);
-      totals.debtCarried = roundMoney(totals.debtCarried + debtCarried);
-      totals.unsoldChips = roundMoney(totals.unsoldChips + preview.unsoldChips);
-      totals.chipsLeft = roundMoney(totals.chipsLeft + chipsLeft);
+      add('chipsDelivered', preview.chipsDelivered);
+      add('totalSales', preview.totalSales);
+      add('totalPrizes', preview.totalPrizes);
+      add('commission', preview.commission);
+      add('subtotal', preview.subtotal);
+      add('previousDebt', preview.previousDebt);
+      add('totalDue', preview.totalDue);
+      add('onAccountCollected', preview.onAccountCollected);
+      add('amountDue', preview.amountDue);
+      add('collected', collected);
+      add('debtCarried', debtCarried);
+      add('chipBalance', preview.chipBalance);
+      add('unsoldChips', preview.unsoldChips);
+      add('chipsLeft', chipsLeft);
     }
 
     return totals;
@@ -953,11 +1215,12 @@ export class CashierAccountsDomain {
     if (cashiers.length === 0) return [];
     const ids = cashiers.map(cashier => cashier.id);
 
-    const [modes, settlements, totals, balances] = await Promise.all([
+    const [modes, settlements, totals, balances, onAccountTotals] = await Promise.all([
       cashierAccountsRepository.findCompensationModes(ids),
       cashierAccountsRepository.findNonCanceledSettlements(ids),
       cashierAccountsRepository.getMovementTotals(ids),
-      balancesRepository.findByUserIds(ids)
+      balancesRepository.findByUserIds(ids),
+      cashierAccountsRepository.getUnappliedOnAccountTotals(ids)
     ]);
 
     const now = new Date();
@@ -998,6 +1261,7 @@ export class CashierAccountsDomain {
       const openCommission = this.calculateCommission(openSales, activeMode?.percentage ?? null);
       const openSubtotal = roundMoney(openSales - openCommission);
       const debt = roundMoney(lastSettlement?.debtCarried ?? 0);
+      const onAccountCollected = roundMoney(onAccountTotals.get(cashier.id) ?? 0);
 
       return {
         cashierId: cashier.id,
@@ -1023,7 +1287,8 @@ export class CashierAccountsDomain {
         openCommission,
         openSubtotal,
         debt,
-        balanceDue: roundMoney(debt + openSubtotal),
+        onAccountCollected,
+        balanceDue: roundMoney(debt + openSubtotal - onAccountCollected),
         lastSettlementAt: lastSettlement?.createdAt ?? null,
         lastSettlementEnd: lastSettlement?.periodEnd ?? null
       };
@@ -1040,6 +1305,7 @@ export class CashierAccountsDomain {
         totalCollected: roundMoney(acc.totalCollected + account.totalCollected),
         openSubtotal: roundMoney(acc.openSubtotal + account.openSubtotal),
         debt: roundMoney(acc.debt + account.debt),
+        onAccountCollected: roundMoney(acc.onAccountCollected + account.onAccountCollected),
         balanceDue: roundMoney(acc.balanceDue + account.balanceDue),
         chipBalance: roundMoney(acc.chipBalance + account.chipBalance)
       }),
@@ -1051,6 +1317,7 @@ export class CashierAccountsDomain {
         totalCollected: 0,
         openSubtotal: 0,
         debt: 0,
+        onAccountCollected: 0,
         balanceDue: 0,
         chipBalance: 0
       }
@@ -1134,7 +1401,10 @@ export class CashierAccountsDomain {
     }
 
     for (const collection of collections) {
-      if (!activeSettlements.has(collection.settlementId)) continue;
+      if (collection.status !== CashierCollectionStatus.CONFIRMED) continue;
+      if (collection.settlementId && !activeSettlements.has(collection.settlementId)) continue;
+      const onAccount = collection.kind === CashierCollectionKind.ON_ACCOUNT;
+      const label = onAccount ? 'Cobro a cuenta' : 'Cobro';
       entries.push({
         id: `${collection.id}:collection`,
         kind: 'COLLECTION',
@@ -1145,10 +1415,10 @@ export class CashierAccountsDomain {
         money: -collection.amount,
         amount: collection.amount,
         description: collection.paymentReference
-          ? `Cobro · ${collection.paymentReference}`
-          : 'Cobro',
+          ? `${label} · ${collection.paymentReference}`
+          : label,
         settlementId: collection.settlementId,
-        createdAt: collection.createdAt
+        createdAt: collection.confirmedAt ?? collection.createdAt
       });
     }
 
@@ -1198,6 +1468,17 @@ export class CashierAccountsDomain {
         ErrorCode.FORBIDDEN,
         'Solo el propietario puede gestionar las cuentas de cajeros'
       );
+    }
+    return requester;
+  }
+
+  private async assertCashier(requesterId: string): Promise<User> {
+    const requester = await usersRepository.findById(requesterId);
+    if (!requester) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Requester not found');
+    }
+    if (requester.role !== UserRole.CASHIER) {
+      throw new AppError(403, ErrorCode.FORBIDDEN, 'Solo los cajeros tienen liquidaciones propias');
     }
     return requester;
   }

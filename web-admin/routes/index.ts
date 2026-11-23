@@ -27,6 +27,7 @@ const ROUTER = {
   CASHIER_SELL_CHIPS: "/cashier/sell",
   CASHIER_TRANSACTIONS: "/cashier/transactions",
   CASHIER_CREATE_USER: "/cashier/users/create-user",
+  CASHIER_SETTLEMENTS: "/cashier/settlements",
 
   // Player routes
   USER_GAME_PLAY: "/user/games",

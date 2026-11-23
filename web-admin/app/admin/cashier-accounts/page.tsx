@@ -32,10 +32,16 @@ import {
   type CashierRowTarget
 } from "@/components/admin/cashier-period-accounts"
 import { OwnerAccount } from "@/components/admin/owner-account"
+import { BetsReport } from "@/components/admin/bets-report"
+import {
+  ConfirmCollectionDialog,
+  type ConfirmCollectionTarget
+} from "@/components/admin/confirm-collection-dialog"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
 import {
   ChevronLeft,
+  CheckCircle2,
   ChevronRight,
   Coins,
   Download,
@@ -59,6 +65,9 @@ import type {
 } from "helper"
 
 const ITEMS_PER_PAGE = 20
+
+const TABS = ["period", "settlements", "owner", "bets"] as const
+type FinanceTab = (typeof TABS)[number]
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Sin cobrar",
@@ -122,7 +131,22 @@ export default function CashierAccountsPage() {
   const { toast } = useToast()
   const { role, isLoading: authLoading } = useAuth()
 
+  const [tab, setTab] = useState<FinanceTab>("period")
   const [settlementsPage, setSettlementsPage] = useState(1)
+
+  // Pestaña inicial desde ?tab= (links del menú). Se lee en el cliente para no
+  // necesitar un Suspense por useSearchParams.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab")
+    if (requested && (TABS as readonly string[]).includes(requested)) setTab(requested as FinanceTab)
+  }, [])
+
+  const changeTab = (value: string) => {
+    setTab(value as FinanceTab)
+    const url = new URL(window.location.href)
+    url.searchParams.set("tab", value)
+    window.history.replaceState(null, "", url.toString())
+  }
   const [settlementStatusFilter, setSettlementStatusFilter] = useState<string>("ALL")
 
   // Solo para las tarjetas de resumen (el resumen suma todos los cajeros).
@@ -156,10 +180,7 @@ export default function CashierAccountsPage() {
   const [compensationPercentage, setCompensationPercentage] = useState("")
   const [savingCompensation, setSavingCompensation] = useState(false)
 
-  const [collectingSettlement, setCollectingSettlement] = useState<CashierSettlementWithCashier | null>(null)
-  const [collectAmount, setCollectAmount] = useState("")
-  const [paymentReference, setPaymentReference] = useState("")
-  const [collecting, setCollecting] = useState(false)
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmCollectionTarget | null>(null)
 
   const [cancelingSettlement, setCancelingSettlement] = useState<CashierSettlementWithCashier | null>(null)
   const [cancelReason, setCancelReason] = useState("")
@@ -246,46 +267,9 @@ export default function CashierAccountsPage() {
     }
   }
 
-  const openCollect = (settlement: CashierSettlementWithCashier) => {
-    setCollectingSettlement(settlement)
-    setCollectAmount(String(Math.max(settlement.debtCarried ?? 0, 0)))
-    setPaymentReference("")
-  }
-
-  const collectSettlement = async () => {
-    if (!collectingSettlement || collecting) return
-    const amount = parseNumber(collectAmount)
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast({ variant: "destructive", title: "Monto inválido" })
-      return
-    }
-    setCollecting(true)
-    try {
-      const response = await apiService.post(
-        `/cashier-accounts/settlements/${collectingSettlement.id}/collect`,
-        { amount, paymentReference: paymentReference.trim() || undefined }
-      )
-      if (response.success) {
-        toast({ title: "Cobro registrado" })
-        setCollectingSettlement(null)
-        await refreshAll()
-        setPeriodRefreshKey(key => key + 1)
-      } else {
-        toast({
-          variant: "destructive",
-          title: "No se pudo registrar el cobro",
-          description: response.error?.message || "Error desconocido"
-        })
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "No se pudo registrar el cobro",
-        description: error instanceof Error ? error.message : "Error de conexión"
-      })
-    } finally {
-      setCollecting(false)
-    }
+  const onCollectionConfirmed = async () => {
+    await refreshAll()
+    setPeriodRefreshKey(key => key + 1)
   }
 
   const openCancel = (settlement: CashierSettlementWithCashier) => {
@@ -395,13 +379,13 @@ export default function CashierAccountsPage() {
   )
 
   return (
-    <DashboardLayout title="Cuentas corrientes">
+    <DashboardLayout title="Finanzas">
       <div className="space-y-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Cuentas corrientes con cajeros</h2>
+            <h2 className="text-2xl font-bold">Finanzas</h2>
             <p className="text-sm text-muted-foreground">
-              Fichas entregadas, venta de fichas, premios, comisiones, cobros y liquidaciones con cada cajero.
+              Liquidaciones y cuentas corrientes con cada cajero, tu ganancia y caja, y el reporte de apuestas.
             </p>
           </div>
         </div>
@@ -416,6 +400,7 @@ export default function CashierAccountsPage() {
               <div className="text-2xl font-bold text-amber-600">{formatMoney(summary.balanceDue)}</div>
               <p className="text-xs text-muted-foreground">
                 deuda {formatMoney(summary.debt)} · sin liquidar {formatMoney(summary.openSubtotal)}
+                {summary.onAccountCollected !== 0 && <> · a cuenta −{formatMoney(summary.onAccountCollected)}</>}
               </p>
             </CardContent>
           </Card>
@@ -455,11 +440,12 @@ export default function CashierAccountsPage() {
           </Card>
         </div>
 
-        <Tabs defaultValue="period" className="space-y-4">
-          <TabsList>
+        <Tabs value={tab} onValueChange={changeTab} className="space-y-4">
+          <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="period">Liquidar</TabsTrigger>
             <TabsTrigger value="settlements">Historial de liquidaciones</TabsTrigger>
             <TabsTrigger value="owner">Cuenta del owner</TabsTrigger>
+            <TabsTrigger value="bets">Apuestas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="period" className="space-y-4">
@@ -507,7 +493,7 @@ export default function CashierAccountsPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1150px] text-sm">
+                    <table className="w-full min-w-[1250px] text-sm">
                       <thead className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                         <tr>
                           <th className="px-4 py-3 text-left font-semibold">Cajero</th>
@@ -517,7 +503,8 @@ export default function CashierAccountsPage() {
                           <th className="px-3 py-3 text-right font-semibold">Comisión</th>
                           <th className="px-3 py-3 text-right font-semibold">Subtotal</th>
                           <th className="px-3 py-3 text-right font-semibold">Cobrado</th>
-                          <th className="px-3 py-3 text-right font-semibold">Arrastre</th>
+                          <th className="px-3 py-3 text-right font-semibold" title="Cobro de la liquidación que falta confirmar">Pendiente</th>
+                          <th className="px-3 py-3 text-right font-semibold" title="Lo que el cajero queda debiendo (incluye lo pendiente)">Debe</th>
                           <th className="px-3 py-3 text-center font-semibold">Estado</th>
                           <th className="px-4 py-3 text-right font-semibold">Acciones</th>
                         </tr>
@@ -526,10 +513,9 @@ export default function CashierAccountsPage() {
                         {settlements.map(settlement => {
                           const legacy = isLegacy(settlement)
                           const commission = settlement.commission ?? settlement.payableAmount
-                          const canCollect =
-                            !legacy &&
-                            settlement.status !== SettlementStatus.CANCELED &&
-                            (settlement.debtCarried ?? 0) > 0
+                          const pending = Number(settlement.pendingCollection ?? 0)
+                          const awaitingConfirmation =
+                            !legacy && settlement.status !== SettlementStatus.CANCELED && pending > 0
                           return (
                             <tr key={settlement.id} className="hover:bg-muted/20">
                               <td className="px-4 py-3 font-medium">{settlement.cashierUsername}</td>
@@ -550,15 +536,24 @@ export default function CashierAccountsPage() {
                               <td className="px-3 py-3 text-right tabular-nums">
                                 {legacy ? "—" : formatMoney(settlement.collected)}
                               </td>
+                              <td className={`px-3 py-3 text-right tabular-nums ${awaitingConfirmation ? "text-amber-700" : "text-muted-foreground"}`}>
+                                {legacy || pending === 0 ? "—" : formatMoney(pending)}
+                              </td>
                               <td className={`px-3 py-3 text-right font-semibold tabular-nums ${(settlement.debtCarried ?? 0) > 0 ? "text-amber-700" : ""}`}>
                                 {legacy ? "—" : formatMoney(settlement.debtCarried)}
                               </td>
                               <td className="px-3 py-3 text-center">
-                                <Badge variant="outline" className={STATUS_STYLES[settlement.status] ?? ""}>
-                                  {legacy && settlement.status === SettlementStatus.PAID
-                                    ? "Pagada (anterior)"
-                                    : STATUS_LABELS[settlement.status] ?? settlement.status}
-                                </Badge>
+                                {awaitingConfirmation ? (
+                                  <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">
+                                    Cobro pendiente
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className={STATUS_STYLES[settlement.status] ?? ""}>
+                                    {legacy && settlement.status === SettlementStatus.PAID
+                                      ? "Pagada (anterior)"
+                                      : STATUS_LABELS[settlement.status] ?? settlement.status}
+                                  </Badge>
+                                )}
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex flex-wrap justify-end gap-1">
@@ -573,14 +568,15 @@ export default function CashierAccountsPage() {
                                       ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                       : <Download className="h-3.5 w-3.5" />}
                                   </Button>
-                                  {canCollect && (
+                                  {awaitingConfirmation && (
                                     <Button
                                       size="sm"
-                                      onClick={() => openCollect(settlement)}
+                                      onClick={() => setConfirmTarget({ settlement, username: settlement.cashierUsername ?? "" })}
                                       className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                      title="Confirmar que el cajero pagó"
                                     >
-                                      <HandCoins className="mr-1 h-3.5 w-3.5" />
-                                      Cobrar
+                                      <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                                      Confirmar cobro
                                     </Button>
                                   )}
                                   {settlement.status !== SettlementStatus.CANCELED &&
@@ -636,6 +632,10 @@ export default function CashierAccountsPage() {
           <TabsContent value="owner" className="space-y-4">
             <OwnerAccount />
           </TabsContent>
+
+          <TabsContent value="bets" className="space-y-4">
+            {tab === "bets" && <BetsReport />}
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -677,56 +677,11 @@ export default function CashierAccountsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(collectingSettlement)} onOpenChange={open => !open && setCollectingSettlement(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Registrar cobro</DialogTitle>
-            <DialogDescription>
-              Cobro a {collectingSettlement?.cashierUsername} sobre la liquidación del{" "}
-              {formatDate(collectingSettlement?.periodStart)} al {formatDate(collectingSettlement?.periodEnd)}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-lg border bg-muted/20 p-4">
-              <div className="text-xs text-muted-foreground">Debe</div>
-              <div className="text-2xl font-bold text-amber-700">
-                {formatMoney(collectingSettlement?.debtCarried ?? 0)}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="collect-amount">Monto cobrado</Label>
-              <Input
-                id="collect-amount"
-                type="number"
-                min="0"
-                step="0.01"
-                value={collectAmount}
-                onChange={event => setCollectAmount(event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="payment-reference">Referencia (opcional)</Label>
-              <Input
-                id="payment-reference"
-                value={paymentReference}
-                onChange={event => setPaymentReference(event.target.value)}
-                placeholder="Efectivo, transferencia, etc."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCollectingSettlement(null)}>Cancelar</Button>
-            <Button
-              onClick={collectSettlement}
-              disabled={collecting}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {collecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Registrar cobro
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmCollectionDialog
+        target={confirmTarget}
+        onClose={() => setConfirmTarget(null)}
+        onConfirmed={onCollectionConfirmed}
+      />
 
       <Dialog open={Boolean(cancelingSettlement)} onOpenChange={open => !open && setCancelingSettlement(null)}>
         <DialogContent className="sm:max-w-md">
@@ -795,6 +750,11 @@ export default function CashierAccountsPage() {
                 <div className="rounded-lg border p-3">
                   <div className="text-xs text-muted-foreground">A cobrar</div>
                   <div className="font-semibold text-amber-700">{formatMoney(detail.account.balanceDue)}</div>
+                  {detail.account.onAccountCollected !== 0 && (
+                    <div className="text-[10px] text-muted-foreground">
+                      cobros a cuenta −{formatMoney(detail.account.onAccountCollected)}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -840,7 +800,10 @@ export default function CashierAccountsPage() {
                         <div className="flex items-center gap-2">
                           {!isLegacy(settlement) && (
                             <span className="font-semibold text-amber-700">
-                              arrastre {formatMoney(settlement.debtCarried)}
+                              debe {formatMoney(settlement.debtCarried)}
+                              {(settlement.pendingCollection ?? 0) > 0 && (
+                                <> · pendiente {formatMoney(settlement.pendingCollection)}</>
+                              )}
                             </span>
                           )}
                           <Badge

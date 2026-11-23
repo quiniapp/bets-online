@@ -4,6 +4,8 @@ import {
   ChipMovementType,
   CompensationType,
   SettlementStatus,
+  CashierCollectionKind,
+  CashierCollectionStatus,
   PanelStatus,
   RecoveryMode,
   RecoveryStatus
@@ -41,6 +43,8 @@ export interface CreateUserDto {
   lastName?: string;
   password: string;
   initialBalance?: number;
+  /** % de comisión sobre la venta de fichas. Solo para ADMIN y CASHIER. */
+  commissionPercentage?: number;
 }
 
 /**
@@ -177,6 +181,10 @@ export interface CashierSettlement {
   chipsLeft: number | null;
   /** Fichas no vendidas retiradas al cajero */
   unsoldChipsRecovered: number | null;
+  /** Cobros a cuenta (de la semana) descontados en esta liquidación */
+  onAccountCollected: number | null;
+  /** Cobro de la liquidación que espera la confirmación del owner */
+  pendingCollection: number | null;
 }
 
 /**
@@ -224,7 +232,9 @@ export interface CashierAccountSummary {
   openSubtotal: number;
   /** Deuda arrastrada de la última liquidación */
   debt: number;
-  /** debt + openSubtotal: lo que el cajero le debe hoy al owner */
+  /** Cobros a cuenta todavía sin liquidar */
+  onAccountCollected: number;
+  /** debt + openSubtotal − onAccountCollected: lo que el cajero le debe hoy al owner */
   balanceDue: number;
   lastSettlementAt: Date | null;
   lastSettlementEnd: Date | null;
@@ -241,6 +251,8 @@ export interface CashierAccountsSummary {
   totalCollected: number;
   openSubtotal: number;
   debt: number;
+  /** Cobros a cuenta todavía sin liquidar */
+  onAccountCollected: number;
   balanceDue: number;
   chipBalance: number;
 }
@@ -392,6 +404,10 @@ export interface CashierSettlementPreview {
   previousDebt: number;
   /** previousDebt + subtotal */
   totalDue: number;
+  /** Cobros a cuenta de la semana que se descuentan al liquidar */
+  onAccountCollected: number;
+  /** totalDue − onAccountCollected: lo que queda por cobrar al liquidar */
+  amountDue: number;
   /** Fichas que tiene hoy el cajero */
   chipBalance: number;
   /** Fichas de premios que se le van a retirar (premios, limitado al saldo) */
@@ -431,8 +447,11 @@ export interface CashierPeriodAccountTotals {
   subtotal: number;
   previousDebt: number;
   totalDue: number;
+  onAccountCollected: number;
+  amountDue: number;
   collected: number;
   debtCarried: number;
+  chipBalance: number;
   unsoldChips: number;
   chipsLeft: number;
 }
@@ -472,12 +491,21 @@ export interface CreateCashierSettlementDto {
 }
 
 /**
- * Registrar un cobro posterior sobre la última liquidación de un cajero.
+ * Registrar un cobro a cuenta al cajero (durante la semana, antes de liquidar).
  */
-export interface CollectCashierSettlementDto {
+export interface CreateCashierCollectionDto {
   amount: number;
   paymentReference?: string;
   notes?: string;
+}
+
+/**
+ * Confirmar el cobro pendiente de una liquidación. amount = lo que se recibió
+ * (por defecto, el monto pendiente).
+ */
+export interface ConfirmCashierSettlementCollectionDto {
+  amount?: number;
+  paymentReference?: string;
 }
 
 /**
@@ -485,16 +513,34 @@ export interface CollectCashierSettlementDto {
  */
 export interface CashierCollection {
   id: string;
-  settlementId: string;
+  /** null = cobro a cuenta todavía sin liquidar */
+  settlementId: string | null;
   cashierId: string;
+  kind: CashierCollectionKind;
+  status: CashierCollectionStatus;
   amount: number;
   paymentReference: string | null;
+  notes: string | null;
   createdBy: string | null;
   createdAt: Date;
+  confirmedBy: string | null;
+  confirmedAt: Date | null;
 }
 
 /**
- * @deprecated el cajero ya no cobra comisión del owner: se usa CollectCashierSettlementDto.
+ * Historial de liquidaciones que ve el cajero.
+ */
+export interface CashierOwnSettlementsResult {
+  settlements: CashierSettlement[];
+  total: number;
+  page: number;
+  limit: number;
+  /** Cobros a cuenta registrados que todavía no entraron en una liquidación */
+  onAccountCollections: CashierCollection[];
+}
+
+/**
+ * @deprecated el cajero ya no cobra comisión del owner.
  */
 export interface PayCashierSettlementDto {
   paymentReference?: string;
@@ -527,7 +573,7 @@ export interface OwnerAccountMovement {
   kind: 'SETTLEMENT' | 'COLLECTION' | 'PRIZES';
   cashierId: string;
   cashierUsername: string;
-  settlementId: string;
+  settlementId: string | null;
   /** Efecto en la caja del owner (+ entra, − sale); 0 para SETTLEMENT */
   cash: number;
   /** Efecto en la ganancia del owner */

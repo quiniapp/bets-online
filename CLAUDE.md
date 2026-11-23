@@ -14,6 +14,7 @@ pnpm --filter helper build        # REQUIRED first: api/web/web-admin import the
 pnpm dev                          # api + web
 pnpm dev:all                      # api + web + web-admin
 pnpm --filter api dev             # API only (APP_ENV=local → loads api/.env.local), port 3001, Swagger at /doc (non-prod only)
+pnpm --filter api dev:development # API against the shared develop DB (api/.env.development, Supabase)
 pnpm --filter web dev             # players site, port 3002
 pnpm --filter web-admin dev       # backoffice, port 3000
 
@@ -26,9 +27,16 @@ pnpm --filter api test -- -t "sells chips"                    # single test by n
 pnpm --filter api db:migrate      # Sequelize migrations (api/src/persistence/migrations, plain .js)
 pnpm --filter api migration:new <name>
 pnpm --filter api db:migrate:undo
+APP_ENV=development pnpm --filter api migration:status   # same commands against another env's DB
+
+# Demo data for cashier settlements (never runs against production; all users are demo_*)
+cd api && APP_ENV=development npx ts-node -T src/scripts/seed-liquidaciones-demo.ts [--clean]
 ```
 
-- After changing anything in `helper/src`, rebuild it (`pnpm --filter helper build`). Jest maps `helper` to `helper/dist/index.js`, so stale dist means stale tests.
+- After changing anything in `helper/src`, rebuild it (`pnpm --filter helper build`). Jest maps `helper` to `helper/dist/index.js`, so stale dist means stale tests. The husky pre-commit hook runs `pnpm type-check`, which also reads `helper/dist`: a stale build fails the commit with "has no exported member" errors in `api`/`web-admin`.
+- A running API (nodemon) does not reload `helper/dist`: after a helper rebuild or a branch switch, restart it. A route answering 400 "Query validation failed" right after a validator change usually means the old process is still up.
+- `pnpm dev` uses the local DB (`localhost`), `dev:development` the develop DB on Supabase. Data seeded with one `APP_ENV` is invisible from the other.
+- Railway does not run migrations on deploy: apply them by hand in each environment before merging code that needs them.
 - `api` build is `tsc --skipLibCheck || true`, so it never fails; rely on `type-check` for errors.
 - Tests hit a real Postgres (CI runs migrations then tests against postgres:17). `api/tests/setup.ts` loads `api/.env.local`.
 - Env validation is strict (`api/src/config/envs.ts`, Zod): JWT_SECRET, JWT_REFRESH_SECRET, SESSION_SECRET and VIRAL_SECRET_KEY must be ≥32 chars; VIRAL_USERNAME and DATABASE_URL are required. The env file is chosen by `APP_ENV` (falling back to `NODE_ENV`): `.env.local` / `.env.development` / `.env.production` / `.env.test`.
@@ -52,6 +60,16 @@ Each `features/<name>/` holds its own `*.routes.ts → *.controller.ts → *.dom
 
 ### Chips and hierarchy
 Chip operations (`features/chips/chips.domain.ts`) run inside a `sequelize.transaction()` with row locks (`findByUserIdWithLock`). They only apply to descendants with a strictly lower role (`ROLE_HIERARCHY`), accept an `idempotencyKey`, and write to the audit log (`utils/audit.ts`). The Owner has no balance limit.
+
+### Cashier accounts and settlements (`features/cashier-accounts`, Owner only)
+Backoffice `/admin/cashier-accounts` (menu "Finanzas", which replaced the old Reportes/Ganancias menus), tabs **Liquidar**, **Historial de liquidaciones**, **Cuenta del owner**, **Apuestas** (`components/admin/bets-report.tsx`, also at `/admin/reports/bets` for admins); `?tab=` opens a tab. Commission % can be set when creating an ADMIN or CASHIER (`commissionPercentage` on `POST /users`, stored in `cashier_compensation_modes`; only cashiers' commission is used in settlements today). The cashier sees their own read-only history at `/cashier/settlements` (API `/cashier-accounts/me/*`, mounted before the owner router). Full guide: `docs/cuentas-corrientes-cajeros.md`.
+- Business flow: the owner loads chips to a cashier (`SELL_TO_PLAYER` with the cashier as `user_id`), the cashier sells them to players (`SELL_TO_PLAYER` with the cashier as `related_user_id`) and takes back prize chips from winners (`PRIZE`; the owner pays the prize in cash). The cashier keeps a commission on sales; there is no "pay commission to cashier" step anymore.
+- Settlement math: `commission = sales × %`, `subtotal = sales − commission`, `total = previous debt + subtotal`, `amount due = total − on-account collections`, `debt carried = total − confirmed collected`. Prize chips are always taken back from the cashier; unsold chips = cashier balance − prize chips, and the owner chooses how many to leave (`chipsLeft`, shown as "No vendidas"; the cashier balance column is "Balance"), the rest is taken back.
+- Collections (`cashier_collections.kind`/`status`): **on-account** collections (`ON_ACCOUNT`, `settlement_id` null until a settlement absorbs them) are recorded during the week, confirmed at once, and subtracted at the next settlement. The amount set when settling is a `SETTLEMENT` collection that stays `PENDING` (`cashier_settlements.pending_collection`) until the owner confirms it (`confirm-collection`, may confirm less; the rest stays as debt). Settling again with a pending collection marks it `EXPIRED` (it becomes debt); canceling that settlement reopens it.
+- **Cutoff, not range:** the owner only picks `periodEnd`. Each settlement starts right after the cashier's last non-canceled settlement (or at their first chip movement) and `periodEnd` is clamped to now, so there are no gaps or overlaps. `periodStart` in requests is accepted and ignored. 409 if the cashier is already settled up to the cutoff.
+- `createSettlement` runs in one transaction with a row lock on the cashier balance. Chip take-backs are `RECOVERY` movements linked by `idempotency_key` `settlement:<id>:prizes|unsold`; cancel writes `settlement:<id>:reversal` (`ADJUSTMENT`) and returns the chips. Confirm-collection and cancel only work on the cashier's **latest** settlement.
+- Tables: `cashier_settlements` (flow columns are nullable; `subtotal IS NULL` = legacy settlement from the old commission model), `cashier_collections` (one row per collection), `cashier_compensation_modes`. `cashier_current_accounts` (old daily account) is unused; its daily files/types are deprecated leftovers.
+- Owner account: profit = subtotal − prizes, cash flow = collected − prizes, over settlements whose period ends in the range.
 
 ### 21Viral integration (`features/integrations/21viral`)
 - 21Viral is an **integrator** that aggregates real providers (Pragmatic, RubyPlay, …). It calls back server-to-server at root-level `/players/*` routes (`callbacks.routes.ts`, mounted outside `/api`), authenticated by HMAC (`middleware/hmac.middleware.ts`, see `docs/rfc8785-hmac-sha256.md`).
