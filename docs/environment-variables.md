@@ -61,8 +61,9 @@ Un valor distinto por secret y por entorno. Rotar `JWT_SECRET` invalida todas la
 | Variable | Default | Para qué |
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | Destino del rewrite `/api/*` en `next.config.mjs`. Se lee en **build**: cambiarla en Vercel requiere redeploy |
+| `ENABLE_SPEED_INSIGHTS` | (vacía = apagado) | `true` monta `<SpeedInsights />` de Vercel en el root layout. Setearla **solo en Production** para no gastar data points facturables con previews ni local. Server-only y se lee en **build**: cambiarla requiere redeploy |
 
-No hay otra variable. `NODE_ENV` la maneja Next.js. Las cookies de auth son first-party porque el browser siempre llama a `/api/*` de su propio dominio y Next.js proxyea a `NEXT_PUBLIC_API_URL`.
+`NODE_ENV` la maneja Next.js. Las cookies de auth son first-party porque el browser siempre llama a `/api/*` de su propio dominio y Next.js proxyea a `NEXT_PUBLIC_API_URL`.
 
 ## Local
 
@@ -117,7 +118,15 @@ Settings → Environment Variables, en Production y Preview:
 NEXT_PUBLIC_API_URL=https://<servicio>.up.railway.app
 ```
 
-Después de cambiarla, redeploy (es build-time).
+Solo en Production:
+
+```
+ENABLE_SPEED_INSIGHTS=true
+```
+
+Además, Speed Insights tiene que estar habilitado en cada proyecto (pestaña Speed Insights → Enable); sin eso el script carga pero Vercel no guarda las métricas.
+
+Después de cambiarlas, redeploy (son build-time).
 
 ## Supabase: conexión a la DB
 
