@@ -79,7 +79,7 @@ module.exports = {
     });
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface) {
     await queryInterface.sequelize.transaction(async transaction => {
       await queryInterface.removeColumn('cashier_settlements', 'pending_collection', { transaction });
       await queryInterface.removeColumn('cashier_settlements', 'on_account_collected', { transaction });
