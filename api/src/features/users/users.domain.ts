@@ -1,4 +1,5 @@
 import {
+  CompensationType,
   User,
   CreateUserDto,
   UpdateUserDto,
@@ -16,6 +17,10 @@ import { authDomain } from '../auth/auth.domain';
 import { chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
+import { cashierAccountsRepository } from '../cashier-accounts/cashier-accounts.repository';
+
+/** Roles que cobran comisión sobre la venta de fichas. */
+const COMMISSION_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.CASHIER];
 
 export class UsersDomain {
   async createUser(
@@ -47,6 +52,15 @@ export class UsersDomain {
       );
     }
 
+    const commission = userData.commissionPercentage;
+    if (commission !== undefined && !COMMISSION_ROLES.includes(userData.role)) {
+      throw new AppError(
+        400,
+        ErrorCode.INVALID_INPUT,
+        'Solo los administradores y los cajeros tienen comisión'
+      );
+    }
+
     // Validate initial balance against creator's available balance before creating user
     if (userData.initialBalance && userData.initialBalance > 0 && creator.role !== UserRole.OWNER) {
       const creatorBalance = await balancesRepository.findByUserId(creatorId);
@@ -69,6 +83,15 @@ export class UsersDomain {
       userData.lastName
     );
 
+    if (commission !== undefined) {
+      await cashierAccountsRepository.createCompensationMode({
+        cashierId: user.id,
+        type: CompensationType.PERCENTAGE,
+        percentage: Math.round(commission * 100) / 100,
+        activeFrom: new Date()
+      });
+    }
+
     if (userData.initialBalance && userData.initialBalance > 0) {
       await chipsDomain.sellChips(creatorId, user.id, userData.initialBalance, 'Balance inicial');
     }
@@ -78,7 +101,12 @@ export class UsersDomain {
       action: 'user.create',
       entityType: 'user',
       entityId: user.id,
-      newValues: { username: user.username, role: user.role, initialBalance: userData.initialBalance ?? 0 }
+      newValues: {
+        username: user.username,
+        role: user.role,
+        initialBalance: userData.initialBalance ?? 0,
+        commissionPercentage: commission ?? null
+      }
     });
     return user;
   }

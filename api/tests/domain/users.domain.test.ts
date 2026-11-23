@@ -39,11 +39,17 @@ jest.mock('../../src/features/chips/chips.domain', () => ({
 jest.mock('../../src/utils/audit', () => ({
   writeAudit: jest.fn()
 }));
+jest.mock('../../src/features/cashier-accounts/cashier-accounts.repository', () => ({
+  cashierAccountsRepository: {
+    createCompensationMode: jest.fn()
+  }
+}));
 
 import { UsersDomain } from '../../src/features/users/users.domain';
 import { usersRepository } from '../../src/features/users/users.repository';
 import { sessionsRepository } from '../../src/features/auth/sessions.repository';
 import { authDomain } from '../../src/features/auth/auth.domain';
+import { cashierAccountsRepository } from '../../src/features/cashier-accounts/cashier-accounts.repository';
 
 const makeUser = (overrides = {}) => ({
   id: 'user-1',
@@ -130,6 +136,43 @@ describe('UsersDomain', () => {
       });
 
       expect(user.role).toBe(UserRole.CASHIER);
+      expect(cashierAccountsRepository.createCompensationMode).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createUser — comisión', () => {
+    const owner = makeUser({ id: 'owner-1', role: UserRole.OWNER, parentUserId: null });
+
+    it.each([UserRole.CASHIER, UserRole.ADMIN])('guarda la comisión de un %s nuevo', async role => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+      (authDomain.register as jest.Mock).mockResolvedValue(makeUser({ id: 'new-1', role }));
+
+      await domain.createUser('owner-1', {
+        role,
+        username: 'nuevo',
+        password: 'Password1',
+        commissionPercentage: 12.345
+      });
+
+      expect(cashierAccountsRepository.createCompensationMode).toHaveBeenCalledWith(
+        expect.objectContaining({ cashierId: 'new-1', type: 'PERCENTAGE', percentage: 12.35 })
+      );
+    });
+
+    it('rechaza comisión para un jugador, sin crear el usuario', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+
+      await expect(
+        domain.createUser('owner-1', {
+          role: UserRole.PLAYER,
+          username: 'jugador',
+          password: 'Password1',
+          commissionPercentage: 10
+        })
+      ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+
+      expect(authDomain.register).not.toHaveBeenCalled();
+      expect(cashierAccountsRepository.createCompensationMode).not.toHaveBeenCalled();
     });
   });
 

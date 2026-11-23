@@ -1,5 +1,7 @@
 import { CompensationType, SettlementStatus } from 'helper';
+import type { OwnerAccountMovement, OwnerAccountSummary } from 'helper';
 import {
+  generateOwnerAccountPdf,
   generatePeriodSummaryPdf,
   generateSettlementReceiptPdf
 } from '../../src/utils/settlement-receipt.utils';
@@ -50,8 +52,8 @@ describe('generateSettlementReceiptPdf', () => {
     expect(text).toContain('900,00');
     expect(text).toContain('\\(20%\\)');
     expect(text).toContain('720,00');
-    expect(text).toContain('Arrastre');
-    expect(text).toContain('Deje');
+    expect(text).toContain('Queda debiendo');
+    expect(text).toContain('No vendidas \\(quedan al cajero\\)');
     expect(text).toContain('COBRO PARCIAL');
   });
 
@@ -124,5 +126,86 @@ describe('generatePeriodSummaryPdf', () => {
     expect(text).toContain('cajero1');
     expect(text).toContain('TOTALES');
     expect(text).toContain('Liquid.');
+  });
+});
+
+describe('generateOwnerAccountPdf', () => {
+  const movement = (i: number, overrides: Partial<OwnerAccountMovement> = {}): OwnerAccountMovement => ({
+    id: `m-${i}`,
+    kind: 'COLLECTION',
+    cashierId: i % 2 === 0 ? 'cashier-1' : 'cashier-2',
+    cashierUsername: i % 2 === 0 ? 'cajero1' : 'cajero2',
+    settlementId: null,
+    cash: 100,
+    profit: 0,
+    description: `Cobro ${i}`,
+    createdAt: new Date('2026-11-20T15:00:00.000Z'),
+    ...overrides
+  });
+
+  const summary = (movements: OwnerAccountMovement[]): OwnerAccountSummary & { ownerUsername: string } => ({
+    ownerUsername: 'owner',
+    periodStart: new Date('2026-11-15T03:00:00.000Z'),
+    periodEnd: new Date('2026-11-22T02:59:59.999Z'),
+    settled: {
+      settlements: 1,
+      totalSales: 900,
+      commission: 180,
+      subtotal: 720,
+      prizes: 50,
+      profit: 670,
+      collected: 700,
+      cashFlow: 650,
+      chipsDelivered: 1000,
+      chipsRecovered: 50
+    },
+    collectedInRange: 700,
+    current: {
+      cashierDebt: 20,
+      openSubtotal: 80,
+      openSales: 100,
+      openPrizes: 0,
+      cashierChips: 100,
+      playerChips: 300
+    },
+    movements
+  });
+
+  it('incluye totales, situación actual, desglose por cajero y movimientos', () => {
+    const pdf = generateOwnerAccountPdf(
+      summary([
+        movement(0, { kind: 'SETTLEMENT', cash: 0, profit: 720, description: 'Liquidacion semana' }),
+        movement(1, { kind: 'PRIZES', cash: -50, profit: -50, description: 'Premios' })
+      ])
+    );
+    const text = pdf.toString('latin1');
+
+    expect(text.startsWith('%PDF-1.4')).toBe(true);
+    expect(text).toContain('/Count 1');
+    expect(text).toContain('Cuenta del owner');
+    expect(text).toContain('Ganancia \\(ingreso neto - premios\\)');
+    expect(text).toContain('670,00');
+    expect(text).toContain('Por cajero');
+    expect(text).toContain('cajero2');
+    expect(text).toContain('Liquidacion semana');
+    expect(text).toContain('pagina 1 de 1');
+  });
+
+  it('pagina los movimientos cuando no entran en una hoja', () => {
+    const movements = Array.from({ length: 120 }, (_, i) => movement(i));
+    const text = generateOwnerAccountPdf(summary(movements)).toString('latin1');
+
+    const pages = Number(/\/Count (\d+)/.exec(text)?.[1]);
+    expect(pages).toBeGreaterThan(1);
+    expect(text).toContain(`pagina ${pages} de ${pages}`);
+    expect(text).toContain('Cobro 119');
+    // xref consistente: un offset por objeto (catálogo, páginas, 2 fuentes y 2 por hoja).
+    expect(text).toContain(`xref\n0 ${4 + pages * 2 + 1}`);
+  });
+
+  it('sin movimientos lo indica', () => {
+    const text = generateOwnerAccountPdf(summary([])).toString('latin1');
+    expect(text).toContain('No hay liquidaciones ni cobros en el periodo.');
+    expect(text).not.toContain('Por cajero');
   });
 });

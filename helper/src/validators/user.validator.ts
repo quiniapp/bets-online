@@ -21,7 +21,9 @@ const createUserBaseSchema = z.object({
   firstName: z.string().max(100).optional().or(z.literal('')),
   lastName: z.string().max(100).optional().or(z.literal('')),
   password: passwordSchema,
-  initialBalance: z.number().min(0).optional()
+  initialBalance: z.number().min(0).optional(),
+  /** % de comisión sobre la venta de fichas. Solo para ADMIN y CASHIER. */
+  commissionPercentage: z.number().finite().min(0).max(100).optional()
 });
 
 /**

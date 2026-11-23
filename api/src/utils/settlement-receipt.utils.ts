@@ -1,7 +1,10 @@
 import {
   CashierPeriodAccount,
   CashierPeriodAccountTotals,
-  CashierSettlement
+  CashierSettlement,
+  OwnerAccountSummary,
+  settlementAmountDue,
+  settlementCollectionAmount
 } from 'helper';
 import { config } from '../config';
 
@@ -58,16 +61,25 @@ const chips = (value: number | null | undefined): string =>
 const pdfText = (text: string, x: number, y: number, size: number, bold = false): string =>
   `BT /F${bold ? '2' : '1'} ${size} Tf ${x} ${y} Td (${escapePdfText(text)}) Tj ET\n`;
 
-function buildPdf(content: string, width: number, height: number): Buffer {
-  const length = Buffer.byteLength(content, 'latin1');
+/**
+ * Arma un PDF con una página por cada contenido. Objetos: 1 catálogo, 2 páginas,
+ * 3-4 fuentes, y por cada página un objeto Page y su stream.
+ */
+function buildPdf(content: string | string[], width: number, height: number): Buffer {
+  const pages = Array.isArray(content) ? content : [content];
+  const pageObject = (index: number) => 5 + index * 2;
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>`,
-    `<< /Length ${length} >>\nstream\n${content}endstream`,
+    `<< /Type /Pages /Kids [${pages.map((_, i) => `${pageObject(i)} 0 R`).join(' ')}] /Count ${pages.length} >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'
   ];
+  pages.forEach((page, i) => {
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${pageObject(i) + 1} 0 R >>`,
+      `<< /Length ${Buffer.byteLength(page, 'latin1')} >>\nstream\n${page}endstream`
+    );
+  });
 
   let pdf = '%PDF-1.4\n';
   const offsets: number[] = [0];
@@ -111,10 +123,11 @@ export function generateSettlementReceiptPdf(data: SettlementReceiptData): Buffe
     content += pdfText('Comision (modelo anterior)', 72, 745, 10);
     content += pdfText(money(commission), 72, 710, 22, true);
   } else {
+    const pending = data.pendingCollection ?? 0;
     content += pdfText('Cobrado', 72, 745, 10);
     content += pdfText(money(data.collected), 72, 710, 22, true);
-    content += pdfText('Arrastre (queda debiendo)', 320, 745, 10);
-    content += pdfText(money(data.debtCarried), 320, 710, 16, true);
+    content += pdfText(pending > 0 ? 'Cobro pendiente de confirmar' : 'Queda debiendo', 320, 745, 10);
+    content += pdfText(money(pending > 0 ? pending : data.debtCarried), 320, 710, 16, true);
   }
 
   const lines: Array<[string, string] | null> = [
@@ -134,14 +147,17 @@ export function generateSettlementReceiptPdf(data: SettlementReceiptData): Buffe
   if (!legacy) {
     lines.push(
       ['Saldo anterior', money(data.previousDebt)],
-      ['Total a cobrar', money(data.totalDue)],
-      ['Cobro', money(data.collected)],
-      ['Arrastre', money(data.debtCarried)],
+      ['Cobros a cuenta', money(data.onAccountCollected)],
+      ['Total a cobrar', money(settlementAmountDue(data))],
+      ['Cobro de la liquidacion', money(settlementCollectionAmount(data))],
+      ['Pendiente de confirmar', money(data.pendingCollection)],
+      ['Cobrado (confirmado)', money(data.collected)],
+      ['Queda debiendo', money(data.debtCarried)],
       null,
       ['Fichas entregadas', chips(data.chipsDelivered)],
+      ['Balance de fichas', chips(data.chipBalanceBefore)],
       ['Premios (fichas retiradas)', chips(data.prizeChipsRecovered)],
-      ['Fichas no vendidas', chips(data.unsoldChips)],
-      ['Deje (quedan al cajero)', chips(data.chipsLeft)],
+      ['No vendidas (quedan al cajero)', chips(data.chipsLeft)],
       ['No vendidas retiradas', chips(data.unsoldChipsRecovered)]
     );
   } else {
@@ -205,11 +221,11 @@ export function generatePeriodSummaryPdf(data: {
     { label: 'Comision', x: 306 },
     { label: 'Subtotal', x: 368 },
     { label: 'Saldo ant.', x: 430 },
-    { label: 'Total', x: 492 },
-    { label: 'Cobro', x: 554 },
-    { label: 'Arrastre', x: 616 },
-    { label: 'No vend.', x: 678 },
-    { label: 'Deje', x: 730 },
+    { label: 'A cuenta', x: 492 },
+    { label: 'Total', x: 554 },
+    { label: 'Cobro', x: 616 },
+    { label: 'Balance', x: 678 },
+    { label: 'No vend.', x: 730 },
     { label: 'Estado', x: 770 }
   ];
 
@@ -231,8 +247,7 @@ export function generatePeriodSummaryPdf(data: {
 
   for (const { preview, settlement } of data.accounts) {
     if (y < 70) break;
-    const collected = settlement ? settlement.collected ?? 0 : null;
-    const debtCarried = settlement ? settlement.debtCarried ?? 0 : null;
+    const collected = settlement ? settlementCollectionAmount(settlement) : null;
     const chipsLeft = settlement ? settlement.chipsLeft ?? 0 : null;
     row([
       (preview.cashierUsername ?? '').slice(0, 16),
@@ -242,12 +257,12 @@ export function generatePeriodSummaryPdf(data: {
       short(preview.commission),
       short(preview.subtotal),
       short(preview.previousDebt),
-      short(preview.totalDue),
+      short(preview.onAccountCollected),
+      short(preview.amountDue),
       collected === null ? '-' : short(collected),
-      debtCarried === null ? '-' : short(debtCarried),
-      short(preview.unsoldChips),
+      short(preview.chipBalance),
       chipsLeft === null ? '-' : short(chipsLeft),
-      settlement ? 'Liquid.' : 'Pend.'
+      !settlement ? 'Pend.' : (settlement.pendingCollection ?? 0) > 0 ? 'A conf.' : 'Liquid.'
     ]);
   }
 
@@ -262,10 +277,10 @@ export function generatePeriodSummaryPdf(data: {
       short(data.totals.commission),
       short(data.totals.subtotal),
       short(data.totals.previousDebt),
-      short(data.totals.totalDue),
+      short(data.totals.onAccountCollected),
+      short(data.totals.amountDue),
       short(data.totals.collected),
-      short(data.totals.debtCarried),
-      short(data.totals.unsoldChips),
+      short(data.totals.chipBalance),
       short(data.totals.chipsLeft),
       ''
     ],
@@ -273,11 +288,182 @@ export function generatePeriodSummaryPdf(data: {
   );
 
   content += pdfText(
-    'Subtotal = venta - comision. Total = saldo anterior + subtotal. Arrastre = total - cobro. Filas pendientes: cobro y deje se definen al liquidar.',
+    'Subtotal = venta - comision. Total = saldo anterior + subtotal - cobros a cuenta. Filas pendientes: cobro y no vendidas se definen al liquidar.',
     40,
     45,
     7
   );
 
   return buildPdf(content, 842, 595);
+}
+
+const signedMoney = (value: number): string => {
+  const amount = Number(value) || 0;
+  return `${amount < 0 ? '-' : ''}${money(Math.abs(amount))}`;
+};
+
+const truncate = (value: string, max: number): string =>
+  value.length > max ? `${value.slice(0, max - 3)}...` : value;
+
+const MOVEMENT_KIND_LABELS: Record<string, string> = {
+  SETTLEMENT: 'Liquidacion',
+  COLLECTION: 'Cobro',
+  PRIZES: 'Premios'
+};
+
+/**
+ * Resumen de la cuenta del owner para un rango (A4 vertical, varias páginas):
+ * totales de las liquidaciones, situación actual, desglose por cajero y movimientos.
+ */
+export function generateOwnerAccountPdf(
+  data: OwnerAccountSummary & { ownerUsername: string; generatedAt?: Date }
+): Buffer {
+  const generatedAt = data.generatedAt ?? new Date();
+  const pages: string[] = [];
+  let content = '';
+  let y = 0;
+
+  const newPage = (first: boolean) => {
+    if (content) pages.push(content);
+    content = '0.6 w\n50 40 495 762 re S\n';
+    if (first) {
+      content += pdfText('Cuenta del owner', 60, 805, 20, true);
+      content += pdfText(
+        `${data.ownerUsername} - ${formatDate(data.periodStart)} al ${formatDate(data.periodEnd)}`,
+        60,
+        786,
+        10
+      );
+      content += '60 778 m 535 778 l S\n';
+      y = 755;
+    } else {
+      content += pdfText(
+        `Cuenta del owner - ${formatDate(data.periodStart)} al ${formatDate(data.periodEnd)} (cont.)`,
+        60,
+        805,
+        10,
+        true
+      );
+      content += '60 797 m 535 797 l S\n';
+      y = 775;
+    }
+  };
+
+  /** Asegura `space` puntos libres; si no entran, sigue en otra página. */
+  const ensure = (space: number) => {
+    if (y - space < 75) newPage(false);
+  };
+
+  const heading = (text: string) => {
+    ensure(50);
+    y -= 6;
+    content += pdfText(text, 60, y, 12, true);
+    y -= 20;
+  };
+
+  const line = (label: string, value: string, bold = false) => {
+    ensure(18);
+    content += pdfText(`${label}:`, 72, y, 10, bold);
+    content += pdfText(value, 330, y, 10, bold);
+    y -= 17;
+  };
+
+  newPage(true);
+
+  const settled = data.settled;
+  heading(`Liquidaciones del periodo (${settled.settlements})`);
+  line('Venta de fichas', money(settled.totalSales));
+  line('Comisiones de cajeros', money(settled.commission));
+  line('Ingreso neto (venta - comisiones)', money(settled.subtotal));
+  line('Premios pagados a jugadores', money(settled.prizes));
+  line('Ganancia (ingreso neto - premios)', signedMoney(settled.profit), true);
+  line('Cobrado a cajeros', money(settled.collected));
+  line('Caja neta (cobrado - premios)', signedMoney(settled.cashFlow), true);
+  line('Cobros registrados en el rango', money(data.collectedInRange));
+  line('Fichas entregadas', chips(settled.chipsDelivered));
+  line('Fichas recuperadas', chips(settled.chipsRecovered));
+
+  heading(`Situacion al ${formatDate(generatedAt)} ${formatTime(generatedAt)}`);
+  line('Deuda de cajeros', money(data.current.cashierDebt));
+  line('Sin liquidar (venta - comision)', money(data.current.openSubtotal));
+  line('Venta sin liquidar', money(data.current.openSales));
+  line('Premios sin liquidar', money(data.current.openPrizes));
+  line('Fichas en cajeros', chips(data.current.cashierChips));
+  line('Fichas en jugadores', chips(data.current.playerChips));
+
+  // Desglose por cajero a partir de los movimientos del rango.
+  const byCashier = new Map<string, { username: string; cash: number; profit: number; settlements: number }>();
+  for (const movement of data.movements) {
+    const entry = byCashier.get(movement.cashierId) ?? {
+      username: movement.cashierUsername,
+      cash: 0,
+      profit: 0,
+      settlements: 0
+    };
+    entry.cash += Number(movement.cash) || 0;
+    entry.profit += Number(movement.profit) || 0;
+    if (movement.kind === 'SETTLEMENT') entry.settlements += 1;
+    byCashier.set(movement.cashierId, entry);
+  }
+
+  if (byCashier.size > 0) {
+    heading('Por cajero');
+    ensure(20);
+    content += pdfText('Cajero', 72, y, 9, true);
+    content += pdfText('Liquidaciones', 250, y, 9, true);
+    content += pdfText('Caja', 350, y, 9, true);
+    content += pdfText('Ganancia', 450, y, 9, true);
+    y -= 16;
+    const rows = [...byCashier.values()].sort((a, b) => b.profit - a.profit);
+    for (const row of rows) {
+      ensure(16);
+      content += pdfText(truncate(row.username, 30), 72, y, 9);
+      content += pdfText(String(row.settlements), 250, y, 9);
+      content += pdfText(signedMoney(row.cash), 350, y, 9);
+      content += pdfText(signedMoney(row.profit), 450, y, 9);
+      y -= 15;
+    }
+  }
+
+  heading(`Movimientos (${data.movements.length})`);
+  if (data.movements.length === 0) {
+    content += pdfText('No hay liquidaciones ni cobros en el periodo.', 72, y, 9);
+    y -= 15;
+  } else {
+    const header = () => {
+      content += pdfText('Fecha', 60, y, 8, true);
+      content += pdfText('Tipo', 128, y, 8, true);
+      content += pdfText('Cajero', 185, y, 8, true);
+      content += pdfText('Detalle', 265, y, 8, true);
+      content += pdfText('Caja', 425, y, 8, true);
+      content += pdfText('Ganancia', 480, y, 8, true);
+      y -= 14;
+    };
+    header();
+    for (const movement of data.movements) {
+      if (y - 14 < 75) {
+        newPage(false);
+        header();
+      }
+      const date = new Date(movement.createdAt);
+      content += pdfText(`${formatDate(date).slice(0, 5)} ${formatTime(date)}`, 60, y, 8);
+      content += pdfText(MOVEMENT_KIND_LABELS[movement.kind] ?? movement.kind, 128, y, 8);
+      content += pdfText(truncate(movement.cashierUsername, 16), 185, y, 8);
+      content += pdfText(truncate(movement.description ?? '', 34), 265, y, 8);
+      content += pdfText(movement.cash === 0 ? '-' : signedMoney(movement.cash), 425, y, 8);
+      content += pdfText(movement.profit === 0 ? '-' : signedMoney(movement.profit), 480, y, 8);
+      y -= 13;
+    }
+  }
+
+  pages.push(content);
+  const total = pages.length;
+  const footer = (index: number) =>
+    pdfText(
+      `Generado el ${formatDate(generatedAt)} ${formatTime(generatedAt)} por ArenaBet - pagina ${index + 1} de ${total}`,
+      60,
+      50,
+      8
+    );
+  return buildPdf(pages.map((page, index) => page + footer(index)), 595, 842);
 }

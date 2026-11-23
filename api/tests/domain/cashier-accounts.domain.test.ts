@@ -1,4 +1,6 @@
 import {
+  CashierCollectionKind,
+  CashierCollectionStatus,
   ChipMovementType,
   CompensationType,
   ErrorCode,
@@ -58,7 +60,16 @@ jest.mock('../../src/features/cashier-accounts/cashier-accounts.repository', () 
     findLedgerChipMovements: jest.fn(),
     findFirstMovementAt: jest.fn(),
     findSettlementChipMovements: jest.fn(),
-    findSettlements: jest.fn()
+    findSettlements: jest.fn(),
+    findPreviousSettlement: jest.fn(),
+    findCollectionById: jest.fn(),
+    updateCollection: jest.fn(),
+    findUnappliedOnAccountCollections: jest.fn(),
+    getUnappliedOnAccountTotals: jest.fn(),
+    linkCollectionsToSettlement: jest.fn(),
+    findSettlementCollections: jest.fn(),
+    setPendingCollectionsStatus: jest.fn(),
+    releaseSettlementCollections: jest.fn()
   }
 }));
 
@@ -139,6 +150,24 @@ const makeSettlement = (overrides: Record<string, unknown> = {}) => ({
   unsoldChips: 0,
   chipsLeft: 0,
   unsoldChipsRecovered: 0,
+  onAccountCollected: 0,
+  pendingCollection: 0,
+  ...overrides
+});
+
+const makeCollection = (overrides: Record<string, unknown> = {}) => ({
+  id: 'col-1',
+  settlementId: null,
+  cashierId: 'cashier-1',
+  kind: CashierCollectionKind.ON_ACCOUNT,
+  status: CashierCollectionStatus.CONFIRMED,
+  amount: 100,
+  paymentReference: null,
+  notes: null,
+  createdBy: 'owner-1',
+  createdAt: new Date('2026-11-18T12:00:00.000Z'),
+  confirmedBy: 'owner-1',
+  confirmedAt: new Date('2026-11-18T12:00:00.000Z'),
   ...overrides
 });
 
@@ -162,6 +191,19 @@ describe('CashierAccountsDomain', () => {
     repo.findCompensationModeForPeriod.mockResolvedValue(mode20);
     repo.createSettlement.mockImplementation((data: Record<string, unknown>) =>
       Promise.resolve({ ...makeSettlement(), ...data })
+    );
+    repo.findUnappliedOnAccountCollections.mockResolvedValue([]);
+    repo.getUnappliedOnAccountTotals.mockResolvedValue(new Map());
+    repo.findSettlementCollections.mockResolvedValue([]);
+    repo.findPreviousSettlement.mockResolvedValue(null);
+    repo.updateSettlementCollection.mockImplementation((id: string, data: Record<string, unknown>) =>
+      Promise.resolve({ ...makeSettlement({ id }), ...data })
+    );
+    repo.updateCollection.mockImplementation((id: string, data: Record<string, unknown>) =>
+      Promise.resolve({ ...makeCollection({ id }), ...data })
+    );
+    repo.createCollection.mockImplementation((data: Record<string, unknown>) =>
+      Promise.resolve({ ...makeCollection(), ...data })
     );
   });
 
@@ -212,6 +254,21 @@ describe('CashierAccountsDomain', () => {
       });
     });
 
+    it('descuenta los cobros a cuenta del total a cobrar', () => {
+      const preview = domain.computePreview({
+        cashier: cashier as never,
+        periodStart,
+        periodEnd,
+        compensation: mode20,
+        flows: { chipsDelivered: 1000, totalSales: 900, totalPrizes: 0 },
+        lastSettlement: makeSettlement() as never,
+        chipBalance: 100,
+        onAccountCollected: 300
+      });
+
+      expect(preview).toMatchObject({ totalDue: 750, onAccountCollected: 300, amountDue: 450 });
+    });
+
     it('avisa si hay un hueco sin liquidar antes del período', () => {
       const preview = domain.computePreview({
         cashier: cashier as never,
@@ -241,7 +298,7 @@ describe('CashierAccountsDomain', () => {
       });
     });
 
-    it('cobra parcial, arrastra la deuda y retira fichas de premios y parte de las no vendidas', async () => {
+    it('deja el cobro pendiente de confirmar y retira fichas de premios y parte de las no vendidas', async () => {
       const created = await domain.createSettlement('owner-1', 'cashier-1', {
         periodStart: periodStart.toISOString(),
         periodEnd: periodEnd.toISOString(),
@@ -261,15 +318,17 @@ describe('CashierAccountsDomain', () => {
           subtotal: 720,
           previousDebt: 30,
           totalDue: 750,
-          collected: 700,
-          debtCarried: 50,
+          onAccountCollected: 0,
+          pendingCollection: 700,
+          collected: 0,
+          debtCarried: 750,
           chipsDelivered: 1000,
           chipBalanceBefore: 150,
           prizeChipsRecovered: 50,
           unsoldChips: 100,
           chipsLeft: 60,
           unsoldChipsRecovered: 40,
-          status: SettlementStatus.PARTIALLY_PAID,
+          status: SettlementStatus.PENDING,
           percentage: 20
         }),
         expect.anything()
@@ -296,21 +355,74 @@ describe('CashierAccountsDomain', () => {
       expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', -50, expect.anything());
       expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', -40, expect.anything());
       expect(repo.createCollection).toHaveBeenCalledWith(
-        expect.objectContaining({ cashierId: 'cashier-1', amount: 700, createdBy: 'owner-1' }),
+        expect.objectContaining({
+          settlementId: created.id,
+          cashierId: 'cashier-1',
+          kind: CashierCollectionKind.SETTLEMENT,
+          status: CashierCollectionStatus.PENDING,
+          amount: 700,
+          createdBy: 'owner-1'
+        }),
         expect.anything()
       );
     });
 
-    it('por defecto cobra el total y le deja al cajero todas las fichas no vendidas', async () => {
+    it('descuenta los cobros a cuenta y los vincula a la liquidación', async () => {
+      repo.findUnappliedOnAccountCollections.mockResolvedValue([
+        makeCollection({ id: 'col-a', amount: 200 }),
+        makeCollection({ id: 'col-b', amount: 100 })
+      ]);
+
+      const created = await domain.createSettlement('owner-1', 'cashier-1', { periodEnd });
+
+      expect(repo.findUnappliedOnAccountCollections).toHaveBeenCalledWith('cashier-1', periodEnd, expect.anything());
+      expect(repo.createSettlement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          totalDue: 750,
+          onAccountCollected: 300,
+          collected: 300,
+          pendingCollection: 450,
+          debtCarried: 450,
+          status: SettlementStatus.PARTIALLY_PAID
+        }),
+        expect.anything()
+      );
+      expect(repo.linkCollectionsToSettlement).toHaveBeenCalledWith(
+        ['col-a', 'col-b'],
+        created.id,
+        expect.anything()
+      );
+    });
+
+    it('vence el cobro pendiente de la liquidación anterior', async () => {
+      repo.findLastSettlement.mockResolvedValue(makeSettlement({ pendingCollection: 30 }));
+
+      await domain.createSettlement('owner-1', 'cashier-1', { periodEnd });
+
+      expect(repo.setPendingCollectionsStatus).toHaveBeenCalledWith(
+        'settlement-1',
+        CashierCollectionStatus.PENDING,
+        CashierCollectionStatus.EXPIRED,
+        expect.anything()
+      );
+      expect(repo.updateSettlementCollection).toHaveBeenCalledWith(
+        'settlement-1',
+        expect.objectContaining({ pendingCollection: 0, debtCarried: 30 }),
+        expect.anything()
+      );
+    });
+
+    it('por defecto deja pendiente el total y le deja al cajero todas las fichas no vendidas', async () => {
       await domain.createSettlement('owner-1', 'cashier-1', { periodStart, periodEnd });
 
       expect(repo.createSettlement).toHaveBeenCalledWith(
         expect.objectContaining({
-          collected: 750,
-          debtCarried: 0,
+          pendingCollection: 750,
+          collected: 0,
+          debtCarried: 750,
           chipsLeft: 100,
           unsoldChipsRecovered: 0,
-          status: SettlementStatus.PAID
+          status: SettlementStatus.PENDING
         }),
         expect.anything()
       );
@@ -415,37 +527,117 @@ describe('CashierAccountsDomain', () => {
     });
   });
 
-  describe('collectSettlement', () => {
-    it('suma un cobro posterior a la última liquidación', async () => {
-      const settlement = makeSettlement();
+  describe('confirmSettlementCollection', () => {
+    const pendingSettlement = () =>
+      makeSettlement({ collected: 0, debtCarried: 400, pendingCollection: 400, status: SettlementStatus.PENDING });
+
+    it('confirma el cobro pendiente de la última liquidación', async () => {
+      const settlement = pendingSettlement();
       repo.findSettlementById.mockResolvedValue(settlement);
       repo.findLastSettlement.mockResolvedValue(settlement);
-      repo.updateSettlementCollection.mockImplementation((_id: string, data: Record<string, unknown>) =>
-        Promise.resolve({ ...settlement, ...data })
-      );
+      repo.findSettlementCollections.mockResolvedValue([
+        makeCollection({
+          id: 'col-p',
+          settlementId: 'settlement-1',
+          kind: CashierCollectionKind.SETTLEMENT,
+          status: CashierCollectionStatus.PENDING,
+          amount: 400,
+          confirmedAt: null,
+          confirmedBy: null
+        })
+      ]);
 
-      const updated = await domain.collectSettlement('owner-1', 'settlement-1', { amount: 30 });
+      const updated = await domain.confirmSettlementCollection('owner-1', 'settlement-1', {});
 
-      expect(repo.updateSettlementCollection).toHaveBeenCalledWith(
-        'settlement-1',
-        expect.objectContaining({ collected: 400, debtCarried: 0, status: SettlementStatus.PAID }),
+      expect(repo.updateCollection).toHaveBeenCalledWith(
+        'col-p',
+        expect.objectContaining({ status: CashierCollectionStatus.CONFIRMED, amount: 400, confirmedBy: 'owner-1' }),
         expect.anything()
       );
-      expect(repo.createCollection).toHaveBeenCalledWith(
-        expect.objectContaining({ settlementId: 'settlement-1', amount: 30 }),
+      expect(repo.updateSettlementCollection).toHaveBeenCalledWith(
+        'settlement-1',
+        expect.objectContaining({
+          collected: 400,
+          debtCarried: 0,
+          pendingCollection: 0,
+          status: SettlementStatus.PAID
+        }),
         expect.anything()
       );
       expect(updated.debtCarried).toBe(0);
     });
 
-    it('no permite cobrar sobre una liquidación que no es la última', async () => {
-      repo.findSettlementById.mockResolvedValue(makeSettlement());
+    it('si se recibe menos, la diferencia queda como deuda', async () => {
+      const settlement = pendingSettlement();
+      repo.findSettlementById.mockResolvedValue(settlement);
+      repo.findLastSettlement.mockResolvedValue(settlement);
+
+      await domain.confirmSettlementCollection('owner-1', 'settlement-1', { amount: 300 });
+
+      expect(repo.updateSettlementCollection).toHaveBeenCalledWith(
+        'settlement-1',
+        expect.objectContaining({
+          collected: 300,
+          debtCarried: 100,
+          pendingCollection: 0,
+          status: SettlementStatus.PARTIALLY_PAID
+        }),
+        expect.anything()
+      );
+    });
+
+    it('no permite confirmar sobre una liquidación que no es la última', async () => {
+      repo.findSettlementById.mockResolvedValue(pendingSettlement());
       repo.findLastSettlement.mockResolvedValue(makeSettlement({ id: 'settlement-2' }));
 
       await expect(
-        domain.collectSettlement('owner-1', 'settlement-1', { amount: 10 })
+        domain.confirmSettlementCollection('owner-1', 'settlement-1', {})
       ).rejects.toMatchObject({ statusCode: 409 });
-      expect(repo.createCollection).not.toHaveBeenCalled();
+      expect(repo.updateSettlementCollection).not.toHaveBeenCalled();
+    });
+
+    it('rechaza si no hay cobro pendiente', async () => {
+      const settlement = makeSettlement();
+      repo.findSettlementById.mockResolvedValue(settlement);
+      repo.findLastSettlement.mockResolvedValue(settlement);
+
+      await expect(
+        domain.confirmSettlementCollection('owner-1', 'settlement-1', {})
+      ).rejects.toMatchObject({ statusCode: 409 });
+    });
+  });
+
+  describe('cobros a cuenta', () => {
+    it('registra un cobro a cuenta confirmado y sin liquidación', async () => {
+      await domain.createOnAccountCollection('owner-1', 'cashier-1', { amount: 150.5, paymentReference: ' efectivo ' });
+
+      expect(repo.createCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          settlementId: null,
+          cashierId: 'cashier-1',
+          kind: CashierCollectionKind.ON_ACCOUNT,
+          status: CashierCollectionStatus.CONFIRMED,
+          amount: 150.5,
+          paymentReference: 'efectivo',
+          confirmedBy: 'owner-1'
+        })
+      );
+    });
+
+    it('anula un cobro a cuenta sin liquidar', async () => {
+      repo.findCollectionById.mockResolvedValue(makeCollection());
+
+      const canceled = await domain.cancelOnAccountCollection('owner-1', 'col-1');
+
+      expect(repo.updateCollection).toHaveBeenCalledWith('col-1', { status: CashierCollectionStatus.CANCELED });
+      expect(canceled.status).toBe(CashierCollectionStatus.CANCELED);
+    });
+
+    it('no anula un cobro a cuenta que ya se descontó en una liquidación', async () => {
+      repo.findCollectionById.mockResolvedValue(makeCollection({ settlementId: 'settlement-1' }));
+
+      await expect(domain.cancelOnAccountCollection('owner-1', 'col-1')).rejects.toMatchObject({ statusCode: 409 });
+      expect(repo.updateCollection).not.toHaveBeenCalled();
     });
   });
 
@@ -481,7 +673,41 @@ describe('CashierAccountsDomain', () => {
         expect.anything()
       );
       expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', 90, expect.anything());
+      expect(repo.releaseSettlementCollections).toHaveBeenCalledWith('settlement-1', expect.anything());
       expect(canceled.status).toBe(SettlementStatus.CANCELED);
+    });
+
+    it('vuelve a dejar pendiente el cobro vencido de la liquidación anterior', async () => {
+      const settlement = makeSettlement({ id: 'settlement-2' });
+      const previous = makeSettlement({ id: 'settlement-1', pendingCollection: 0 });
+      repo.findSettlementById.mockResolvedValue(settlement);
+      repo.findLastSettlement.mockResolvedValue(settlement);
+      repo.findPreviousSettlement.mockResolvedValue(previous);
+      (balancesRepository.findByUserIdWithLock as jest.Mock).mockResolvedValue({ userId: 'cashier-1', chipBalance: 0 });
+      repo.findSettlementChipMovements.mockResolvedValue([]);
+      repo.findSettlementCollections.mockResolvedValue([
+        makeCollection({
+          settlementId: 'settlement-1',
+          kind: CashierCollectionKind.SETTLEMENT,
+          status: CashierCollectionStatus.EXPIRED,
+          amount: 30
+        })
+      ]);
+      repo.markSettlementCanceled.mockResolvedValue({ ...settlement, status: SettlementStatus.CANCELED });
+
+      await domain.cancelSettlement('owner-1', 'settlement-2');
+
+      expect(repo.setPendingCollectionsStatus).toHaveBeenCalledWith(
+        'settlement-1',
+        CashierCollectionStatus.EXPIRED,
+        CashierCollectionStatus.PENDING,
+        expect.anything()
+      );
+      expect(repo.updateSettlementCollection).toHaveBeenCalledWith(
+        'settlement-1',
+        expect.objectContaining({ pendingCollection: 30 }),
+        expect.anything()
+      );
     });
 
     it('solo se puede cancelar la última liquidación', async () => {
@@ -505,6 +731,7 @@ describe('CashierAccountsDomain', () => {
       repo.getMovementTotals.mockResolvedValue(
         new Map([['cashier-1', { totalSales: 1400, totalPrizes: 50 }]])
       );
+      repo.getUnappliedOnAccountTotals.mockResolvedValue(new Map([['cashier-1', 100]]));
 
       const result = await domain.listAccounts('owner-1');
 
@@ -516,11 +743,12 @@ describe('CashierAccountsDomain', () => {
         openCommission: 180,
         openSubtotal: 720,
         debt: 30,
-        balanceDue: 750,
+        onAccountCollected: 100,
+        balanceDue: 650,
         totalCommission: 280,
         totalCollected: 370
       });
-      expect(result.summary).toMatchObject({ totalCashiers: 1, balanceDue: 750, debt: 30 });
+      expect(result.summary).toMatchObject({ totalCashiers: 1, balanceDue: 650, debt: 30 });
     });
 
     it('arma la cuenta corriente con movimientos de fichas y de dinero', async () => {
@@ -530,15 +758,16 @@ describe('CashierAccountsDomain', () => {
       repo.getMovementTotals.mockResolvedValue(new Map());
       repo.findSettlementsForCashier.mockResolvedValue([settlement]);
       repo.findCollectionsForCashier.mockResolvedValue([
-        {
+        makeCollection({
           id: 'col-1',
           settlementId: 'settlement-1',
-          cashierId: 'cashier-1',
+          kind: CashierCollectionKind.SETTLEMENT,
           amount: 370,
-          paymentReference: null,
-          createdBy: 'owner-1',
-          createdAt: new Date('2026-11-15T02:00:01.000Z')
-        }
+          createdAt: new Date('2026-11-15T02:00:01.000Z'),
+          confirmedAt: new Date('2026-11-15T02:00:01.000Z')
+        }),
+        makeCollection({ id: 'col-pending', settlementId: 'settlement-1', kind: CashierCollectionKind.SETTLEMENT, status: CashierCollectionStatus.PENDING, amount: 30 }),
+        makeCollection({ id: 'col-2', amount: 80, createdAt: new Date('2026-11-16T10:00:00.000Z'), confirmedAt: new Date('2026-11-16T10:00:00.000Z') })
       ]);
       repo.findLedgerChipMovements.mockResolvedValue([
         {
@@ -577,6 +806,9 @@ describe('CashierAccountsDomain', () => {
       });
       expect(byId.get('settlement-1:settlement')).toMatchObject({ kind: 'SETTLEMENT', money: 400 });
       expect(byId.get('col-1:collection')).toMatchObject({ kind: 'COLLECTION', money: -370 });
+      expect(byId.get('col-2:collection')).toMatchObject({ kind: 'COLLECTION', money: -80, description: 'Cobro a cuenta' });
+      // Los cobros pendientes de confirmar no mueven la cuenta.
+      expect(byId.has('col-pending:collection')).toBe(false);
       // Orden: más reciente primero.
       expect(detail.movements[0].id).toBe('c3');
     });
@@ -619,15 +851,15 @@ describe('CashierAccountsDomain', () => {
         }
       ]);
       repo.findCollectionsInRange.mockResolvedValue([
-        {
+        makeCollection({
           id: 'col-2',
           settlementId: 'settlement-2',
-          cashierId: 'cashier-1',
+          kind: CashierCollectionKind.SETTLEMENT,
           amount: 700,
           paymentReference: 'efectivo',
-          createdBy: 'owner-1',
-          createdAt: new Date('2026-11-22T01:00:00.000Z')
-        }
+          createdAt: new Date('2026-11-22T01:00:00.000Z'),
+          confirmedAt: new Date('2026-11-22T01:00:00.000Z')
+        })
       ]);
 
       const result = await domain.getOwnerAccount('owner-1', periodStart, periodEnd);
@@ -651,6 +883,35 @@ describe('CashierAccountsDomain', () => {
         playerChips: 300
       });
       expect(result.movements.map(m => m.kind).sort()).toEqual(['COLLECTION', 'PRIZES', 'SETTLEMENT']);
+    });
+  });
+
+  describe('historial del cajero', () => {
+    it('lista solo las liquidaciones del cajero y sus cobros a cuenta sin liquidar', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(cashier);
+      repo.findSettlements.mockResolvedValue({ settlements: [makeSettlement()], total: 1, page: 1, limit: 20 });
+      repo.findUnappliedOnAccountCollections.mockResolvedValue([makeCollection()]);
+
+      const result = await domain.listOwnSettlements('cashier-1', { page: 1, limit: 20 });
+
+      expect(repo.findSettlements).toHaveBeenCalledWith(
+        expect.objectContaining({ cashierId: 'cashier-1', page: 1, limit: 20 })
+      );
+      expect(result.total).toBe(1);
+      expect(result.onAccountCollections).toHaveLength(1);
+    });
+
+    it('no deja ver el comprobante de otro cajero', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(cashier);
+      repo.findSettlementById.mockResolvedValue(makeSettlement({ cashierId: 'cashier-2' }));
+
+      await expect(domain.getOwnSettlementReceipt('cashier-1', 'settlement-1')).rejects.toMatchObject({
+        statusCode: 404
+      });
+    });
+
+    it('solo los cajeros tienen historial propio', async () => {
+      await expect(domain.listOwnSettlements('owner-1')).rejects.toMatchObject({ statusCode: 403 });
     });
   });
 

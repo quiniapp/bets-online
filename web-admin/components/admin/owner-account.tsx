@@ -5,9 +5,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { currentWeekRange, toDateInput, useOwnerAccount } from "@/hooks/useCashierPeriodAccounts"
+import { currentWeekRange, periodQuery, toDateInput, useOwnerAccount } from "@/hooks/useCashierPeriodAccounts"
+import { useToast } from "@/hooks/use-toast"
+import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
-import { Loader2, RefreshCw } from "lucide-react"
+import { FileText, Loader2, RefreshCw } from "lucide-react"
 import type { OwnerAccountMovement } from "helper"
 
 const money = (value: number | null | undefined) => {
@@ -65,6 +67,31 @@ export function OwnerAccount() {
   const [from, setFrom] = useState(initial.from)
   const [to, setTo] = useState(initial.to)
   const { data, loading, error, reload } = useOwnerAccount(from, to)
+  const { toast } = useToast()
+  const [downloading, setDownloading] = useState(false)
+
+  const downloadSummary = async () => {
+    setDownloading(true)
+    try {
+      const blob = await apiService.getBlob(`/cashier-accounts/owner/summary.pdf?${periodQuery(from, to)}`)
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `cuenta-del-owner-${from}-al-${to}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo generar el resumen",
+        description: err instanceof Error ? err.message : "Error de conexión"
+      })
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const setRange = (range: { from: string; to: string }) => {
     setFrom(range.from)
@@ -87,6 +114,16 @@ export function OwnerAccount() {
         <Button variant="outline" size="sm" onClick={() => reload()} disabled={loading}>
           {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
           Actualizar
+        </Button>
+        <Button
+          size="sm"
+          className="ml-auto"
+          onClick={downloadSummary}
+          disabled={downloading || loading || !data}
+          title="Descargar el resumen de la cuenta del owner para el rango elegido"
+        >
+          {downloading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FileText className="mr-1 h-4 w-4" />}
+          Resumen PDF
         </Button>
       </div>
 

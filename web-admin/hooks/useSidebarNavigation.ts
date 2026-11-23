@@ -7,7 +7,6 @@ import {
   BarChart3,
   Users,
   FileText,
-  DollarSign,
   ArrowUpDown,
   Gamepad2,
   User,
@@ -32,7 +31,6 @@ export const useSidebarNavigation = () => {
   const pathname = usePathname();
   
   const [usersOpen, setUsersOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(false);
   const [gamesOpen, setGamesOpen] = useState(false);
   const [casinoOpen, setCasinoOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(pathname);
@@ -44,9 +42,6 @@ export const useSidebarNavigation = () => {
     // Auto-abrir collapsibles si la ruta está dentro de ellos
     if (pathname.startsWith('/admin/users')) {
       setUsersOpen(true);
-    }
-    if (pathname.startsWith('/admin/reports')) {
-      setReportsOpen(true);
     }
     if (pathname.startsWith('/admin/games') || pathname.startsWith('/admin/providers') || pathname.startsWith('/admin/featured-games') || pathname.startsWith('/admin/banners') || pathname.startsWith('/admin/settings/casino')) {
       setGamesOpen(true);
@@ -82,6 +77,7 @@ export const useSidebarNavigation = () => {
         { title: "Alta de Administrador", href: "/admin/users/create-manager" },
         { title: "Alta de Cajero", href: "/admin/users/create-cashier" },
         { title: "Alta de Jugador", href: "/admin/users/create-user" },
+        { title: "Ajuste de saldos", href: "/admin/balances" },
       ],
     },
     {
@@ -99,24 +95,8 @@ export const useSidebarNavigation = () => {
       ],
     },
     {
-      title: t("nav.reports"),
-      icon: FileText,
-      collapsible: true,
-      isOpen: reportsOpen,
-      setOpen: setReportsOpen,
-      items: [
-        { title: t("reports.bets"), href: "/admin/reports/bets" },
-        { title: t("reports.users"), href: "/admin/reports/users" },
-        { title: t("reports.earnings"), href: "/admin/reports/earnings" },
-      ],
-    },
-    {
-      title: t("nav.earnings"),
-      icon: DollarSign,
-      items: [{ title: t("earnings.calculate"), href: "/admin/balances" }],
-    },
-    {
-      title: "Cuentas corrientes",
+      // Liquidaciones de cajeros, cuenta del owner y reporte de apuestas.
+      title: "Finanzas",
       href: "/admin/cashier-accounts",
       icon: Wallet,
     },
@@ -153,16 +133,9 @@ export const useSidebarNavigation = () => {
       ],
     },
     {
-      title: t("nav.reports"),
+      title: t("reports.bets"),
+      href: "/admin/reports/bets",
       icon: FileText,
-      collapsible: true,
-      isOpen: reportsOpen,
-      setOpen: setReportsOpen,
-      items: [
-        { title: t("reports.bets"), href: "/admin/reports/bets" },
-        { title: t("reports.users"), href: "/admin/reports/users" },
-        { title: t("reports.earnings"), href: "/admin/reports/earnings" },
-      ],
     },
     {
       title: t("nav.transactions"),
@@ -198,6 +171,11 @@ export const useSidebarNavigation = () => {
       title: t("nav.transactions"),
       href: "/admin/transactions",
       icon: ArrowUpDown,
+    },
+    {
+      title: "Mis liquidaciones",
+      href: "/cashier/settlements",
+      icon: Wallet,
     },
   ];
 

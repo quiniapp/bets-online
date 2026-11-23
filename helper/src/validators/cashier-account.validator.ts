@@ -18,7 +18,8 @@ export const updateCashierCompensationSchema = z.object({
  * El inicio lo calcula el servidor: el fin de la última liquidación del
  * cajero, o su primer movimiento si nunca se liquidó. periodStart se acepta
  * por compatibilidad y se ignora.
- * collected: cobro al cajero (por defecto el total adeudado).
+ * collected: cobro de la liquidación (por defecto lo que queda por cobrar);
+ * queda pendiente hasta que el owner lo confirma.
  * chipsLeft: fichas no vendidas que se le dejan (por defecto todas).
  */
 export const createCashierSettlementSchema = z.object({
@@ -31,12 +32,29 @@ export const createCashierSettlementSchema = z.object({
 });
 
 /**
- * Registrar un cobro posterior sobre una liquidación.
+ * Registrar un cobro a cuenta al cajero (antes de liquidar).
  */
-export const collectCashierSettlementSchema = z.object({
+export const createCashierCollectionSchema = z.object({
   amount: z.number().finite().positive(),
   paymentReference: z.string().max(255).optional(),
   notes: z.string().max(1000).optional()
+});
+
+/**
+ * Confirmar el cobro pendiente de una liquidación.
+ * amount: lo que se recibió (por defecto, todo lo pendiente).
+ */
+export const confirmCashierSettlementCollectionSchema = z.object({
+  amount: z.number().finite().positive().optional(),
+  paymentReference: z.string().max(255).optional()
+});
+
+/**
+ * Historial de liquidaciones del propio cajero.
+ */
+export const cashierOwnSettlementsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional()
 });
 
 /**

@@ -32,6 +32,8 @@ export class CashierSettlementModel extends Model {
   declare unsoldChips: number | null;
   declare chipsLeft: number | null;
   declare unsoldChipsRecovered: number | null;
+  declare onAccountCollected: number | null;
+  declare pendingCollection: number | null;
 }
 
 CashierSettlementModel.init(
@@ -202,6 +204,16 @@ CashierSettlementModel.init(
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
       field: 'unsold_chips_recovered'
+    },
+    onAccountCollected: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'on_account_collected'
+    },
+    pendingCollection: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      field: 'pending_collection'
     }
   },
   {

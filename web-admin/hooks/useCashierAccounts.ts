@@ -24,6 +24,7 @@ const EMPTY_SUMMARY: CashierAccountsSummary = {
   totalCollected: 0,
   openSubtotal: 0,
   debt: 0,
+  onAccountCollected: 0,
   balanceDue: 0,
   chipBalance: 0
 };
