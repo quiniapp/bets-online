@@ -34,6 +34,7 @@ export class CashierSettlementModel extends Model {
   declare unsoldChipsRecovered: number | null;
   declare onAccountCollected: number | null;
   declare pendingCollection: number | null;
+  declare prizesDeducted: boolean;
 }
 
 CashierSettlementModel.init(
@@ -214,6 +215,12 @@ CashierSettlementModel.init(
       type: DataTypes.DECIMAL(15, 2),
       allowNull: true,
       field: 'pending_collection'
+    },
+    prizesDeducted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'prizes_deducted'
     }
   },
   {

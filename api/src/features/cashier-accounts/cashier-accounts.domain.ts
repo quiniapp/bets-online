@@ -62,6 +62,17 @@ const settlementCommission = (settlement: CashierSettlement): number =>
 const settlementSubtotal = (settlement: CashierSettlement): number =>
   settlement.subtotal ?? roundMoney(settlement.totalSales - settlementCommission(settlement));
 
+/**
+ * Ganancia del que liquida: el subtotal menos los premios que paga él en
+ * efectivo. Si los premios se descontaron del subtotal, los pagó el cajero.
+ */
+const settlerProfit = (subtotal: number, prizes: number, prizesDeducted: boolean): number =>
+  roundMoney(prizesDeducted ? subtotal : subtotal - prizes);
+
+/** Premios que paga en efectivo el que liquida. */
+const settlerPrizes = (settlement: CashierSettlement): number =>
+  settlement.prizesDeducted ? 0 : settlement.totalPrizesPaid;
+
 const sumAmounts = (collections: CashierCollection[]): number =>
   roundMoney(collections.reduce((sum, collection) => sum + collection.amount, 0));
 
@@ -96,13 +107,13 @@ export class CashierAccountsDomain {
     requesterId: string,
     options: { page?: number; limit?: number; search?: string } = {}
   ) {
-    await this.assertOwner(requesterId);
+    await this.assertSettler(requesterId);
 
     const page = options.page ?? 1;
     const limit = options.limit ?? 20;
     const search = (options.search ?? '').trim().toLowerCase();
 
-    const cashiers = await this.getOwnerCashiers(requesterId);
+    const cashiers = await this.getSettlerCashiers(requesterId);
     const filtered = search
       ? cashiers.filter(cashier => this.matchesSearch(cashier, search))
       : cashiers;
@@ -115,8 +126,8 @@ export class CashierAccountsDomain {
   }
 
   async getAccount(requesterId: string, cashierId: string) {
-    await this.assertOwner(requesterId);
-    const cashier = await this.getCashierInOwnerTree(requesterId, cashierId);
+    await this.assertSettler(requesterId);
+    const cashier = await this.getSettlerCashier(requesterId, cashierId);
 
     const [summary] = await this.buildSummaries([cashier]);
     const [settlements, chipRows, collections] = await Promise.all([
@@ -135,18 +146,22 @@ export class CashierAccountsDomain {
   async updateCompensation(
     requesterId: string,
     cashierId: string,
-    data: { type: CompensationType; percentage: number }
+    data: { type: CompensationType; percentage: number; prizesAffectSubtotal?: boolean }
   ) {
-    await this.assertOwner(requesterId);
-    await this.getCashierInOwnerTree(requesterId, cashierId);
+    await this.assertSettler(requesterId);
+    await this.getSettlerCashier(requesterId, cashierId);
 
     const now = new Date();
+    const current = await cashierAccountsRepository.findCompensationMode(cashierId);
+    const prizesAffectSubtotal =
+      data.prizesAffectSubtotal ?? current?.prizesAffectSubtotal ?? false;
     // Crear primero y cerrar después: si el cierre fallara, la nueva modalidad
     // ya quedó activa y nunca se pierde la configuración vigente.
     const mode = await cashierAccountsRepository.createCompensationMode({
       cashierId,
       type: data.type,
       percentage: roundMoney(data.percentage),
+      prizesAffectSubtotal,
       activeFrom: now
     });
     await cashierAccountsRepository.closeActiveCompensationModes(cashierId, now);
@@ -156,7 +171,7 @@ export class CashierAccountsDomain {
       action: 'cashier-accounts.compensation.update',
       entityType: 'user',
       entityId: cashierId,
-      newValues: { type: data.type, percentage: data.percentage, activeFrom: now }
+      newValues: { type: data.type, percentage: data.percentage, prizesAffectSubtotal, activeFrom: now }
     });
 
     return mode;
@@ -171,8 +186,8 @@ export class CashierAccountsDomain {
     cashierId: string,
     periodEnd: Date | string
   ): Promise<CashierSettlementPreview> {
-    await this.assertOwner(requesterId);
-    const cashier = await this.getCashierInOwnerTree(requesterId, cashierId);
+    await this.assertSettler(requesterId);
+    const cashier = await this.getSettlerCashier(requesterId, cashierId);
 
     const cutoff = this.normalizeCutoff(periodEnd);
     const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashier.id);
@@ -189,10 +204,10 @@ export class CashierAccountsDomain {
    * el corte; si su última liquidación ya cubre el corte, se muestra esa.
    */
   async getPeriodAccounts(requesterId: string, periodEnd: Date | string) {
-    await this.assertOwner(requesterId);
+    await this.assertSettler(requesterId);
     const cutoff = this.normalizeCutoff(periodEnd);
 
-    const cashiers = await this.getOwnerCashiers(requesterId);
+    const cashiers = await this.getSettlerCashiers(requesterId);
     const accounts: CashierPeriodAccount[] = [];
     for (const cashier of cashiers) {
       const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashier.id);
@@ -232,8 +247,11 @@ export class CashierAccountsDomain {
       notes?: string;
     }
   ): Promise<CashierSettlement> {
-    await this.assertOwner(requesterId);
-    const cashier = await this.getCashierInOwnerTree(requesterId, cashierId);
+    const settler = await this.assertSettler(requesterId);
+    const cashier = await this.getSettlerCashier(requesterId, cashierId);
+    // Las fichas que se le retiran al cajero vuelven al admin que liquida
+    // (el owner no tiene saldo limitado).
+    const settlerHoldsBalance = settler.role !== UserRole.OWNER;
 
     // Express deja las fechas del body como string: validate() valida pero no
     // reemplaza req.body. El dominio normaliza para que el cálculo y el INSERT
@@ -249,6 +267,12 @@ export class CashierAccountsDomain {
       const balance = await balancesRepository.findByUserIdWithLock(cashierId, t);
       if (!balance) {
         throw new AppError(404, ErrorCode.NOT_FOUND, 'Cashier balance not found');
+      }
+      if (settlerHoldsBalance) {
+        const settlerBalance = await balancesRepository.findByUserIdWithLock(requesterId, t);
+        if (!settlerBalance) {
+          throw new AppError(404, ErrorCode.NOT_FOUND, 'Settler balance not found');
+        }
       }
 
       const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashierId, t);
@@ -325,6 +349,9 @@ export class CashierAccountsDomain {
           t
         );
         await balancesRepository.atomicIncrement(cashierId, -amount, t);
+        if (settlerHoldsBalance) {
+          await balancesRepository.atomicIncrement(requesterId, amount, t);
+        }
         runningBalance = roundMoney(runningBalance - amount);
       };
 
@@ -371,7 +398,8 @@ export class CashierAccountsDomain {
           chipsLeft,
           unsoldChipsRecovered,
           onAccountCollected,
-          pendingCollection
+          pendingCollection,
+          prizesDeducted: preview.prizesDeducted
         },
         t
       );
@@ -434,6 +462,7 @@ export class CashierAccountsDomain {
         totalPrizes: result.totalPrizesPaid,
         commission: result.commission,
         subtotal: result.subtotal,
+        prizesDeducted: result.prizesDeducted,
         collected: result.collected,
         onAccountCollected: result.onAccountCollected,
         pendingCollection: result.pendingCollection,
@@ -457,8 +486,8 @@ export class CashierAccountsDomain {
     settlementId: string,
     data: { amount?: number; paymentReference?: string }
   ): Promise<CashierSettlement> {
-    await this.assertOwner(requesterId);
-    const settlement = await this.getSettlementInOwnerTree(requesterId, settlementId);
+    await this.assertSettler(requesterId);
+    const settlement = await this.getSettlerSettlement(requesterId, settlementId);
 
     if (settlement.status === SettlementStatus.CANCELED) {
       throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'La liquidación está cancelada');
@@ -567,8 +596,8 @@ export class CashierAccountsDomain {
     cashierId: string,
     data: { amount: number; paymentReference?: string; notes?: string }
   ): Promise<CashierCollection> {
-    await this.assertOwner(requesterId);
-    await this.getCashierInOwnerTree(requesterId, cashierId);
+    await this.assertSettler(requesterId);
+    await this.getSettlerCashier(requesterId, cashierId);
     if (!(data.amount > 0)) {
       throw new AppError(400, ErrorCode.INVALID_INPUT, 'El cobro tiene que ser mayor a cero');
     }
@@ -600,20 +629,20 @@ export class CashierAccountsDomain {
 
   /** Cobros a cuenta de un cajero que todavía no entraron en una liquidación. */
   async listOnAccountCollections(requesterId: string, cashierId: string): Promise<CashierCollection[]> {
-    await this.assertOwner(requesterId);
-    await this.getCashierInOwnerTree(requesterId, cashierId);
+    await this.assertSettler(requesterId);
+    await this.getSettlerCashier(requesterId, cashierId);
     const rows = await cashierAccountsRepository.findUnappliedOnAccountCollections(cashierId);
     return [...rows].reverse();
   }
 
   /** Anula un cobro a cuenta cargado por error. Solo si todavía no se liquidó. */
   async cancelOnAccountCollection(requesterId: string, collectionId: string): Promise<CashierCollection> {
-    await this.assertOwner(requesterId);
+    await this.assertSettler(requesterId);
     const collection = await cashierAccountsRepository.findCollectionById(collectionId);
     if (!collection) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Collection not found');
     }
-    await this.getCashierInOwnerTree(requesterId, collection.cashierId);
+    await this.getSettlerCashier(requesterId, collection.cashierId);
     if (
       collection.kind !== CashierCollectionKind.ON_ACCOUNT ||
       collection.status !== CashierCollectionStatus.CONFIRMED
@@ -653,8 +682,8 @@ export class CashierAccountsDomain {
     settlementId: string,
     reason?: string
   ): Promise<CashierSettlement> {
-    await this.assertOwner(requesterId);
-    const settlement = await this.getSettlementInOwnerTree(requesterId, settlementId);
+    await this.assertSettler(requesterId);
+    const settlement = await this.getSettlerSettlement(requesterId, settlementId);
 
     if (settlement.status === SettlementStatus.CANCELED) {
       throw new AppError(409, ErrorCode.ALREADY_EXISTS, 'La liquidación ya está cancelada');
@@ -665,6 +694,11 @@ export class CashierAccountsDomain {
 
     let canceled: CashierSettlement;
     let chipsReturned = 0;
+
+    // Las fichas retiradas al liquidar fueron a quien liquidó: si fue un admin,
+    // salen de su saldo al devolverlas (las liquidaciones viejas las hizo el owner).
+    const creator = settlement.createdBy ? await usersRepository.findById(settlement.createdBy) : null;
+    const chipsHolderId = creator && creator.role !== UserRole.OWNER ? creator.id : null;
 
     if (isLegacySettlement(settlement)) {
       if (settlement.status === SettlementStatus.PAID) {
@@ -698,6 +732,18 @@ export class CashierAccountsDomain {
           )
           .reduce((sum, movement) => sum - movement.amount, 0);
         chipsReturned = roundMoney(recovered);
+
+        if (chipsReturned > 0 && chipsHolderId) {
+          const holderBalance = await balancesRepository.findByUserIdWithLock(chipsHolderId, t);
+          if (!holderBalance || holderBalance.chipBalance < chipsReturned) {
+            throw new AppError(
+              400,
+              ErrorCode.INSUFFICIENT_BALANCE,
+              `Para anular hay que devolverle ${chipsReturned} fichas al cajero y no te alcanza el saldo.`
+            );
+          }
+          await balancesRepository.atomicIncrement(chipsHolderId, -chipsReturned, t);
+        }
 
         if (chipsReturned > 0) {
           await chipMovementsRepository.create(
@@ -773,8 +819,8 @@ export class CashierAccountsDomain {
       search?: string;
     } = {}
   ) {
-    await this.assertOwner(requesterId);
-    const cashiers = await this.getOwnerCashiers(requesterId);
+    await this.assertSettler(requesterId);
+    const cashiers = await this.getSettlerCashiers(requesterId);
     const cashierIds = cashiers.map(cashier => cashier.id);
 
     if (filters.cashierId && !cashierIds.includes(filters.cashierId)) {
@@ -792,8 +838,8 @@ export class CashierAccountsDomain {
   }
 
   async getSettlementReceipt(requesterId: string, settlementId: string) {
-    await this.assertOwner(requesterId);
-    const settlement = await this.getSettlementInOwnerTree(requesterId, settlementId);
+    await this.assertSettler(requesterId);
+    const settlement = await this.getSettlerSettlement(requesterId, settlementId);
     return this.buildSettlementReceipt(settlement);
   }
 
@@ -869,7 +915,7 @@ export class CashierAccountsDomain {
     periodStart: Date | string,
     periodEnd: Date | string
   ) {
-    const owner = await this.assertOwner(requesterId);
+    const owner = await this.assertSettler(requesterId);
     const summary = await this.getOwnerAccount(requesterId, periodStart, periodEnd);
     const stamp = (date: Date) => date.toISOString().slice(0, 10);
     return {
@@ -883,16 +929,20 @@ export class CashierAccountsDomain {
     periodStart: Date | string,
     periodEnd: Date | string
   ): Promise<OwnerAccountSummary> {
-    await this.assertOwner(requesterId);
+    await this.assertSettler(requesterId);
     const start = this.normalizeDate(periodStart);
     const end = this.normalizeDate(periodEnd);
     this.assertValidPeriod(start, end);
 
+    // Solo los cajeros a cargo del que consulta y sus jugadores.
     const descendants = await usersRepository.findDescendants(requesterId);
     const cashiers = descendants
-      .filter(user => user.role === UserRole.CASHIER)
+      .filter(user => user.role === UserRole.CASHIER && user.parentUserId === requesterId)
       .sort((a, b) => a.username.localeCompare(b.username));
-    const players = descendants.filter(user => user.role === UserRole.PLAYER);
+    const ownCashierIds = new Set(cashiers.map(cashier => cashier.id));
+    const players = descendants.filter(
+      user => user.role === UserRole.PLAYER && user.parentUserId !== null && ownCashierIds.has(user.parentUserId)
+    );
     const cashierIds = cashiers.map(cashier => cashier.id);
     const usernameById = new Map(cashiers.map(cashier => [cashier.id, cashier.username]));
 
@@ -922,7 +972,8 @@ export class CashierAccountsDomain {
     for (const settlement of settlements) {
       const commission = settlementCommission(settlement);
       const subtotal = settlementSubtotal(settlement);
-      const prizes = settlement.totalPrizesPaid;
+      // Premios descontados del subtotal: los pagó el cajero, no salen de caja.
+      const prizes = settlerPrizes(settlement);
       settled.settlements += 1;
       settled.totalSales = roundMoney(settled.totalSales + settlement.totalSales);
       settled.commission = roundMoney(settled.commission + commission);
@@ -945,7 +996,9 @@ export class CashierAccountsDomain {
         settlementId: settlement.id,
         cash: 0,
         profit: subtotal,
-        description: `Liquidación ${period}: venta ${settlement.totalSales} − comisión ${commission}`,
+        description: `Liquidación ${period}: venta ${settlement.totalSales} − comisión ${commission}${
+          settlement.prizesDeducted ? ` − premios ${settlement.totalPrizesPaid}` : ''
+        }`,
         createdAt: settlement.createdAt
       });
       if (prizes > 0) {
@@ -1064,7 +1117,8 @@ export class CashierAccountsDomain {
   }
 
   /**
-   * comisión = venta × %; subtotal = venta − comisión;
+   * comisión = venta × %; subtotal = venta − comisión (− premios si el cajero
+   * tiene configurado que los premios afectan el subtotal);
    * total = saldo anterior + subtotal; a cobrar = total − cobros a cuenta;
    * fichas de premios a retirar = premios
    * (sin superar el saldo del cajero); no vendidas = saldo − fichas de premios.
@@ -1076,7 +1130,8 @@ export class CashierAccountsDomain {
     const totalPrizes = roundMoney(flows.totalPrizes);
     const chipsDelivered = roundMoney(flows.chipsDelivered);
     const commission = this.calculateCommission(totalSales, compensation?.percentage ?? null);
-    const subtotal = roundMoney(totalSales - commission);
+    const prizesDeducted = compensation?.prizesAffectSubtotal ?? false;
+    const subtotal = roundMoney(totalSales - commission - (prizesDeducted ? totalPrizes : 0));
     const previousDebt = roundMoney(lastSettlement?.debtCarried ?? 0);
     const totalDue = roundMoney(previousDebt + subtotal);
     const onAccountCollected = roundMoney(inputs.onAccountCollected ?? 0);
@@ -1099,6 +1154,7 @@ export class CashierAccountsDomain {
         ? {
             type: compensation.type,
             percentage: compensation.percentage ?? null,
+            prizesAffectSubtotal: compensation.prizesAffectSubtotal,
             activeFrom: compensation.activeFrom
           }
         : null,
@@ -1107,6 +1163,7 @@ export class CashierAccountsDomain {
       totalPrizes,
       commission,
       subtotal,
+      prizesDeducted,
       previousDebt,
       totalDue,
       onAccountCollected,
@@ -1114,7 +1171,7 @@ export class CashierAccountsDomain {
       chipBalance,
       prizeChipsToRecover,
       unsoldChips,
-      profit: roundMoney(subtotal - totalPrizes),
+      profit: settlerProfit(subtotal, totalPrizes, prizesDeducted),
       payableAmount: commission,
       lastSettlementEnd: lastSettlement?.periodEnd ?? null,
       unsettledSince
@@ -1138,6 +1195,7 @@ export class CashierAccountsDomain {
         ? {
             type: settlement.compensationType,
             percentage: settlement.percentage ?? null,
+            prizesAffectSubtotal: settlement.prizesDeducted,
             activeFrom: settlement.periodStart
           }
         : null,
@@ -1146,6 +1204,7 @@ export class CashierAccountsDomain {
       totalPrizes: settlement.totalPrizesPaid,
       commission,
       subtotal,
+      prizesDeducted: settlement.prizesDeducted,
       previousDebt: settlement.previousDebt ?? 0,
       totalDue,
       onAccountCollected,
@@ -1153,7 +1212,7 @@ export class CashierAccountsDomain {
       chipBalance: settlement.chipBalanceBefore ?? 0,
       prizeChipsToRecover: settlement.prizeChipsRecovered ?? 0,
       unsoldChips: settlement.unsoldChips ?? 0,
-      profit: roundMoney(subtotal - settlement.totalPrizesPaid),
+      profit: settlerProfit(subtotal, settlement.totalPrizesPaid, settlement.prizesDeducted),
       payableAmount: commission,
       lastSettlementEnd: null,
       unsettledSince: null
@@ -1259,7 +1318,9 @@ export class CashierAccountsDomain {
       const openSales = roundMoney(Math.max(0, totalSales - settledSales));
       const openPrizes = roundMoney(Math.max(0, totalPrizes - settledPrizes));
       const openCommission = this.calculateCommission(openSales, activeMode?.percentage ?? null);
-      const openSubtotal = roundMoney(openSales - openCommission);
+      const openSubtotal = roundMoney(
+        openSales - openCommission - (activeMode?.prizesAffectSubtotal ? openPrizes : 0)
+      );
       const debt = roundMoney(lastSettlement?.debtCarried ?? 0);
       const onAccountCollected = roundMoney(onAccountTotals.get(cashier.id) ?? 0);
 
@@ -1275,6 +1336,7 @@ export class CashierAccountsDomain {
           ? {
               type: activeMode.type,
               percentage: activeMode.percentage ?? null,
+              prizesAffectSubtotal: activeMode.prizesAffectSubtotal,
               activeFrom: activeMode.activeFrom
             }
           : null,
@@ -1394,7 +1456,8 @@ export class CashierAccountsDomain {
         amount: settlementSubtotal(settlement),
         description:
           `Liquidación ${this.shortDate(settlement.periodStart)} al ${this.shortDate(settlement.periodEnd)}: ` +
-          `venta ${settlement.totalSales} − comisión ${settlementCommission(settlement)}`,
+          `venta ${settlement.totalSales} − comisión ${settlementCommission(settlement)}` +
+          (settlement.prizesDeducted ? ` − premios ${settlement.totalPrizesPaid}` : ''),
         settlementId: settlement.id,
         createdAt: settlement.createdAt
       });
@@ -1457,16 +1520,20 @@ export class CashierAccountsDomain {
     }
   }
 
-  private async assertOwner(requesterId: string): Promise<User> {
+  /**
+   * Liquidan a los cajeros el admin y el owner, cada uno a los cajeros que
+   * tiene a cargo (hijos directos).
+   */
+  private async assertSettler(requesterId: string): Promise<User> {
     const requester = await usersRepository.findById(requesterId);
     if (!requester) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Requester not found');
     }
-    if (requester.role !== UserRole.OWNER) {
+    if (requester.role !== UserRole.OWNER && requester.role !== UserRole.ADMIN) {
       throw new AppError(
         403,
         ErrorCode.FORBIDDEN,
-        'Solo el propietario puede gestionar las cuentas de cajeros'
+        'Solo el owner y los administradores liquidan a sus cajeros'
       );
     }
     return requester;
@@ -1483,35 +1550,34 @@ export class CashierAccountsDomain {
     return requester;
   }
 
-  private async getOwnerCashiers(ownerId: string): Promise<User[]> {
-    const descendants = await usersRepository.findDescendants(ownerId);
+  /** Cajeros a cargo del que liquida (hijos directos). */
+  private async getSettlerCashiers(settlerId: string): Promise<User[]> {
+    const descendants = await usersRepository.findDescendants(settlerId);
     return descendants
-      .filter(user => user.role === UserRole.CASHIER)
+      .filter(user => user.role === UserRole.CASHIER && user.parentUserId === settlerId)
       .sort((a, b) => a.username.localeCompare(b.username));
   }
 
-  private async getCashierInOwnerTree(ownerId: string, cashierId: string): Promise<User> {
+  private async getSettlerCashier(settlerId: string, cashierId: string): Promise<User> {
     const cashier = await usersRepository.findById(cashierId);
     if (!cashier || cashier.role !== UserRole.CASHIER) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Cashier not found');
     }
-
-    const inTree = await usersRepository.isDescendant(ownerId, cashierId);
-    if (!inTree) {
-      throw new AppError(403, ErrorCode.FORBIDDEN, 'Cashier is not in your hierarchy');
+    if (cashier.parentUserId !== settlerId) {
+      throw new AppError(403, ErrorCode.FORBIDDEN, 'El cajero no está a tu cargo');
     }
     return cashier;
   }
 
-  private async getSettlementInOwnerTree(
-    ownerId: string,
+  private async getSettlerSettlement(
+    settlerId: string,
     settlementId: string
   ): Promise<CashierSettlement> {
     const settlement = await cashierAccountsRepository.findSettlementById(settlementId);
     if (!settlement) {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Settlement not found');
     }
-    await this.getCashierInOwnerTree(ownerId, settlement.cashierId);
+    await this.getSettlerCashier(settlerId, settlement.cashierId);
     return settlement;
   }
 

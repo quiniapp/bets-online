@@ -32,6 +32,9 @@ import {
   type CashierRowTarget
 } from "@/components/admin/cashier-period-accounts"
 import { OwnerAccount } from "@/components/admin/owner-account"
+import { AdminChipPurchases } from "@/components/admin/admin-chip-purchases"
+import { OwnChipPurchases } from "@/components/admin/own-chip-purchases"
+import { Switch } from "@/components/ui/switch"
 import { BetsReport } from "@/components/admin/bets-report"
 import {
   ConfirmCollectionDialog,
@@ -66,7 +69,7 @@ import type {
 
 const ITEMS_PER_PAGE = 20
 
-const TABS = ["period", "settlements", "owner", "bets"] as const
+const TABS = ["period", "settlements", "owner", "admins", "purchases", "bets"] as const
 type FinanceTab = (typeof TABS)[number]
 
 const STATUS_LABELS: Record<string, string> = {
@@ -170,14 +173,25 @@ export default function CashierAccountsPage() {
     setSettlementsPage(1)
   }, [settlementStatusFilter])
 
+  // El owner y los admins liquidan a los cajeros que tienen a cargo.
+  const isOwner = role === UserRole.OWNER
+  const canSettle = role === UserRole.OWNER || role === UserRole.ADMIN
+
   useEffect(() => {
-    if (!authLoading && role !== UserRole.OWNER) {
+    if (!authLoading && !canSettle) {
       router.replace("/admin/dashboard")
     }
-  }, [authLoading, role, router])
+  }, [authLoading, canSettle, router])
+
+  // Pestañas que solo ve un rol: si la URL pide la del otro, volver a Liquidar.
+  useEffect(() => {
+    if (authLoading) return
+    if ((tab === "admins" && !isOwner) || (tab === "purchases" && role !== UserRole.ADMIN)) setTab("period")
+  }, [authLoading, isOwner, role, tab])
 
   const [compensationAccount, setCompensationAccount] = useState<CashierRowTarget | null>(null)
   const [compensationPercentage, setCompensationPercentage] = useState("")
+  const [compensationPrizes, setCompensationPrizes] = useState(false)
   const [savingCompensation, setSavingCompensation] = useState(false)
 
   const [confirmTarget, setConfirmTarget] = useState<ConfirmCollectionTarget | null>(null)
@@ -224,6 +238,7 @@ export default function CashierAccountsPage() {
   const openCompensation = (target: CashierRowTarget) => {
     setCompensationAccount(target)
     setCompensationPercentage(target.percentage !== null ? String(target.percentage) : "")
+    setCompensationPrizes(target.prizesAffectSubtotal)
   }
 
   const saveCompensation = async () => {
@@ -242,7 +257,7 @@ export default function CashierAccountsPage() {
     try {
       const response = await apiService.put(
         `/cashier-accounts/${compensationAccount.cashierId}/compensation`,
-        { type: CompensationType.PERCENTAGE, percentage }
+        { type: CompensationType.PERCENTAGE, percentage, prizesAffectSubtotal: compensationPrizes }
       )
       if (response.success) {
         toast({ title: "Comisión actualizada" })
@@ -345,7 +360,7 @@ export default function CashierAccountsPage() {
     return `${from}-${to} de ${settlementsPagination.total}`
   }, [settlementsPagination])
 
-  if (!authLoading && role !== UserRole.OWNER) {
+  if (!authLoading && !canSettle) {
     return null
   }
 
@@ -385,7 +400,9 @@ export default function CashierAccountsPage() {
           <div>
             <h2 className="text-2xl font-bold">Finanzas</h2>
             <p className="text-sm text-muted-foreground">
-              Liquidaciones y cuentas corrientes con cada cajero, tu ganancia y caja, y el reporte de apuestas.
+              {isOwner
+                ? "Liquidaciones de tus cajeros, compra de fichas de los admins, tu ganancia y caja, y el reporte de apuestas."
+                : "Liquidaciones y cuentas corrientes de tus cajeros, tu ganancia y caja, tus compras de fichas y el reporte de apuestas."}
             </p>
           </div>
         </div>
@@ -435,7 +452,7 @@ export default function CashierAccountsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">{formatChipsAmount(summary.chipBalance)}</div>
-              <p className="text-xs text-muted-foreground">{summary.totalCashiers} cajeros en tu árbol</p>
+              <p className="text-xs text-muted-foreground">{summary.totalCashiers} cajeros a cargo</p>
             </CardContent>
           </Card>
         </div>
@@ -444,7 +461,9 @@ export default function CashierAccountsPage() {
           <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="period">Liquidar</TabsTrigger>
             <TabsTrigger value="settlements">Historial de liquidaciones</TabsTrigger>
-            <TabsTrigger value="owner">Cuenta del owner</TabsTrigger>
+            <TabsTrigger value="owner">{isOwner ? "Cuenta del owner" : "Mi cuenta"}</TabsTrigger>
+            {isOwner && <TabsTrigger value="admins">Vender fichas</TabsTrigger>}
+            {role === UserRole.ADMIN && <TabsTrigger value="purchases">Mis compras de fichas</TabsTrigger>}
             <TabsTrigger value="bets">Apuestas</TabsTrigger>
           </TabsList>
 
@@ -633,6 +652,18 @@ export default function CashierAccountsPage() {
             <OwnerAccount />
           </TabsContent>
 
+          {isOwner && (
+            <TabsContent value="admins" className="space-y-4">
+              {tab === "admins" && <AdminChipPurchases />}
+            </TabsContent>
+          )}
+
+          {role === UserRole.ADMIN && (
+            <TabsContent value="purchases" className="space-y-4">
+              {tab === "purchases" && <OwnChipPurchases />}
+            </TabsContent>
+          )}
+
           <TabsContent value="bets" className="space-y-4">
             {tab === "bets" && <BetsReport />}
           </TabsContent>
@@ -644,7 +675,8 @@ export default function CashierAccountsPage() {
           <DialogHeader>
             <DialogTitle>Comisión de {compensationAccount?.username}</DialogTitle>
             <DialogDescription>
-              Porcentaje sobre la venta de fichas del cajero. El cambio aplica desde ahora.
+              Porcentaje sobre la venta de fichas del cajero y si los premios se descuentan del subtotal. El cambio
+              aplica desde ahora.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -666,6 +698,21 @@ export default function CashierAccountsPage() {
             <p className="text-xs text-muted-foreground">
               Ejemplo: con 20%, si el cajero vende $900 en fichas, se queda con $180 y te debe $720.
             </p>
+            <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="compensation-prizes">Los premios afectan el subtotal</Label>
+                <p className="text-xs text-muted-foreground">
+                  {compensationPrizes
+                    ? "El cajero paga los premios: subtotal = venta − comisión − premios."
+                    : "Los premios los pagás vos: subtotal = venta − comisión."}
+                </p>
+              </div>
+              <Switch
+                id="compensation-prizes"
+                checked={compensationPrizes}
+                onCheckedChange={setCompensationPrizes}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCompensationAccount(null)}>Cancelar</Button>

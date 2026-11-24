@@ -7,6 +7,7 @@ export class CashierCompensationModeModel extends Model {
   declare cashierId: string;
   declare type: CompensationType;
   declare percentage: number | null;
+  declare prizesAffectSubtotal: boolean;
   declare activeFrom: Date;
   declare activeTo: Date | null;
   declare createdAt: Date;
@@ -43,6 +44,12 @@ CashierCompensationModeModel.init(
         min: 0,
         max: 100
       }
+    },
+    prizesAffectSubtotal: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'prizes_affect_subtotal'
     },
     activeFrom: {
       type: DataTypes.DATE,

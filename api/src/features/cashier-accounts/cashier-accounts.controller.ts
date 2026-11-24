@@ -55,7 +55,9 @@ export class CashierAccountsController {
         req.params.id,
         {
           type: req.body.type as CompensationType,
-          percentage: req.body.percentage
+          percentage: req.body.percentage,
+          prizesAffectSubtotal:
+            typeof req.body.prizesAffectSubtotal === 'boolean' ? req.body.prizesAffectSubtotal : undefined
         }
       );
 

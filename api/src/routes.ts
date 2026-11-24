@@ -15,6 +15,8 @@ import settingsRoutes from './features/settings/settings.routes';
 import lobbyRoutes from './features/lobby/lobby.routes';
 import cashierAccountsRoutes from './features/cashier-accounts/cashier-accounts.routes';
 import cashierAccountsMeRoutes from './features/cashier-accounts/cashier-accounts.me.routes';
+import adminChipPurchasesRoutes from './features/admin-chip-purchases/admin-chip-purchases.routes';
+import adminChipPurchasesMeRoutes from './features/admin-chip-purchases/admin-chip-purchases.me.routes';
 
 const router = Router();
 
@@ -54,8 +56,11 @@ router.use('/featured-games', featuredGamesRoutes);
 router.use('/banners', bannersRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/lobby', lobbyRoutes);
-// '/me' (cajero) antes del router del owner, que exige rol OWNER en todo '/cashier-accounts'.
+// '/me' (cajero) antes del router de liquidaciones, que exige rol OWNER o ADMIN en todo '/cashier-accounts'.
 router.use('/cashier-accounts/me', cashierAccountsMeRoutes);
 router.use('/cashier-accounts', cashierAccountsRoutes);
+// '/me' (admin) antes del router del owner.
+router.use('/admin-chip-purchases/me', adminChipPurchasesMeRoutes);
+router.use('/admin-chip-purchases', adminChipPurchasesRoutes);
 
 export default router;

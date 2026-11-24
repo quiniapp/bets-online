@@ -1,12 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   CashierSettlementDialog,
-  defaultSettlementValues,
   type SettlementValues
 } from "@/components/admin/cashier-settlement-dialog"
 import {
@@ -26,18 +24,12 @@ import {
 } from "@/hooks/useCashierPeriodAccounts"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
-import { CheckCircle2, Download, Eye, FileText, HandCoins, Loader2, Percent, RefreshCw } from "lucide-react"
+import { CheckCircle2, Download, FileText, HandCoins, Loader2, Percent, RefreshCw } from "lucide-react"
 import { settlementCollectionAmount } from "helper"
 import type { CashierPeriodAccount, CashierSettlement } from "helper"
 
 const money = (value: number | null | undefined) => `$${formatChips(Number(value) || 0)}`
 const chips = (value: number | null | undefined) => formatChips(Number(value) || 0)
-
-const SETTLEMENT_STATUS: Record<string, { label: string; className: string }> = {
-  PAID: { label: "Cobrada", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  PARTIALLY_PAID: { label: "Cobro parcial", className: "border-blue-200 bg-blue-50 text-blue-700" },
-  PENDING: { label: "Sin cobrar", className: "border-red-200 bg-red-50 text-red-700" }
-}
 
 const shortDate = (value: Date | string) =>
   new Date(value).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
@@ -47,6 +39,7 @@ export interface CashierRowTarget {
   cashierId: string
   username: string
   percentage: number | null
+  prizesAffectSubtotal: boolean
 }
 
 /** Hay algo para liquidar: ventas, premios, entregas o deuda. Solo fichas no vendidas no cuenta. */
@@ -67,7 +60,6 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
   const [cutoff, setCutoff] = useState(todayInput())
   const { accounts, loading, error, reload } = useCashierPeriodAccounts(cutoff)
   const [dialogAccounts, setDialogAccounts] = useState<CashierPeriodAccount[] | null>(null)
-  const [liquidatingId, setLiquidatingId] = useState<string | null>(null)
   const [liquidatingAll, setLiquidatingAll] = useState(false)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [collectionTarget, setCollectionTarget] = useState<CollectionTarget | null>(null)
@@ -80,33 +72,26 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
   const targetOf = ({ preview }: CashierPeriodAccount): CashierRowTarget => ({
     cashierId: preview.cashierId,
     username: preview.cashierUsername ?? "",
-    percentage: preview.compensation?.percentage ?? null
+    percentage: preview.compensation?.percentage ?? null,
+    prizesAffectSubtotal: preview.compensation?.prizesAffectSubtotal ?? false
   })
 
-  /** Liquidado: lo que se fijó al liquidar. Sin liquidar: los valores sugeridos. */
+  /** Liquidado: lo que se fijó al liquidar. Sin liquidar: lo que hay hasta ahora. */
   const rowValues = (account: CashierPeriodAccount) => {
     const { preview, settlement } = account
     if (settlement) {
       return {
         onAccountCollected: settlement.onAccountCollected ?? 0,
-        collected: settlementCollectionAmount(settlement),
-        pendingCollection: settlement.pendingCollection ?? 0,
-        chipsLeft: settlement.chipsLeft ?? 0
+        settlementCollection: settlementCollectionAmount(settlement),
+        pendingCollection: settlement.pendingCollection ?? 0
       }
     }
-    const { collected, chipsLeft } = defaultSettlementValues(account)
-    return { onAccountCollected: preview.onAccountCollected, collected, pendingCollection: 0, chipsLeft }
+    return { onAccountCollected: preview.onAccountCollected, settlementCollection: 0, pendingCollection: 0 }
   }
 
   const refreshAfterCollection = async () => {
     await reload()
     onChanged?.()
-  }
-
-  const rowError = (account: CashierPeriodAccount): string | null => {
-    if (account.settlement) return null
-    if (!account.preview.compensation) return "El cajero no tiene comisión configurada"
-    return null
   }
 
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -141,15 +126,6 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
     account => !account.settlement && hasActivity(account) && account.preview.compensation
   )
 
-  const openLiquidateOne = (account: CashierPeriodAccount) => {
-    const problem = rowError(account)
-    if (problem) {
-      toast({ variant: "destructive", title: "Revisá la fila", description: problem })
-      return
-    }
-    setDialogAccounts([account])
-  }
-
   const openLiquidateAll = () => {
     if (pendingToLiquidate.length > 0) setDialogAccounts(pendingToLiquidate)
   }
@@ -157,8 +133,7 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
   const confirmLiquidation = async (values: Record<string, SettlementValues>) => {
     if (!dialogAccounts) return
     const bulk = dialogAccounts.length > 1
-    if (bulk) setLiquidatingAll(true)
-    else setLiquidatingId(dialogAccounts[0].preview.cashierId)
+    setLiquidatingAll(true)
     let ok = 0
     try {
       for (const account of dialogAccounts) {
@@ -180,7 +155,6 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
       })
     } finally {
       setLiquidatingAll(false)
-      setLiquidatingId(null)
     }
   }
 
@@ -221,31 +195,25 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
       const { preview } = account
       const values = rowValues(account)
       return {
-        chipsDelivered: acc.chipsDelivered + preview.chipsDelivered,
+        chipBalance: acc.chipBalance + preview.chipBalance,
         totalSales: acc.totalSales + preview.totalSales,
         totalPrizes: acc.totalPrizes + preview.totalPrizes,
         commission: acc.commission + preview.commission,
         subtotal: acc.subtotal + preview.subtotal,
         previousDebt: acc.previousDebt + preview.previousDebt,
-        totalDue: acc.totalDue + preview.totalDue,
         onAccountCollected: acc.onAccountCollected + values.onAccountCollected,
-        collected: acc.collected + values.collected,
-        chipBalance: acc.chipBalance + preview.chipBalance,
-        chipsLeft: acc.chipsLeft + values.chipsLeft
+        amountDue: acc.amountDue + preview.amountDue
       }
     },
     {
-      chipsDelivered: 0,
+      chipBalance: 0,
       totalSales: 0,
       totalPrizes: 0,
       commission: 0,
       subtotal: 0,
       previousDebt: 0,
-      totalDue: 0,
       onAccountCollected: 0,
-      collected: 0,
-      chipBalance: 0,
-      chipsLeft: 0
+      amountDue: 0
     }
   )
 
@@ -287,10 +255,11 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
 
       <p className="text-xs text-muted-foreground">
         Cada cajero se liquida desde su última liquidación (o su primer movimiento) hasta la fecha de corte.
-        Comisión sobre la venta de fichas · Subtotal = venta − comisión · Total = saldo anterior + subtotal ·
-        A cuenta = cobros de la semana (botón Cobro), se descuentan del total. El cobro de la liquidación queda
-        pendiente hasta que confirmes que el cajero pagó. Balance = fichas que tiene el cajero; al liquidar se le
-        retiran las de premios y, de las no vendidas, lo que no se le deje.
+        Balance = fichas que tiene el cajero · Comisión sobre la venta de fichas · Subtotal = venta − comisión
+        (− premios en los cajeros marcados con <span className="font-semibold">P</span>) · Cobro = cobros a cuenta
+        de la semana (botón Cobro) · Total = saldo anterior + subtotal − cobro. El cobro que fijás al liquidar
+        queda pendiente hasta que confirmes que el cajero pagó. Al liquidar se le retiran las fichas de premios
+        y, de las no vendidas, lo que no se le deje.
       </p>
 
       {!cutoff ? (
@@ -309,22 +278,18 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border bg-card">
-          <table className="w-full min-w-[1550px] text-xs">
+          <table className="w-full min-w-[1250px] text-xs">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left font-semibold">Cajero</th>
-                <th className="px-2 py-2 text-right font-semibold" title="Fichas que le entregaste en el período">Entregadas</th>
+                <th className="px-2 py-2 text-right font-semibold" title="Fichas que tiene el cajero">Balance</th>
                 <th className="px-2 py-2 text-right font-semibold">Venta de fichas</th>
                 <th className="px-2 py-2 text-right font-semibold">Premios</th>
                 <th className="px-2 py-2 text-right font-semibold">Comisión</th>
                 <th className="px-2 py-2 text-right font-semibold">Subtotal</th>
                 <th className="px-2 py-2 text-right font-semibold">Saldo ant.</th>
-                <th className="px-2 py-2 text-right font-semibold">Total</th>
-                <th className="px-2 py-2 text-right font-semibold" title="Cobros a cuenta de la semana, se descuentan del total">A cuenta</th>
-                <th className="px-2 py-2 text-right font-semibold" title="Cobro de la liquidación">Cobro</th>
-                <th className="px-2 py-2 text-right font-semibold" title="Fichas que tiene el cajero">Balance</th>
-                <th className="px-2 py-2 text-right font-semibold" title="Fichas no vendidas que le quedan al cajero">No vendidas</th>
-                <th className="px-2 py-2 text-center font-semibold">Estado</th>
+                <th className="px-2 py-2 text-right font-semibold" title="Cobros a cuenta de la semana, se descuentan del total">Cobro</th>
+                <th className="px-2 py-2 text-right font-semibold" title="Saldo anterior + subtotal − cobro">Total</th>
                 <th className="px-2 py-2 text-right font-semibold">Acciones</th>
               </tr>
             </thead>
@@ -332,8 +297,6 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
               {accounts.map(account => {
                 const { preview, settlement } = account
                 const values = rowValues(account)
-                const problem = rowError(account)
-                const status = settlement ? SETTLEMENT_STATUS[settlement.status] : null
                 const target = targetOf(account)
                 const awaitingConfirmation = values.pendingCollection > 0
                 return (
@@ -350,45 +313,40 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
                         {preview.compensation
                           ? `${preview.compensation.percentage ?? 0}% comisión`
                           : "sin comisión"}
+                        {preview.prizesDeducted && (
+                          <span
+                            className="ml-1 rounded bg-violet-100 px-1 font-semibold text-violet-700"
+                            title="Los premios se descuentan del subtotal"
+                          >
+                            P
+                          </span>
+                        )}
                         {" · "}
                         {settlement
                           ? <>liquidado {shortDate(settlement.periodStart)} al {shortDate(settlement.periodEnd)}</>
                           : <>desde {shortDate(preview.periodStart)}</>}
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums">{chips(preview.chipsDelivered)}</td>
+                    <td className="px-2 py-2 text-right tabular-nums">{chips(preview.chipBalance)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{money(preview.totalSales)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{money(preview.totalPrizes)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{money(preview.commission)}</td>
                     <td className="px-2 py-2 text-right font-medium tabular-nums">{money(preview.subtotal)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{money(preview.previousDebt)}</td>
-                    <td className="px-2 py-2 text-right font-semibold tabular-nums">{money(preview.totalDue)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">
                       {values.onAccountCollected !== 0 ? `− ${money(values.onAccountCollected)}` : money(0)}
                     </td>
-                    <td className="px-2 py-2 text-right">
-                      {settlement
-                        ? <span className={`tabular-nums ${awaitingConfirmation ? "text-amber-700" : ""}`} title={awaitingConfirmation ? `Pendiente de confirmar: ${money(values.pendingCollection)}` : undefined}>{money(values.collected)}</span>
-                        : <span className="tabular-nums text-muted-foreground" title="Se ajusta al liquidar">{money(values.collected)}</span>}
-                    </td>
-                    <td className="px-2 py-2 text-right tabular-nums">{chips(preview.chipBalance)}</td>
-                    <td className="px-2 py-2 text-right">
-                      {settlement
-                        ? <span className="tabular-nums">{chips(values.chipsLeft)}</span>
-                        : <span className="tabular-nums text-muted-foreground" title="Se ajusta al liquidar">{chips(values.chipsLeft)}</span>}
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      {awaitingConfirmation ? (
-                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                          Cobro pendiente
-                        </Badge>
-                      ) : status ? (
-                        <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                          Pendiente
-                        </Badge>
-                      )}
+                    <td
+                      className="px-2 py-2 text-right font-semibold tabular-nums"
+                      title={
+                        settlement
+                          ? `Cobro de la liquidación: ${money(values.settlementCollection)}${
+                              awaitingConfirmation ? ` (pendiente de confirmar ${money(values.pendingCollection)})` : ""
+                            }`
+                          : undefined
+                      }
+                    >
+                      {money(preview.amountDue)}
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex justify-end gap-1">
@@ -397,18 +355,9 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
                           size="sm"
                           className="h-7 px-2"
                           onClick={() => onCompensation?.(target)}
-                          title="Configurar comisión"
+                          title="Configurar comisión y premios"
                         >
                           <Percent className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2"
-                          onClick={() => onDetail?.(target)}
-                          title="Ver cuenta corriente del cajero"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           variant="outline"
@@ -431,7 +380,7 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
                             Confirmar
                           </Button>
                         )}
-                        {settlement ? (
+                        {settlement && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -444,17 +393,6 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
                               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               : <Download className="h-3.5 w-3.5" />}
                           </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            className="h-7 px-2"
-                            disabled={Boolean(problem) || liquidatingId === preview.cashierId || liquidatingAll}
-                            title={problem ?? "Liquidar este cajero"}
-                            onClick={() => openLiquidateOne(account)}
-                          >
-                            {liquidatingId === preview.cashierId && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
-                            Liquidar
-                          </Button>
                         )}
                       </div>
                     </td>
@@ -465,18 +403,14 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
             <tfoot className="border-t bg-muted/30 font-semibold">
               <tr>
                 <td className="px-3 py-2">Totales</td>
-                <td className="px-2 py-2 text-right">{chips(totals.chipsDelivered)}</td>
+                <td className="px-2 py-2 text-right">{chips(totals.chipBalance)}</td>
                 <td className="px-2 py-2 text-right">{money(totals.totalSales)}</td>
                 <td className="px-2 py-2 text-right">{money(totals.totalPrizes)}</td>
                 <td className="px-2 py-2 text-right">{money(totals.commission)}</td>
                 <td className="px-2 py-2 text-right">{money(totals.subtotal)}</td>
                 <td className="px-2 py-2 text-right">{money(totals.previousDebt)}</td>
-                <td className="px-2 py-2 text-right">{money(totals.totalDue)}</td>
                 <td className="px-2 py-2 text-right">{money(totals.onAccountCollected)}</td>
-                <td className="px-2 py-2 text-right">{money(totals.collected)}</td>
-                <td className="px-2 py-2 text-right">{chips(totals.chipBalance)}</td>
-                <td className="px-2 py-2 text-right">{chips(totals.chipsLeft)}</td>
-                <td className="px-2 py-2" />
+                <td className="px-2 py-2 text-right">{money(totals.amountDue)}</td>
                 <td className="px-2 py-2" />
               </tr>
             </tfoot>
@@ -487,7 +421,7 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
       <CashierSettlementDialog
         accounts={dialogAccounts}
         cutoffLabel={shortDate(endOfDayIso(cutoff))}
-        submitting={liquidatingAll || liquidatingId !== null}
+        submitting={liquidatingAll}
         onClose={() => setDialogAccounts(null)}
         onConfirm={confirmLiquidation}
       />

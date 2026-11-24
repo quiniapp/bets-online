@@ -214,3 +214,18 @@ export const ROLE_HIERARCHY = {
   CASHIER: 2,
   PLAYER: 1
 };
+
+/**
+ * Precio diferencial por defecto de las fichas que el owner le carga a un
+ * admin: a partir de `minChips` fichas por carga, el admin paga `percentage`%
+ * del monto. Se puede editar por admin. Las cargas menores al primer tramo
+ * llevan un porcentaje cargado a mano.
+ */
+export const DEFAULT_ADMIN_CHIP_PRICE_TIERS: ReadonlyArray<{ minChips: number; percentage: number }> = [
+  { minChips: 100_000, percentage: 20 },
+  { minChips: 500_000, percentage: 19 },
+  { minChips: 1_000_000, percentage: 18 },
+  { minChips: 10_000_000, percentage: 17 },
+  { minChips: 20_000_000, percentage: 16 },
+  { minChips: 30_000_000, percentage: 15 }
+];

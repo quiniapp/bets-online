@@ -1,4 +1,5 @@
 import {
+  AdminChipPurchase,
   CashierPeriodAccount,
   CashierPeriodAccountTotals,
   CashierSettlement,
@@ -141,13 +142,18 @@ export function generateSettlementReceiptPdf(data: SettlementReceiptData): Buffe
       'Comision',
       `${money(commission)}${data.percentage !== null && data.percentage !== undefined ? ` (${data.percentage}%)` : ''}`
     ],
-    ['Subtotal (venta - comision)', money(subtotal)]
+    ...(data.prizesDeducted
+      ? ([
+          ['Premios (descontados del subtotal)', money(data.totalPrizesPaid)],
+          ['Subtotal (venta - comision - premios)', money(subtotal)]
+        ] as Array<[string, string]>)
+      : ([['Subtotal (venta - comision)', money(subtotal)]] as Array<[string, string]>))
   ];
 
   if (!legacy) {
     lines.push(
       ['Saldo anterior', money(data.previousDebt)],
-      ['Cobros a cuenta', money(data.onAccountCollected)],
+      ['Cobro (a cuenta)', money(data.onAccountCollected)],
       ['Total a cobrar', money(settlementAmountDue(data))],
       ['Cobro de la liquidacion', money(settlementCollectionAmount(data))],
       ['Pendiente de confirmar', money(data.pendingCollection)],
@@ -184,7 +190,9 @@ export function generateSettlementReceiptPdf(data: SettlementReceiptData): Buffe
 
   content += pdfText('Documento generado automaticamente por ArenaBet.', 60, 62, 9);
   content += pdfText(
-    'La comision se calcula sobre la venta de fichas. Los premios los paga el owner al jugador.',
+    data.prizesDeducted
+      ? 'La comision se calcula sobre la venta de fichas. Los premios los paga el cajero y se descuentan del subtotal.'
+      : 'La comision se calcula sobre la venta de fichas. Los premios se le pagan al jugador aparte.',
     60,
     48,
     8
@@ -215,18 +223,15 @@ export function generatePeriodSummaryPdf(data: {
 
   const columns = [
     { label: 'Cajero', x: 38 },
-    { label: 'Entregadas', x: 120 },
-    { label: 'Venta', x: 182 },
-    { label: 'Premios', x: 244 },
-    { label: 'Comision', x: 306 },
-    { label: 'Subtotal', x: 368 },
-    { label: 'Saldo ant.', x: 430 },
-    { label: 'A cuenta', x: 492 },
-    { label: 'Total', x: 554 },
-    { label: 'Cobro', x: 616 },
-    { label: 'Balance', x: 678 },
-    { label: 'No vend.', x: 730 },
-    { label: 'Estado', x: 770 }
+    { label: 'Balance', x: 130 },
+    { label: 'Venta', x: 205 },
+    { label: 'Premios', x: 280 },
+    { label: 'Comision', x: 355 },
+    { label: 'Subtotal', x: 430 },
+    { label: 'Saldo ant.', x: 505 },
+    { label: 'Cobro', x: 580 },
+    { label: 'Total', x: 655 },
+    { label: 'Estado', x: 740 }
   ];
 
   let y = 525;
@@ -247,11 +252,9 @@ export function generatePeriodSummaryPdf(data: {
 
   for (const { preview, settlement } of data.accounts) {
     if (y < 70) break;
-    const collected = settlement ? settlementCollectionAmount(settlement) : null;
-    const chipsLeft = settlement ? settlement.chipsLeft ?? 0 : null;
     row([
-      (preview.cashierUsername ?? '').slice(0, 16),
-      short(preview.chipsDelivered),
+      (preview.cashierUsername ?? '').slice(0, 18) + (preview.prizesDeducted ? ' *' : ''),
+      short(preview.chipBalance),
       short(preview.totalSales),
       short(preview.totalPrizes),
       short(preview.commission),
@@ -259,9 +262,6 @@ export function generatePeriodSummaryPdf(data: {
       short(preview.previousDebt),
       short(preview.onAccountCollected),
       short(preview.amountDue),
-      collected === null ? '-' : short(collected),
-      short(preview.chipBalance),
-      chipsLeft === null ? '-' : short(chipsLeft),
       !settlement ? 'Pend.' : (settlement.pendingCollection ?? 0) > 0 ? 'A conf.' : 'Liquid.'
     ]);
   }
@@ -271,7 +271,7 @@ export function generatePeriodSummaryPdf(data: {
   row(
     [
       'TOTALES',
-      short(data.totals.chipsDelivered),
+      short(data.totals.chipBalance),
       short(data.totals.totalSales),
       short(data.totals.totalPrizes),
       short(data.totals.commission),
@@ -279,16 +279,13 @@ export function generatePeriodSummaryPdf(data: {
       short(data.totals.previousDebt),
       short(data.totals.onAccountCollected),
       short(data.totals.amountDue),
-      short(data.totals.collected),
-      short(data.totals.chipBalance),
-      short(data.totals.chipsLeft),
       ''
     ],
     true
   );
 
   content += pdfText(
-    'Subtotal = venta - comision. Total = saldo anterior + subtotal - cobros a cuenta. Filas pendientes: cobro y no vendidas se definen al liquidar.',
+    'Subtotal = venta - comision (* tambien - premios). Cobro = cobros a cuenta. Total = saldo anterior + subtotal - cobro. Balance = fichas del cajero.',
     40,
     45,
     7
@@ -466,4 +463,79 @@ export function generateOwnerAccountPdf(
       8
     );
   return buildPdf(pages.map((page, index) => page + footer(index)), 595, 842);
+}
+
+const PURCHASE_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'PAGO PENDIENTE',
+  PAID: 'PAGADO',
+  CANCELED: 'ANULADO'
+};
+
+/**
+ * Comprobante de una carga de fichas del owner a un admin (A4).
+ */
+export function generateAdminChipPurchaseReceiptPdf(
+  data: AdminChipPurchase & { adminUsername: string; ownerUsername: string }
+): Buffer {
+  const status = PURCHASE_STATUS_LABELS[data.status] ?? data.status;
+  const number = String(data.receiptNumber).padStart(6, '0');
+
+  let content = '';
+  content += '0.6 w\n';
+  content += '50 40 495 762 re S\n';
+  content += '60 782 m 535 782 l S\n';
+
+  content += pdfText('Comprobante de compra de fichas', 60, 805, 18, true);
+  content += pdfText(`N. ${number}`, 450, 805, 12, true);
+  content += pdfText(`Administrador: ${data.adminUsername}`, 60, 786, 10);
+
+  content += '0.8 w\n60 690 475 75 re S\n';
+  content += pdfText('Importe a pagar', 72, 745, 10);
+  content += pdfText(money(data.amount), 72, 710, 22, true);
+  content += pdfText('Estado del pago', 320, 745, 10);
+  content += pdfText(status, 320, 710, 16, true);
+
+  const lines: Array<[string, string] | null> = [
+    ['Fecha', `${formatDate(data.createdAt)} ${formatTime(data.createdAt)}`],
+    ['Vendedor', data.ownerUsername],
+    ['Administrador', data.adminUsername],
+    null,
+    ['Fichas cargadas', chips(data.chips)],
+    ['Precio', `${data.percentage}% del monto${data.manualPercentage ? ' (porcentaje manual)' : ''}`],
+    ['Importe', money(data.amount)],
+    null,
+    ['Estado', status]
+  ];
+  if (data.confirmedAt) {
+    lines.push(['Pago confirmado', `${formatDate(data.confirmedAt)} ${formatTime(data.confirmedAt)}`]);
+  }
+  if (data.canceledAt) {
+    lines.push(['Anulado', `${formatDate(data.canceledAt)} ${formatTime(data.canceledAt)}`]);
+  }
+  if (data.paymentReference) lines.push(['Referencia de pago', data.paymentReference]);
+  if (data.notes) lines.push(['Notas', data.notes.replace(/\s+/g, ' ').slice(0, 70)]);
+  lines.push(null, ['Comprobante', data.id]);
+
+  let y = 660;
+  for (const line of lines) {
+    if (!line) {
+      y -= 8;
+      content += `60 ${y + 14} m 535 ${y + 14} l S\n`;
+      continue;
+    }
+    const [label, value] = line;
+    content += pdfText(`${label}:`, 72, y, 10, true);
+    content += pdfText(value, 250, y, 10);
+    y -= 21;
+  }
+
+  content += pdfText('Documento generado automaticamente por ArenaBet.', 60, 62, 9);
+  content += pdfText(
+    'El pago queda pendiente hasta que el owner confirma que lo recibio.',
+    60,
+    48,
+    8
+  );
+
+  return buildPdf(content, 595, 842);
 }

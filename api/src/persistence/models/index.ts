@@ -6,6 +6,8 @@ import CashierCompensationModeModel from '../../features/chips/cashier-compensat
 import CashierSettlementModel from '../../features/chips/cashier-settlement.model';
 import CashierCurrentAccountModel from '../../features/cashier-accounts/cashier-current-account.model';
 import CashierCollectionModel from '../../features/cashier-accounts/cashier-collection.model';
+import AdminChipPurchaseModel from '../../features/admin-chip-purchases/admin-chip-purchase.model';
+import AdminChipPricingModel from '../../features/admin-chip-purchases/admin-chip-pricing.model';
 import ChipPanelModel from '../../features/chips/chip-panel.model';
 import RecoveryModel from '../../features/auth/recovery.model';
 import UserGameProviderBlocklistModel from '../../features/users/user-game-provider-blocklist.model';
@@ -328,6 +330,8 @@ export {
   CashierSettlementModel,
   CashierCurrentAccountModel,
   CashierCollectionModel,
+  AdminChipPurchaseModel,
+  AdminChipPricingModel,
   ChipPanelModel,
   RecoveryModel,
   UserGameProviderBlocklistModel,
@@ -355,6 +359,8 @@ export default {
   CashierSettlementModel,
   CashierCurrentAccountModel,
   CashierCollectionModel,
+  AdminChipPurchaseModel,
+  AdminChipPricingModel,
   ChipPanelModel,
   RecoveryModel,
   UserGameProviderBlocklistModel,

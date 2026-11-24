@@ -6,7 +6,6 @@ import { UserRole } from "helper";
 import {
   BarChart3,
   Users,
-  FileText,
   ArrowUpDown,
   Gamepad2,
   User,
@@ -95,7 +94,7 @@ export const useSidebarNavigation = () => {
       ],
     },
     {
-      // Liquidaciones de cajeros, cuenta del owner y reporte de apuestas.
+      // Liquidaciones de sus cajeros, compra de fichas de admins, cuenta del owner y apuestas.
       title: "Finanzas",
       href: "/admin/cashier-accounts",
       icon: Wallet,
@@ -133,9 +132,10 @@ export const useSidebarNavigation = () => {
       ],
     },
     {
-      title: t("reports.bets"),
-      href: "/admin/reports/bets",
-      icon: FileText,
+      // Liquidaciones de sus cajeros, su cuenta, compras de fichas y apuestas.
+      title: "Finanzas",
+      href: "/admin/cashier-accounts",
+      icon: Wallet,
     },
     {
       title: t("nav.transactions"),

@@ -67,6 +67,7 @@ export interface CreateSettlementData {
   unsoldChipsRecovered: number;
   onAccountCollected: number;
   pendingCollection: number;
+  prizesDeducted: boolean;
 }
 
 export interface CreateCollectionData {
@@ -162,12 +163,14 @@ export class CashierAccountsRepository {
     cashierId: string;
     type: CompensationType;
     percentage: number;
+    prizesAffectSubtotal: boolean;
     activeFrom: Date;
   }): Promise<CashierCompensationMode> {
     const mode = await CashierCompensationModeModel.create({
       cashierId: data.cashierId,
       type: data.type,
       percentage: data.percentage,
+      prizesAffectSubtotal: data.prizesAffectSubtotal,
       activeFrom: data.activeFrom
     });
     return this.mapCompensationMode(mode);
@@ -339,7 +342,8 @@ export class CashierAccountsRepository {
         chipsLeft: data.chipsLeft,
         unsoldChipsRecovered: data.unsoldChipsRecovered,
         onAccountCollected: data.onAccountCollected,
-        pendingCollection: data.pendingCollection
+        pendingCollection: data.pendingCollection,
+        prizesDeducted: data.prizesDeducted
       },
       { transaction }
     );
@@ -846,6 +850,7 @@ export class CashierAccountsRepository {
       percentage: plain.percentage === null || plain.percentage === undefined
         ? null
         : parseFloat(String(plain.percentage)),
+      prizesAffectSubtotal: Boolean(plain.prizesAffectSubtotal ?? plain.prizes_affect_subtotal),
       activeFrom: new Date(plain.activeFrom as string || plain.active_from as string),
       activeTo: plain.activeTo
         ? new Date(plain.activeTo as string)
@@ -913,7 +918,8 @@ export class CashierAccountsRepository {
       chipsLeft: toNullableNumber(pick('chipsLeft', 'chips_left')),
       unsoldChipsRecovered: toNullableNumber(pick('unsoldChipsRecovered', 'unsold_chips_recovered')),
       onAccountCollected: toNullableNumber(pick('onAccountCollected', 'on_account_collected')),
-      pendingCollection: toNullableNumber(pick('pendingCollection', 'pending_collection'))
+      pendingCollection: toNullableNumber(pick('pendingCollection', 'pending_collection')),
+      prizesDeducted: Boolean(pick('prizesDeducted', 'prizes_deducted'))
     };
   }
 }

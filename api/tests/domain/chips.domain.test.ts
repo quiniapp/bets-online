@@ -108,9 +108,24 @@ describe('ChipsDomain', () => {
       });
     });
 
+    it('el owner no le carga fichas sueltas a un admin (van por compra de fichas)', async () => {
+      const owner = makeUser({ id: 'owner-1', role: UserRole.OWNER, parentUserId: null });
+      const realAdmin = makeUser({ id: 'admin-9', role: UserRole.ADMIN, parentUserId: 'owner-1' });
+      (usersRepository.findById as jest.Mock)
+        .mockResolvedValueOnce(owner)
+        .mockResolvedValueOnce(realAdmin);
+
+      await expect(domain.sellChips('owner-1', 'admin-9', 500)).rejects.toMatchObject({
+        statusCode: 400,
+        code: ErrorCode.INVALID_INPUT
+      });
+      expect(balancesRepository.atomicIncrement).not.toHaveBeenCalled();
+    });
+
     it('Owner vende chips sin descontar su balance', async () => {
       const owner = makeUser({ id: 'owner-1', role: UserRole.OWNER, parentUserId: null });
-      const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN, parentUserId: 'owner-1' });
+      // Un cajero a cargo del owner (al admin no se le puede cargar suelto).
+      const admin = makeUser({ id: 'admin-1', role: UserRole.CASHIER, parentUserId: 'owner-1' });
       const adminBalance = makeBalance(0);
 
       (usersRepository.findById as jest.Mock)

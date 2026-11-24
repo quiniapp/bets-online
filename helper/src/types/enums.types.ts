@@ -90,6 +90,17 @@ export enum CashierCollectionStatus {
 }
 
 /**
+ * Estado del pago de una compra de fichas de un admin al owner.
+ * PENDING: el owner cargó las fichas y espera el pago. PAID: el owner confirmó
+ * que recibió el pago. CANCELED: anulada (se le retiraron las fichas al admin).
+ */
+export enum AdminChipPurchaseStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  CANCELED = 'CANCELED'
+}
+
+/**
  * Panel Status
  */
 export enum PanelStatus {
