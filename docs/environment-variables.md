@@ -62,6 +62,7 @@ Un valor distinto por secret y por entorno. Rotar `JWT_SECRET` invalida todas la
 |---|---|---|
 | `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | Destino del rewrite `/api/*` en `next.config.mjs`. Se lee en **build**: cambiarla en Vercel requiere redeploy |
 | `ENABLE_SPEED_INSIGHTS` | (vacía = apagado) | `true` monta `<SpeedInsights />` de Vercel en el root layout. Setearla **solo en Production** para no gastar data points facturables con previews ni local. Server-only y se lee en **build**: cambiarla requiere redeploy |
+| `SPEED_INSIGHTS_SAMPLE_RATE` | `0.01` | Fracción de page views que reportan Web Vitals, entre 0 (excluido) y 1. Si falta o es inválida se usa `0.01` (1%) para no agotar la cuota gratis del team. Server-only, se lee en **build** |
 
 `NODE_ENV` la maneja Next.js. Las cookies de auth son first-party porque el browser siempre llama a `/api/*` de su propio dominio y Next.js proxyea a `NEXT_PUBLIC_API_URL`.
 
@@ -122,9 +123,10 @@ Solo en Production:
 
 ```
 ENABLE_SPEED_INSIGHTS=true
+SPEED_INSIGHTS_SAMPLE_RATE=0.01   # opcional, 0.01 es el default
 ```
 
-Además, Speed Insights tiene que estar habilitado en cada proyecto (pestaña Speed Insights → Enable); sin eso el script carga pero Vercel no guarda las métricas.
+Speed Insights gratis no se habilita desde el dashboard: cualquier deploy que monte `<SpeedInsights />` manda eventos. Todos los proyectos del team comparten 10.000 eventos cada 30 días (ventana móvil); al agotarse, Vercel pausa la recolección de todos los proyectos free y lo avisa con un banner en la pestaña Speed Insights. Para que un proyecto deje de consumir, sacar el componente (acá: `ENABLE_SPEED_INSIGHTS=false`) y redeployar.
 
 Después de cambiarlas, redeploy (son build-time).
 

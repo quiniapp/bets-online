@@ -11,6 +11,15 @@ export const metadata: Metadata = {
   generator: "SudacaDev",
 }
 
+// Share of page views that report Web Vitals, in (0, 1]. Defaults to 1% so the
+// team's free Speed Insights quota (10k events / 30 days) is not exhausted.
+const DEFAULT_SPEED_INSIGHTS_SAMPLE_RATE = 0.01
+
+function speedInsightsSampleRate(): number {
+  const rate = Number(process.env.SPEED_INSIGHTS_SAMPLE_RATE)
+  return rate > 0 && rate <= 1 ? rate : DEFAULT_SPEED_INSIGHTS_SAMPLE_RATE
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,8 +38,11 @@ export default function RootLayout({
         <ClientLayout>{children}</ClientLayout>
         {/* Vercel Speed Insights (Core Web Vitals), opt-in per environment: set
             ENABLE_SPEED_INSIGHTS=true only where we want metrics (production).
-            Read server-side at build time, so changing it needs a redeploy. */}
-        {process.env.ENABLE_SPEED_INSIGHTS === "true" && <SpeedInsights />}
+            Both env vars are read server-side at build time: changing them
+            needs a redeploy. */}
+        {process.env.ENABLE_SPEED_INSIGHTS === "true" && (
+          <SpeedInsights sampleRate={speedInsightsSampleRate()} />
+        )}
       </body>
     </html>
   )
