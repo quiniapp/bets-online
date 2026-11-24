@@ -143,7 +143,7 @@ describe('UsersDomain', () => {
   describe('createUser — comisión', () => {
     const owner = makeUser({ id: 'owner-1', role: UserRole.OWNER, parentUserId: null });
 
-    it.each([UserRole.CASHIER, UserRole.ADMIN])('guarda la comisión de un %s nuevo', async role => {
+    it.each([UserRole.CASHIER])('guarda la comisión de un %s nuevo', async role => {
       (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
       (authDomain.register as jest.Mock).mockResolvedValue(makeUser({ id: 'new-1', role }));
 
@@ -173,6 +173,36 @@ describe('UsersDomain', () => {
 
       expect(authDomain.register).not.toHaveBeenCalled();
       expect(cashierAccountsRepository.createCompensationMode).not.toHaveBeenCalled();
+    });
+
+    it('rechaza comisión para un admin (compra fichas a precio diferencial)', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+
+      await expect(
+        domain.createUser('owner-1', {
+          role: UserRole.ADMIN,
+          username: 'admin3',
+          password: 'Password1',
+          commissionPercentage: 10
+        })
+      ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+
+      expect(authDomain.register).not.toHaveBeenCalled();
+    });
+
+    it('rechaza saldo inicial para un admin (se le venden fichas desde Finanzas)', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+
+      await expect(
+        domain.createUser('owner-1', {
+          role: UserRole.ADMIN,
+          username: 'admin2',
+          password: 'Password1',
+          initialBalance: 1000
+        })
+      ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+
+      expect(authDomain.register).not.toHaveBeenCalled();
     });
   });
 

@@ -6,6 +6,7 @@ import {
   SettlementStatus,
   CashierCollectionKind,
   CashierCollectionStatus,
+  AdminChipPurchaseStatus,
   PanelStatus,
   RecoveryMode,
   RecoveryStatus
@@ -106,6 +107,8 @@ export interface CashierCompensationMode {
   cashierId: string;
   type: CompensationType;
   percentage?: number | null;
+  /** Los premios se descuentan del subtotal del cajero */
+  prizesAffectSubtotal: boolean;
   activeFrom: Date;
   activeTo?: Date | null;
   createdAt: Date;
@@ -185,6 +188,8 @@ export interface CashierSettlement {
   onAccountCollected: number | null;
   /** Cobro de la liquidación que espera la confirmación del owner */
   pendingCollection: number | null;
+  /** Los premios se descontaron del subtotal (subtotal = venta − comisión − premios) */
+  prizesDeducted: boolean;
 }
 
 /**
@@ -202,6 +207,8 @@ export interface CreateSettlementDto {
 export interface CashierCompensationSummary {
   type: CompensationType;
   percentage: number | null;
+  /** Los premios se descuentan del subtotal del cajero */
+  prizesAffectSubtotal: boolean;
   activeFrom: Date;
 }
 
@@ -398,8 +405,10 @@ export interface CashierSettlementPreview {
   /** Premios */
   totalPrizes: number;
   commission: number;
-  /** totalSales − commission */
+  /** totalSales − commission (− totalPrizes si prizesDeducted) */
   subtotal: number;
+  /** Los premios se descuentan del subtotal */
+  prizesDeducted: boolean;
   /** Deuda arrastrada de la última liquidación (saldo anterior) */
   previousDebt: number;
   /** previousDebt + subtotal */
@@ -472,6 +481,78 @@ export interface CashierPeriodAccountsResult {
 export interface UpdateCashierCompensationDto {
   type: CompensationType;
   percentage: number;
+  /** Si se omite, se mantiene el valor vigente */
+  prizesAffectSubtotal?: boolean;
+}
+
+/**
+ * Tramo de precio diferencial de fichas para un admin: a partir de
+ * `minChips` fichas por carga, el admin paga `percentage`% del monto.
+ */
+export interface AdminChipPriceTier {
+  minChips: number;
+  percentage: number;
+}
+
+/**
+ * Admin con su configuración de precios, para la pantalla de compras del owner.
+ */
+export interface AdminChipPricingSummary {
+  adminId: string;
+  username: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  chipBalance: number;
+  /** Tramos vigentes (los propios o los por defecto) */
+  tiers: AdminChipPriceTier[];
+  /** true si el admin tiene tramos propios */
+  customTiers: boolean;
+  /** Total adeudado por compras pendientes de pago */
+  pendingAmount: number;
+  pendingCount: number;
+}
+
+/**
+ * Carga de fichas del owner a un admin, con su precio.
+ */
+export interface AdminChipPurchase {
+  id: string;
+  receiptNumber: number;
+  adminId: string;
+  adminUsername?: string;
+  chips: number;
+  percentage: number;
+  /** Lo que paga el admin: chips × percentage / 100 */
+  amount: number;
+  /** El porcentaje se cargó a mano (carga menor al primer tramo) */
+  manualPercentage: boolean;
+  status: AdminChipPurchaseStatus;
+  paymentReference?: string | null;
+  notes?: string | null;
+  createdBy?: string | null;
+  confirmedBy?: string | null;
+  confirmedAt?: Date | null;
+  canceledBy?: string | null;
+  canceledAt?: Date | null;
+  createdAt: Date;
+}
+
+export interface AdminChipPurchaseTotals {
+  chips: number;
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
+}
+
+/**
+ * Payload de GET /admin-chip-purchases y /admin-chip-purchases/me.
+ */
+export interface AdminChipPurchaseListResult {
+  purchases: AdminChipPurchase[];
+  totals: AdminChipPurchaseTotals;
+  total: number;
+  page: number;
+  limit: number;
 }
 
 /**

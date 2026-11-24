@@ -38,6 +38,7 @@ jest.mock('../../src/features/chips/chip-movements.repository', () => ({
 jest.mock('../../src/features/cashier-accounts/cashier-accounts.repository', () => ({
   settlementMovementKey: (id: string, suffix: string) => `settlement:${id}:${suffix}`,
   cashierAccountsRepository: {
+    findCompensationMode: jest.fn(),
     findCompensationModes: jest.fn(),
     findCompensationModeForPeriod: jest.fn(),
     closeActiveCompensationModes: jest.fn(),
@@ -112,6 +113,7 @@ const mode20 = {
   cashierId: 'cashier-1',
   type: CompensationType.PERCENTAGE,
   percentage: 20,
+  prizesAffectSubtotal: false,
   activeFrom: new Date('2025-01-01'),
   activeTo: null,
   createdAt: new Date('2025-01-01')
@@ -152,6 +154,7 @@ const makeSettlement = (overrides: Record<string, unknown> = {}) => ({
   unsoldChipsRecovered: 0,
   onAccountCollected: 0,
   pendingCollection: 0,
+  prizesDeducted: false,
   ...overrides
 });
 
@@ -818,7 +821,7 @@ describe('CashierAccountsDomain', () => {
     it('suma ingreso neto, premios, ganancia y caja del rango', async () => {
       (usersRepository.findDescendants as jest.Mock).mockResolvedValue([
         cashier,
-        { ...cashier, id: 'player-1', role: UserRole.PLAYER, username: 'jugador' }
+        { ...cashier, id: 'player-1', role: UserRole.PLAYER, username: 'jugador', parentUserId: 'cashier-1' }
       ]);
       (balancesRepository.findByUserIds as jest.Mock).mockImplementation((ids: string[]) =>
         Promise.resolve(
@@ -927,12 +930,132 @@ describe('CashierAccountsDomain', () => {
     expect(mode.percentage).toBe(30);
   });
 
-  it('solo el propietario puede consultar las cuentas', async () => {
-    (usersRepository.findById as jest.Mock).mockResolvedValue({ ...owner, role: UserRole.ADMIN });
+  it('mantiene el flag de premios vigente si no se manda al cambiar la comisión', async () => {
+    repo.findCompensationMode.mockResolvedValue({ ...mode20, prizesAffectSubtotal: true });
+    repo.createCompensationMode.mockImplementation((data: Record<string, unknown>) =>
+      Promise.resolve({ ...mode20, ...data })
+    );
+
+    await domain.updateCompensation('owner-1', 'cashier-1', {
+      type: CompensationType.PERCENTAGE,
+      percentage: 25
+    });
+
+    expect(repo.createCompensationMode).toHaveBeenCalledWith(
+      expect.objectContaining({ percentage: 25, prizesAffectSubtotal: true })
+    );
+  });
+
+  it('solo el owner y los admins liquidan cajeros', async () => {
+    (usersRepository.findById as jest.Mock).mockResolvedValue({ ...owner, role: UserRole.CASHIER });
 
     await expect(domain.listAccounts('owner-1')).rejects.toMatchObject({
       statusCode: 403,
       code: ErrorCode.FORBIDDEN
+    });
+  });
+
+  it('solo liquida a los cajeros a cargo (hijos directos)', async () => {
+    (usersRepository.findById as jest.Mock).mockImplementation((id: string) =>
+      Promise.resolve(id === 'owner-1' ? owner : { ...cashier, parentUserId: 'admin-1' })
+    );
+
+    await expect(domain.previewSettlement('owner-1', 'cashier-1', periodEnd)).rejects.toMatchObject({
+      statusCode: 403
+    });
+
+    (usersRepository.findDescendants as jest.Mock).mockResolvedValue([
+      cashier,
+      { ...cashier, id: 'cashier-2', username: 'cajero2', parentUserId: 'admin-1' }
+    ]);
+    repo.findCompensationModes.mockResolvedValue([]);
+    repo.findNonCanceledSettlements.mockResolvedValue([]);
+    repo.getMovementTotals.mockResolvedValue(new Map());
+    (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+    const result = await domain.listAccounts('owner-1');
+    expect(result.accounts.map(account => account.cashierId)).toEqual(['cashier-1']);
+  });
+
+  describe('premios en el subtotal y liquidación de un admin', () => {
+    const admin = { ...owner, id: 'admin-1', role: UserRole.ADMIN, username: 'admin1', parentUserId: 'owner-1' };
+    const adminCashier = { ...cashier, parentUserId: 'admin-1' };
+
+    it('descuenta los premios del subtotal si el cajero lo tiene configurado', () => {
+      const preview = domain.computePreview({
+        cashier: cashier as never,
+        periodStart,
+        periodEnd,
+        compensation: { ...mode20, prizesAffectSubtotal: true },
+        flows: { chipsDelivered: 1000, totalSales: 900, totalPrizes: 50 },
+        lastSettlement: null,
+        chipBalance: 150,
+        onAccountCollected: 100
+      });
+
+      expect(preview).toMatchObject({
+        commission: 180,
+        subtotal: 670,
+        prizesDeducted: true,
+        totalDue: 670,
+        amountDue: 570,
+        // El cajero pagó los premios: la ganancia del que liquida es el subtotal.
+        profit: 670,
+        prizeChipsToRecover: 50
+      });
+    });
+
+    it('las fichas retiradas vuelven al admin que liquida', async () => {
+      (usersRepository.findById as jest.Mock).mockImplementation((id: string) =>
+        Promise.resolve(id === 'admin-1' ? admin : adminCashier)
+      );
+      repo.getPeriodFlows.mockResolvedValue({ chipsDelivered: 1000, totalSales: 900, totalPrizes: 50 });
+      (balancesRepository.findByUserIdWithLock as jest.Mock).mockImplementation((id: string) =>
+        Promise.resolve({ userId: id, chipBalance: id === 'cashier-1' ? 150 : 5000 })
+      );
+
+      await domain.createSettlement('admin-1', 'cashier-1', {
+        periodEnd: periodEnd.toISOString(),
+        chipsLeft: 40
+      });
+
+      // 50 de premios + 60 no vendidas retiradas.
+      expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', -50, expect.anything());
+      expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('admin-1', 50, expect.anything());
+      expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', -60, expect.anything());
+      expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('admin-1', 60, expect.anything());
+      expect(repo.createSettlement).toHaveBeenCalledWith(
+        expect.objectContaining({ createdBy: 'admin-1', prizesDeducted: false }),
+        expect.anything()
+      );
+    });
+
+    it('al anular, las fichas se le descuentan al admin que liquidó', async () => {
+      const settlement = makeSettlement({ id: 'settlement-9', createdBy: 'admin-1' });
+      (usersRepository.findById as jest.Mock).mockImplementation((id: string) =>
+        Promise.resolve(id === 'admin-1' ? admin : adminCashier)
+      );
+      repo.findSettlementById.mockResolvedValue(settlement);
+      repo.findLastSettlement.mockResolvedValue(settlement);
+      repo.findSettlementChipMovements.mockResolvedValue([
+        { id: 'm1', userId: 'cashier-1', amount: -80, key: 'settlement:settlement-9:prizes' }
+      ]);
+      repo.markSettlementCanceled.mockResolvedValue({ ...settlement, status: SettlementStatus.CANCELED });
+      (balancesRepository.findByUserIdWithLock as jest.Mock).mockImplementation((id: string) =>
+        Promise.resolve({ userId: id, chipBalance: id === 'admin-1' ? 30 : 10 })
+      );
+
+      // El admin no tiene las 80 fichas para devolver.
+      await expect(domain.cancelSettlement('admin-1', 'settlement-9')).rejects.toMatchObject({
+        statusCode: 400,
+        code: ErrorCode.INSUFFICIENT_BALANCE
+      });
+
+      (balancesRepository.findByUserIdWithLock as jest.Mock).mockImplementation((id: string) =>
+        Promise.resolve({ userId: id, chipBalance: id === 'admin-1' ? 500 : 10 })
+      );
+      await domain.cancelSettlement('admin-1', 'settlement-9');
+      expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('admin-1', -80, expect.anything());
+      expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', 80, expect.anything());
     });
   });
 });

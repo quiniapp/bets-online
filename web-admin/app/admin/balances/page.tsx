@@ -12,7 +12,7 @@ import { useDebounce } from "@/hooks/useDebounce"
 import { apiService } from "@/services/api.service"
 import { useToast } from "@/hooks/use-toast"
 import { Plus, Minus, Search, DollarSign, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
-import { UserStatus, type User, type Balance } from "helper"
+import { UserRole, UserStatus, type User, type Balance } from "helper"
 import { formatChips } from "@/lib/utils"
 
 const ITEMS_PER_PAGE = 10
@@ -264,10 +264,16 @@ export default function AdminBalances() {
                     />
                   </div>
 
+                  {selectedUser.role === UserRole.ADMIN && (
+                    <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                      Las fichas a un administrador se venden desde Finanzas → Vender fichas.
+                    </p>
+                  )}
+
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleBalanceAdjustment("add")}
-                      disabled={!adjustmentAmount || !adjustmentReason || adjusting}
+                      disabled={!adjustmentAmount || !adjustmentReason || adjusting || selectedUser.role === UserRole.ADMIN}
                       className="flex-1"
                     >
                       {adjusting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}

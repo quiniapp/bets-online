@@ -19,7 +19,8 @@ import { cashierAccountsController } from './cashier-accounts.controller';
 const router = Router();
 
 router.use(authMiddleware);
-router.use(requireRole(UserRole.OWNER));
+// El owner y los admins liquidan a los cajeros que tienen a cargo.
+router.use(requireRole(UserRole.OWNER, UserRole.ADMIN));
 
 // Cuenta corriente a una fecha de corte y cuenta del owner. Declaradas antes de '/:id'
 // para que "period" y "owner" no se interpreten como uuid de cajero.

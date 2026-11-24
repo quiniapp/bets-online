@@ -5,10 +5,14 @@
  *   APP_ENV=development npx ts-node -T src/scripts/seed-liquidaciones-demo.ts           # crear
  *   APP_ENV=development npx ts-node -T src/scripts/seed-liquidaciones-demo.ts --clean   # borrar
  *
- * Crea, bajo el owner, el cajero `demo_cajero` (comisión 20 %) con 5 jugadores.
- * La semana es la de domingo a sábado que termina ayer: el domingo recibe
- * 60.000 fichas y para el sábado vendió 50.000 a sus jugadores. Queda sin
- * liquidar, para probar la pestaña "Cuenta corriente".
+ * Crea, bajo el owner, varios cajeros demo con sus jugadores. En los 7 días
+ * que terminan ayer, el owner les carga fichas, ellos las venden a sus
+ * jugadores y a algunos jugadores les retiran fichas de premios. Queda sin
+ * liquidar, para probar la pestaña "Liquidar".
+ *
+ * Es aditivo: los cajeros demo que ya existen se saltean (no se tocan sus
+ * movimientos ni sus liquidaciones), así que se puede volver a correr para
+ * sumar los cajeros nuevos del plan.
  *
  * Usa los mismos dominios que el backoffice (usuarios, fichas, comisión), así
  * que saldos y movimientos quedan consistentes. Después corrige las fechas
@@ -36,28 +40,83 @@ type Op =
 
 interface CashierPlan {
   name: string;
+  /** Prefijo de los jugadores: `demo_<playerPrefix><n>` */
+  playerPrefix: string;
   percentage: number;
   players: number;
   week: Op[];
 }
 
-// day: 0 = domingo … 6 = sábado.
-const PLAN: CashierPlan = {
-  name: 'cajero',
-  percentage: 20,
-  players: 5,
-  week: [
-    { day: 0, hour: 10, kind: 'deliver', amount: 60000 },
-    { day: 1, hour: 15, kind: 'sell', player: 1, amount: 8000 },
-    { day: 2, hour: 19, kind: 'sell', player: 2, amount: 6000 },
-    { day: 3, hour: 21, kind: 'sell', player: 3, amount: 9000 },
-    { day: 4, hour: 18, kind: 'sell', player: 4, amount: 7000 },
-    { day: 5, hour: 22, kind: 'sell', player: 5, amount: 12000 },
-    { day: 6, hour: 17, kind: 'sell', player: 1, amount: 8000 }
-  ]
-};
+// day: 0 = primer día de la ventana (hace 7 días) … 6 = ayer.
+// Un premio nunca supera las fichas que el jugador tiene en ese momento.
+const PLANS: CashierPlan[] = [
+  {
+    name: 'cajero',
+    playerPrefix: 'jugador',
+    percentage: 20,
+    players: 5,
+    week: [
+      { day: 0, hour: 10, kind: 'deliver', amount: 60000 },
+      { day: 1, hour: 15, kind: 'sell', player: 1, amount: 8000 },
+      { day: 2, hour: 19, kind: 'sell', player: 2, amount: 6000 },
+      { day: 3, hour: 21, kind: 'sell', player: 3, amount: 9000 },
+      { day: 4, hour: 18, kind: 'sell', player: 4, amount: 7000 },
+      { day: 5, hour: 22, kind: 'sell', player: 5, amount: 12000 },
+      { day: 6, hour: 17, kind: 'sell', player: 1, amount: 8000 }
+    ]
+  },
+  {
+    // Vende casi todo y paga dos premios.
+    name: 'cajero_norte',
+    playerPrefix: 'norte_j',
+    percentage: 20,
+    players: 4,
+    week: [
+      { day: 0, hour: 9, kind: 'deliver', amount: 40000 },
+      { day: 0, hour: 20, kind: 'sell', player: 1, amount: 10000 },
+      { day: 1, hour: 21, kind: 'sell', player: 2, amount: 7500 },
+      { day: 2, hour: 22, kind: 'prize', player: 1, amount: 6000 },
+      { day: 3, hour: 19, kind: 'sell', player: 3, amount: 9000 },
+      { day: 4, hour: 9, kind: 'deliver', amount: 15000 },
+      { day: 4, hour: 23, kind: 'sell', player: 4, amount: 12000 },
+      { day: 5, hour: 21, kind: 'prize', player: 3, amount: 4500 },
+      { day: 6, hour: 20, kind: 'sell', player: 2, amount: 8000 }
+    ]
+  },
+  {
+    // Comisión baja, muchas ventas chicas, un premio grande.
+    name: 'cajero_sur',
+    playerPrefix: 'sur_j',
+    percentage: 15,
+    players: 6,
+    week: [
+      { day: 0, hour: 11, kind: 'deliver', amount: 30000 },
+      { day: 1, hour: 18, kind: 'sell', player: 1, amount: 3000 },
+      { day: 1, hour: 22, kind: 'sell', player: 2, amount: 2500 },
+      { day: 2, hour: 20, kind: 'sell', player: 3, amount: 4000 },
+      { day: 3, hour: 21, kind: 'sell', player: 4, amount: 5000 },
+      { day: 3, hour: 23, kind: 'sell', player: 5, amount: 3500 },
+      { day: 4, hour: 22, kind: 'prize', player: 4, amount: 4800 },
+      { day: 5, hour: 19, kind: 'sell', player: 6, amount: 6000 },
+      { day: 6, hour: 21, kind: 'sell', player: 1, amount: 2000 }
+    ]
+  },
+  {
+    // Vende poco: le quedan muchas fichas sin vender. Sin premios.
+    name: 'cajero_centro',
+    playerPrefix: 'centro_j',
+    percentage: 25,
+    players: 3,
+    week: [
+      { day: 1, hour: 10, kind: 'deliver', amount: 25000 },
+      { day: 2, hour: 21, kind: 'sell', player: 1, amount: 5000 },
+      { day: 4, hour: 20, kind: 'sell', player: 2, amount: 4000 },
+      { day: 6, hour: 22, kind: 'sell', player: 3, amount: 3000 }
+    ]
+  }
+];
 
-/** La semana de domingo a sábado que termina ayer (los 7 días previos a hoy). */
+/** Los 7 días previos a hoy (de hace 7 días a ayer). */
 function week(now = new Date()) {
   const end = new Date(now);
   end.setHours(0, 0, 0, 0);
@@ -138,30 +197,48 @@ async function clean() {
   console.log(`Borrados ${ids.length} usuarios demo_ con sus movimientos y liquidaciones.`);
 }
 
-async function seed() {
-  const existing = await findDemoUserIds();
-  if (existing.length > 0) {
-    throw new Error(
-      `Ya hay ${existing.length} usuarios demo_. Corré primero con --clean para empezar de cero.`
-    );
+async function findUserId(username: string): Promise<string | null> {
+  const rows = await sequelize.query<{ id: string }>(`SELECT id FROM users WHERE username = :username`, {
+    replacements: { username },
+    type: QueryTypes.SELECT
+  });
+  return rows[0]?.id ?? null;
+}
+
+/** Valores esperados de un plan, para comparar con la pestaña Liquidar. */
+function expected(plan: CashierPlan) {
+  const sum = (kind: Op['kind']) =>
+    plan.week.filter(op => op.kind === kind).reduce((acc, op) => acc + op.amount, 0);
+  const delivered = sum('deliver');
+  const sales = sum('sell');
+  const prizes = sum('prize');
+  const commission = (sales * plan.percentage) / 100;
+  const n = (value: number) => value.toLocaleString('es-AR');
+  return (
+    `entregadas ${n(delivered)} · venta ${n(sales)} · premios ${n(prizes)} · ` +
+    `comisión ${n(commission)} · subtotal ${n(sales - commission)} · ` +
+    `balance ${n(delivered - sales + prizes)} (no vendidas ${n(delivered - sales)})`
+  );
+}
+
+async function seedCashier(ownerId: string, plan: CashierPlan, start: Date): Promise<boolean> {
+  const username = `${PREFIX}${plan.name}`;
+  if (await findUserId(username)) {
+    console.log(`= ${username}: ya existe, se saltea.`);
+    return false;
   }
 
-  const owner = await usersRepository.findOwner();
-  if (!owner) throw new Error('No hay ningún usuario OWNER en esta base.');
-
-  const { start, end } = week();
-
-  const cashier = await usersDomain.createUser(owner.id, {
+  const cashier = await usersDomain.createUser(ownerId, {
     role: UserRole.CASHIER,
-    username: `${PREFIX}${PLAN.name}`,
+    username,
     password: PASSWORD,
     firstName: 'Demo',
-    lastName: 'Cajero'
+    lastName: plan.name
   });
 
-  await cashierAccountsDomain.updateCompensation(owner.id, cashier.id, {
+  await cashierAccountsDomain.updateCompensation(ownerId, cashier.id, {
     type: CompensationType.PERCENTAGE,
-    percentage: PLAN.percentage
+    percentage: plan.percentage
   });
   // La comisión tiene que estar vigente desde antes de la semana.
   const modeFrom = new Date(start.getTime() - 24 * 60 * 60 * 1000);
@@ -172,27 +249,36 @@ async function seed() {
   );
 
   const players: string[] = [];
-  for (let i = 1; i <= PLAN.players; i += 1) {
+  for (let i = 1; i <= plan.players; i += 1) {
     const player = await usersDomain.createUser(cashier.id, {
       role: UserRole.PLAYER,
-      username: `${PREFIX}jugador${i}`,
+      username: `${PREFIX}${plan.playerPrefix}${i}`,
       password: PASSWORD
     });
     players.push(player.id);
   }
 
-  await runOps(owner.id, cashier.id, players, PLAN.week, start);
+  await runOps(ownerId, cashier.id, players, plan.week, start);
+
+  console.log(
+    `+ ${username} (${plan.percentage} %) con ${PREFIX}${plan.playerPrefix}1..${plan.players}\n    ${expected(plan)}`
+  );
+  return true;
+}
+
+async function seed() {
+  const owner = await usersRepository.findOwner();
+  if (!owner) throw new Error('No hay ningún usuario OWNER en esta base.');
+
+  const { start, end } = week();
+  let created = 0;
+  for (const plan of PLANS) {
+    if (await seedCashier(owner.id, plan, start)) created += 1;
+  }
 
   console.log(`
-Listo. Cajero ${PREFIX}${PLAN.name} y jugadores ${PREFIX}jugador1..${PLAN.players}
-(contraseña ${PASSWORD}) bajo el owner "${owner.username}".
-
-Semana: ${fmt(start)} al ${fmt(end)} — elegí ese rango en "Cuenta corriente".
-
-Valores esperados:
-  comisión 20 %   entregadas 60.000 · venta de fichas 50.000 · premios 0
-  comisión 10.000 · subtotal 40.000 · saldo ant. 0 · total 40.000
-  fichas del cajero 10.000 → no vendidas 10.000 (deje por defecto: todas)
+${created === 0 ? 'No había cajeros nuevos para crear.' : `Listo: ${created} cajero(s) nuevo(s)`} bajo el owner "${owner.username}".
+Movimientos del ${fmt(start)} al ${fmt(end)}. Contraseña de todos los usuarios demo: ${PASSWORD}.
 `);
 }
 

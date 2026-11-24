@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CompensationType, SettlementStatus } from '../types';
+import { AdminChipPurchaseStatus, CompensationType, SettlementStatus } from '../types';
 
 /**
  * Update the active compensation mode of a cashier.
@@ -7,7 +7,9 @@ import { CompensationType, SettlementStatus } from '../types';
  */
 export const updateCashierCompensationSchema = z.object({
   type: z.nativeEnum(CompensationType),
-  percentage: z.number().min(0).max(100)
+  percentage: z.number().min(0).max(100),
+  /** Los premios se descuentan del subtotal. Si se omite, se mantiene el vigente. */
+  prizesAffectSubtotal: z.boolean().optional()
 }).refine(data => data.type === CompensationType.PERCENTAGE, {
   message: 'Only PERCENTAGE compensation is supported',
   path: ['type']
@@ -134,4 +136,50 @@ export const updateCashierDailyAccountSchema = z.object({
   leave: z.number().finite().optional()
 }).refine(data => Object.values(data).some(value => value !== undefined), {
   message: 'At least one field is required'
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Compra de fichas de admins (owner → admin)
+// ───────────────────────────────────────────────────────────────────────────
+
+const adminChipPriceTierSchema = z.object({
+  minChips: z.number().finite().positive(),
+  percentage: z.number().finite().min(0).max(100)
+});
+
+/**
+ * Tramos de precio de un admin. Cantidades mínimas distintas.
+ */
+export const updateAdminChipPricingSchema = z.object({
+  tiers: z.array(adminChipPriceTierSchema).min(1).max(20)
+}).refine(
+  data => new Set(data.tiers.map(tier => tier.minChips)).size === data.tiers.length,
+  { message: 'Cada tramo debe tener una cantidad mínima distinta', path: ['tiers'] }
+);
+
+/**
+ * Cargar fichas a un admin. `percentage` es obligatorio si la carga es menor
+ * al primer tramo del admin (lo valida el dominio) e ignorado si no.
+ */
+export const createAdminChipPurchaseSchema = z.object({
+  adminId: z.string().uuid(),
+  chips: z.number().finite().positive(),
+  percentage: z.number().finite().min(0).max(100).optional(),
+  notes: z.string().max(1000).optional(),
+  idempotencyKey: z.string().max(255).optional()
+});
+
+export const confirmAdminChipPurchaseSchema = z.object({
+  paymentReference: z.string().max(255).optional()
+});
+
+export const cancelAdminChipPurchaseSchema = z.object({
+  reason: z.string().max(1000).optional()
+});
+
+export const adminChipPurchaseListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional(),
+  adminId: z.string().uuid().optional(),
+  status: z.nativeEnum(AdminChipPurchaseStatus).optional()
 });

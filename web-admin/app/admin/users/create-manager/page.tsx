@@ -5,25 +5,17 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Save, Shield } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { apiService } from "@/services/api.service";
 import { useToast } from "@/hooks/use-toast";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { useChips } from "@/hooks/useChips";
-import { useAuth } from "@/contexts/auth-context";
-import { UserRole } from "helper";
 
-const PRESET_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 export default function CreateAdminPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { balance, loadBalance } = useChips();
-  const { role: myRole } = useAuth();
-  const isOwner = myRole === UserRole.OWNER;
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -32,14 +24,11 @@ export default function CreateAdminPage() {
     lastName: "",
     password: "",
     confirmPassword: "",
-    initialBalance: "",
-    commissionPercentage: "",
   });
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [passwordValid, setPasswordValid] = useState(false);
 
-  useState(() => { loadBalance(); });
 
   const handleBlur = (field: string) => setTouched(prev => ({ ...prev, [field]: true }));
 
@@ -65,22 +54,13 @@ export default function CreateAdminPage() {
   const emailValidation = validateEmail(formData.email);
   const confirmValidation = validateConfirmPassword(formData.confirmPassword);
 
-  const parsedBalance = parseFloat(formData.initialBalance) || 0;
-  const maxBalance = balance?.chipBalance ?? 0;
-  const balanceExceeds = !isOwner && parsedBalance > maxBalance;
 
-  const commissionInput = formData.commissionPercentage.trim().replace(',', '.');
-  const parsedCommission = commissionInput === '' ? null : Number(commissionInput);
-  const commissionInvalid =
-    parsedCommission !== null && (!Number.isFinite(parsedCommission) || parsedCommission < 0 || parsedCommission > 100);
 
   const isFormValid =
     usernameValidation.state === 'valid' &&
     (emailValidation.state === 'valid' || emailValidation.state === 'neutral') &&
     passwordValid &&
-    confirmValidation.state === 'valid' &&
-    !balanceExceeds &&
-    !commissionInvalid;
+    confirmValidation.state === 'valid';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,8 +79,6 @@ export default function CreateAdminPage() {
       if (formData.email.trim()) payload.email = formData.email;
       if (formData.firstName.trim()) payload.firstName = formData.firstName;
       if (formData.lastName.trim()) payload.lastName = formData.lastName;
-      if (parsedBalance > 0) payload.initialBalance = parsedBalance;
-      if (parsedCommission !== null) payload.commissionPercentage = parsedCommission;
 
       const response = await apiService.post('/users', payload);
       if (response.success) {
@@ -202,66 +180,10 @@ export default function CreateAdminPage() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>
-                Saldo inicial (opcional)
-                {!isOwner && balance && (
-                  <span className="ml-2 text-xs text-muted-foreground">Tu saldo: ${balance.chipBalance.toLocaleString('es-AR')}</span>
-                )}
-              </Label>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
-                {PRESET_AMOUNTS.map(preset => (
-                  <Button
-                    key={preset}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="text-xs font-semibold px-1"
-                    onClick={() => {
-                      const current = parseFloat(formData.initialBalance.replace(',', '.')) || 0;
-                      setFormData(p => ({ ...p, initialBalance: String(current + preset) }));
-                    }}
-                  >
-                    +{preset.toLocaleString('es-AR')}
-                  </Button>
-                ))}
-              </div>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.initialBalance}
-                onChange={e => setFormData(p => ({ ...p, initialBalance: e.target.value }))}
-                placeholder="0.00"
-                className={balanceExceeds ? "border-red-500" : ""}
-              />
-              {balanceExceeds && (
-                <p className="text-sm text-red-500">El saldo inicial no puede superar tu saldo disponible</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="commission-percentage">Comisión (%) (opcional)</Label>
-              <Input
-                id="commission-percentage"
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                inputMode="decimal"
-                value={formData.commissionPercentage}
-                onChange={e => setFormData(p => ({ ...p, commissionPercentage: e.target.value }))}
-                placeholder="Ej: 20"
-                className={commissionInvalid ? "border-red-500" : ""}
-              />
-              {commissionInvalid ? (
-                <p className="text-sm text-red-500">Ingresá un porcentaje entre 0 y 100</p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Porcentaje sobre la venta de fichas que se queda el administrador.
-                </p>
-              )}
-            </div>
+            <p className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+              El administrador no cobra comisión: compra las fichas al owner a precio diferencial
+              (Finanzas → Vender fichas, con comprobante y pago pendiente) y se las vende a sus cajeros.
+            </p>
           </CardContent>
         </Card>
 

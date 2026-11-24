@@ -164,13 +164,19 @@ export function CashierSettlementDialog({ accounts, cutoffLabel, submitting, onC
               <dd className="text-right tabular-nums">{money(single.preview.totalSales)}</dd>
               <dt className="text-muted-foreground">Comisión</dt>
               <dd className="text-right tabular-nums">− {money(single.preview.commission)}</dd>
+              {single.preview.prizesDeducted && (
+                <>
+                  <dt className="text-muted-foreground">Premios</dt>
+                  <dd className="text-right tabular-nums">− {money(single.preview.totalPrizes)}</dd>
+                </>
+              )}
               <dt className="text-muted-foreground">Subtotal</dt>
               <dd className="text-right tabular-nums">{money(single.preview.subtotal)}</dd>
               <dt className="text-muted-foreground">Saldo anterior</dt>
               <dd className="text-right tabular-nums">{money(single.preview.previousDebt)}</dd>
               {single.preview.onAccountCollected !== 0 && (
                 <>
-                  <dt className="text-muted-foreground">Cobros a cuenta</dt>
+                  <dt className="text-muted-foreground">Cobro (a cuenta)</dt>
                   <dd className="text-right tabular-nums">− {money(single.preview.onAccountCollected)}</dd>
                 </>
               )}

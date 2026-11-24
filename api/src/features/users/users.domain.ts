@@ -14,13 +14,15 @@ import { balancesRepository } from '../chips/balances.repository';
 import { sessionsRepository } from '../auth/sessions.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
-import { chipsDomain } from '../chips/chips.domain';
+import { ADMIN_LOAD_BLOCKED_MESSAGE, chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
 import { cashierAccountsRepository } from '../cashier-accounts/cashier-accounts.repository';
 
 /** Roles que cobran comisión sobre la venta de fichas. */
-const COMMISSION_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.CASHIER];
+// Solo el cajero cobra comisión por venta de fichas. El admin no: compra las
+// fichas al owner a precio diferencial (admin-chip-purchases) y se las vende a sus cajeros.
+const COMMISSION_ROLES: UserRole[] = [UserRole.CASHIER];
 
 export class UsersDomain {
   async createUser(
@@ -57,8 +59,13 @@ export class UsersDomain {
       throw new AppError(
         400,
         ErrorCode.INVALID_INPUT,
-        'Solo los administradores y los cajeros tienen comisión'
+        'Solo los cajeros tienen comisión'
       );
+    }
+
+    // Al admin no se le cargan fichas sueltas: se le venden con precio y deuda.
+    if (userData.role === UserRole.ADMIN && userData.initialBalance && userData.initialBalance > 0) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, ADMIN_LOAD_BLOCKED_MESSAGE);
     }
 
     // Validate initial balance against creator's available balance before creating user
@@ -88,6 +95,7 @@ export class UsersDomain {
         cashierId: user.id,
         type: CompensationType.PERCENTAGE,
         percentage: Math.round(commission * 100) / 100,
+        prizesAffectSubtotal: false,
         activeFrom: new Date()
       });
     }

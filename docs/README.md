@@ -9,7 +9,7 @@
 | [environment-variables.md](./environment-variables.md) | Todas las variables de `api`, `web` y `web-admin`; local, CI, Railway, Vercel; conexión a Supabase |
 | [deployment.md](./deployment.md) | Topología, Railway, Vercel, qué hace cada workflow de GitHub Actions, branch protection, checklist de entorno nuevo |
 | [frontend.md](./frontend.md) | `web` vs `web-admin`, estructura, `api.service` (CSRF, cookies), cómo agregar páginas |
-| [cuentas-corrientes-cajeros.md](./cuentas-corrientes-cajeros.md) | Cuentas corrientes de cajeros: comisión, liquidaciones, pagos, API y operación |
+| [cuentas-corrientes-cajeros.md](./cuentas-corrientes-cajeros.md) | Liquidaciones admin → cajeros (comisión, premios, cobros) y compra de fichas owner → admin (precio por tramos, comprobante, pago) |
 | [../api/src/persistence/migrations/README.md](../api/src/persistence/migrations/README.md) | Migraciones y seeds con Sequelize CLI |
 | [../api/src/config/README.md](../api/src/config/README.md) | Cómo la API carga y valida su configuración |
 | [../.github/README.md](../.github/README.md) | Workflows y template de PR |
@@ -20,6 +20,7 @@
 | Doc | Qué cubre |
 |---|---|
 | [rfc8785-hmac-sha256.md](./rfc8785-hmac-sha256.md) | Canonicalización JSON + HMAC usada en los callbacks de 21Viral |
+| [21viral/README.md](./21viral/README.md) | Operator API **v1.23**: PDF original, texto extraído, endpoints, cambios vs. v1.20 y estado en el repo |
 | [21viral-configuracion-operador.md](./21viral-configuracion-operador.md) | Qué se configura de nuestro lado vs. del lado de 21Viral; gap analysis y pedidos al account manager |
 
 ## Informes
