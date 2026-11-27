@@ -244,18 +244,24 @@ export class CashierAccountsDomain {
     const cashiers = await this.getSettlerCashiers(requesterId);
     const accounts: CashierPeriodAccount[] = [];
     for (const cashier of cashiers) {
-      const lastSettlement = await cashierAccountsRepository.findLastSettlement(cashier.id);
+      const [lastSettlement, currentMode] = await Promise.all([
+        cashierAccountsRepository.findLastSettlement(cashier.id),
+        cashierAccountsRepository.findCompensationMode(cashier.id)
+      ]);
+      const prizesAffectSubtotal = currentMode?.prizesAffectSubtotal ?? false;
       if (lastSettlement && lastSettlement.periodEnd >= cutoff) {
         accounts.push({
           preview: this.previewFromSettlement(cashier, lastSettlement),
-          settlement: lastSettlement
+          settlement: lastSettlement,
+          prizesAffectSubtotal
         });
         continue;
       }
       const start = await this.resolvePeriodStart(cashier.id, cutoff, lastSettlement);
       accounts.push({
         preview: await this.buildLivePreview(cashier, start, cutoff, lastSettlement),
-        settlement: null
+        settlement: null,
+        prizesAffectSubtotal
       });
     }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,7 @@ import {
 } from "@/hooks/useCashierPeriodAccounts"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
-import { CheckCircle2, Download, FileArchive, FileText, HandCoins, Loader2, Percent, RefreshCw, Trophy } from "lucide-react"
+import { CheckCircle2, Download, FileArchive, FileText, HandCoins, Loader2, Percent, RefreshCw } from "lucide-react"
 import { settlementCollectionAmount } from "helper"
 import type { CashierPeriodAccount, CashierSettlement } from "helper"
 
@@ -75,7 +76,8 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
   const [collectionTarget, setCollectionTarget] = useState<CollectionTarget | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<ConfirmCollectionTarget | null>(null)
   const [exportingSettlements, setExportingSettlements] = useState(false)
-  const [prizesAllOpen, setPrizesAllOpen] = useState(false)
+  /** Valor a aplicar en todos los cajeros mientras se confirma el cambio del switch. */
+  const [prizesAllTarget, setPrizesAllTarget] = useState<boolean | null>(null)
   const [prizesAllSaving, setPrizesAllSaving] = useState(false)
 
   useEffect(() => {
@@ -200,17 +202,17 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
     }
   }
 
-  /** Cajeros con comisión configurada que todavía no descuentan los premios del subtotal. */
-  const withoutPrizes = accounts.filter(
-    ({ preview }) => preview.compensation && !preview.compensation.prizesAffectSubtotal
-  ).length
+  /** Solo los cajeros con comisión configurada pueden tener premios en el subtotal. */
+  const withCommission = accounts.filter(({ preview }) => preview.compensation)
+  const prizesOnAll =
+    withCommission.length > 0 && withCommission.every(account => account.prizesAffectSubtotal)
 
-  const enablePrizesForAll = async () => {
+  const setPrizesForAll = async (enabled: boolean) => {
     setPrizesAllSaving(true)
     try {
       const response = await apiService.put<{ updated: number; unchanged: number; skipped: number }>(
         "/cashier-accounts/compensation/prizes-affect-subtotal",
-        { enabled: true }
+        { enabled }
       )
       if (!response.success || !response.data) {
         toast({
@@ -222,10 +224,10 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
       }
       const { updated, skipped } = response.data
       toast({
-        title: `Premios en el subtotal: ${updated} cajero(s) actualizado(s)`,
+        title: `Premios en el subtotal ${enabled ? "activados" : "desactivados"}: ${updated} cajero(s)`,
         description: skipped > 0 ? `${skipped} sin comisión configurada, no se modificaron.` : undefined
       })
-      setPrizesAllOpen(false)
+      setPrizesAllTarget(null)
       await reload()
       onChanged?.()
     } catch (err) {
@@ -298,16 +300,17 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
             {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
             Actualizar
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPrizesAllOpen(true)}
-            disabled={loading || withoutPrizes === 0}
-            title="Activar en todos los cajeros que los premios se descuenten del subtotal"
+          <label
+            className="flex h-9 items-center gap-2 rounded-md border px-3 text-sm"
+            title="Descontar los premios del subtotal en todos los cajeros"
           >
-            <Trophy className="mr-1 h-4 w-4" />
+            <Switch
+              checked={prizesOnAll}
+              onCheckedChange={checked => setPrizesAllTarget(checked)}
+              disabled={loading || prizesAllSaving || withCommission.length === 0}
+            />
             Premios en todos
-          </Button>
+          </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -403,18 +406,19 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
                         {preview.compensation
                           ? `${preview.compensation.percentage ?? 0}% comisión`
                           : "sin comisión"}
-                        {preview.compensation?.prizesAffectSubtotal && (
+                        {" · "}
+                        {account.prizesAffectSubtotal ? (
                           <span
-                            className="ml-1 rounded bg-violet-100 px-1 font-semibold text-violet-700"
+                            className="font-semibold text-violet-500"
                             title="Los premios se descuentan del subtotal"
                           >
                             Premio
                           </span>
+                        ) : settlement ? (
+                          <>liquidado {shortDate(settlement.periodStart)} al {shortDate(settlement.periodEnd)}</>
+                        ) : (
+                          <>desde {shortDate(preview.periodStart)}</>
                         )}
-                        {" · "}
-                        {settlement
-                          ? <>liquidado {shortDate(settlement.periodStart)} al {shortDate(settlement.periodEnd)}</>
-                          : <>desde {shortDate(preview.periodStart)}</>}
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums">{chips(preview.chipBalance)}</td>
@@ -522,14 +526,20 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
         onChanged={refreshAfterCollection}
       />
 
-      <AlertDialog open={prizesAllOpen} onOpenChange={open => { if (!prizesAllSaving) setPrizesAllOpen(open) }}>
+      <AlertDialog
+        open={prizesAllTarget !== null}
+        onOpenChange={open => { if (!open && !prizesAllSaving) setPrizesAllTarget(null) }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Descontar los premios del subtotal en todos los cajeros?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {prizesAllTarget
+                ? "¿Descontar los premios del subtotal en todos los cajeros?"
+                : "¿Dejar de descontar los premios del subtotal en todos los cajeros?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Se activa en los cajeros que hoy no lo tienen y cada uno mantiene su % de comisión.
-              Aplica a lo que todavía no está liquidado; las liquidaciones ya hechas no cambian. Los cajeros
-              sin comisión configurada no se modifican.
+              Cada cajero mantiene su % de comisión. Aplica a lo que todavía no está liquidado; las
+              liquidaciones ya hechas no cambian. Los cajeros sin comisión configurada no se modifican.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -538,11 +548,11 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
               disabled={prizesAllSaving}
               onClick={e => {
                 e.preventDefault()
-                enablePrizesForAll()
+                if (prizesAllTarget !== null) setPrizesForAll(prizesAllTarget)
               }}
             >
               {prizesAllSaving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-              Activar en todos
+              {prizesAllTarget ? "Activar en todos" : "Desactivar en todos"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

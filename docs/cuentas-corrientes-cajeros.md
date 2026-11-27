@@ -119,11 +119,12 @@ Pestañas:
    vendidas); si hay uno solo, la ventana muestra su detalle. **Exportar diario**
    descarga el PDF "Casino - Parte diario" de todos los cajeros al corte, y
    **Exportar liquidaciones** un .zip con el comprobante de la última liquidación
-   (no cancelada) de cada cajero. **Premios en todos** (al lado de Actualizar)
-   activa en todos los cajeros con comisión que los premios se descuenten del
-   subtotal, manteniendo su %; los que no tienen comisión no se tocan. Debajo del
-   nombre, junto al %, la etiqueta **Premio** marca a los cajeros con premios en
-   el subtotal.
+   (no cancelada) de cada cajero. El switch **Premios en todos** (al lado de
+   Actualizar) activa o desactiva, con confirmación, en todos los cajeros con
+   comisión que los premios se descuenten del subtotal, manteniendo su %; los que
+   no tienen comisión no se tocan. Está encendido si todos lo tienen activo.
+   Debajo del nombre, junto al %, los cajeros con premios en el subtotal (según
+   su configuración vigente) muestran **Premio** en lugar de la fecha.
 2. **Historial de liquidaciones:** venta, premios, comisión, subtotal, cobrado,
    pendiente, debe y estado. **Confirmar cobro** confirma lo que el cajero pagó
    del cobro pendiente de su última liquidación. **Cancelar** anula la última liquidación del cajero y
