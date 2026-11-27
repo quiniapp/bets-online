@@ -528,6 +528,18 @@ describe('CashierAccountsDomain', () => {
       });
       expect(second.settlement?.id).toBe('settlement-9');
     });
+
+    it('informa la configuración vigente de premios, aunque la fila ya esté liquidada sin ellos', async () => {
+      repo.findLastSettlement.mockResolvedValue(
+        makeSettlement({ prizesDeducted: false, periodEnd: new Date('2026-11-22T10:00:00.000Z') })
+      );
+      repo.findCompensationMode.mockResolvedValue({ ...mode20, prizesAffectSubtotal: true });
+
+      const { accounts } = await domain.getPeriodAccounts('owner-1', periodEnd);
+
+      expect(accounts[0].preview.prizesDeducted).toBe(false);
+      expect(accounts[0].prizesAffectSubtotal).toBe(true);
+    });
   });
 
   describe('confirmSettlementCollection', () => {

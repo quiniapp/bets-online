@@ -443,6 +443,11 @@ export interface CashierSettlementPreview {
 export interface CashierPeriodAccount {
   preview: CashierSettlementPreview;
   settlement: CashierSettlement | null;
+  /**
+   * Si hoy los premios se descuentan del subtotal de este cajero (configuración
+   * vigente). Puede diferir de `preview.prizesDeducted` en una fila ya liquidada.
+   */
+  prizesAffectSubtotal: boolean;
 }
 
 /**
