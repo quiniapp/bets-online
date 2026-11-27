@@ -116,8 +116,14 @@ Pestañas:
    clic en su nombre. No hay liquidación individual: **Liquidar todos** abre una
    ventana con una fila editable por cajero (Cobro y No vendidas) para los
    cajeros con ventas, premios, entregas o deuda (no los que solo tienen fichas no
-   vendidas); si hay uno solo, la ventana muestra su detalle. **Resumen PDF** de
-   todos los cajeros al corte.
+   vendidas); si hay uno solo, la ventana muestra su detalle. **Exportar diario**
+   descarga el PDF "Casino - Parte diario" de todos los cajeros al corte, y
+   **Exportar liquidaciones** un .zip con el comprobante de la última liquidación
+   (no cancelada) de cada cajero. **Premios en todos** (al lado de Actualizar)
+   activa en todos los cajeros con comisión que los premios se descuenten del
+   subtotal, manteniendo su %; los que no tienen comisión no se tocan. Debajo del
+   nombre, junto al %, la etiqueta **Premio** marca a los cajeros con premios en
+   el subtotal.
 2. **Historial de liquidaciones:** venta, premios, comisión, subtotal, cobrado,
    pendiente, debe y estado. **Confirmar cobro** confirma lo que el cajero pagó
    del cobro pendiente de su última liquidación. **Cancelar** anula la última liquidación del cajero y
@@ -208,10 +214,12 @@ PUT  /api/cashier-accounts/:cashierId/compensation        # { type: "PERCENTAGE"
 GET  /api/cashier-accounts/:cashierId/preview?periodEnd=
 POST /api/cashier-accounts/:cashierId/settlements         # liquidar
 GET  /api/cashier-accounts/period?periodEnd=              # cuenta corriente de todos los cajeros al corte
-GET  /api/cashier-accounts/period/summary.pdf?periodEnd=
+GET  /api/cashier-accounts/period/summary.pdf?periodEnd=  # "Exportar diario" (parte diario)
+PUT  /api/cashier-accounts/compensation/prizes-affect-subtotal  # { enabled } en todos los cajeros a cargo
 GET  /api/cashier-accounts/owner?periodStart=&periodEnd=  # cuenta del owner
 GET  /api/cashier-accounts/owner/summary.pdf?periodStart=&periodEnd=
 GET  /api/cashier-accounts/settlements?status=&cashierId=&search=
+GET  /api/cashier-accounts/settlements/latest.zip     # última liquidación de cada cajero
 GET  /api/cashier-accounts/settlements/:id/receipt
 POST /api/cashier-accounts/settlements/:id/confirm-collection  # { amount?, paymentReference? }
 POST /api/cashier-accounts/settlements/:id/cancel         # { reason? }
@@ -365,5 +373,6 @@ primer tramo se ignora. Auditoría: `admin-chip-purchases.create`,
 Es la **única** forma de cargarle fichas a un admin: `POST /api/chips/sell` del
 owner a un admin y el saldo inicial al crear un admin (`initialBalance` en
 `POST /api/users`) se rechazan con `400 INVALID_INPUT`. El alta de administrador
-ya no tiene campo de saldo inicial y "Ajuste de saldos" no permite agregar a un
+(y promover un cajero a admin) es solo del owner: un admin no puede crear
+admins (`403`). Ya no tiene campo de saldo inicial y "Ajuste de saldos" no permite agregar a un
 admin (restar sí).

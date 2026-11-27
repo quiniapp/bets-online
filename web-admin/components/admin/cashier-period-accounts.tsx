@@ -4,6 +4,16 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog"
+import {
   CashierSettlementDialog,
   type SettlementValues
 } from "@/components/admin/cashier-settlement-dialog"
@@ -24,7 +34,7 @@ import {
 } from "@/hooks/useCashierPeriodAccounts"
 import { apiService } from "@/services/api.service"
 import { formatChips } from "@/lib/utils"
-import { CheckCircle2, Download, FileText, HandCoins, Loader2, Percent, RefreshCw } from "lucide-react"
+import { CheckCircle2, Download, FileArchive, FileText, HandCoins, Loader2, Percent, RefreshCw, Trophy } from "lucide-react"
 import { settlementCollectionAmount } from "helper"
 import type { CashierPeriodAccount, CashierSettlement } from "helper"
 
@@ -64,6 +74,9 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [collectionTarget, setCollectionTarget] = useState<CollectionTarget | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<ConfirmCollectionTarget | null>(null)
+  const [exportingSettlements, setExportingSettlements] = useState(false)
+  const [prizesAllOpen, setPrizesAllOpen] = useState(false)
+  const [prizesAllSaving, setPrizesAllSaving] = useState(false)
 
   useEffect(() => {
     setDialogAccounts(null)
@@ -161,13 +174,68 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
   const downloadSummary = async () => {
     try {
       const blob = await apiService.getBlob(`/cashier-accounts/period/summary.pdf?${cutoffQuery(cutoff)}`)
-      downloadBlob(blob, `cuenta-corriente-al-${cutoff}.pdf`)
+      downloadBlob(blob, `parte-diario-${cutoff}.pdf`)
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "No se pudo generar el resumen",
+        title: "No se pudo generar el parte diario",
         description: err instanceof Error ? err.message : "Error de conexión"
       })
+    }
+  }
+
+  const downloadLatestSettlements = async () => {
+    setExportingSettlements(true)
+    try {
+      const blob = await apiService.getBlob("/cashier-accounts/settlements/latest.zip")
+      downloadBlob(blob, `liquidaciones-${todayInput()}.zip`)
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "No se pudieron exportar las liquidaciones",
+        description: err instanceof Error ? err.message : "Error de conexión"
+      })
+    } finally {
+      setExportingSettlements(false)
+    }
+  }
+
+  /** Cajeros con comisión configurada que todavía no descuentan los premios del subtotal. */
+  const withoutPrizes = accounts.filter(
+    ({ preview }) => preview.compensation && !preview.compensation.prizesAffectSubtotal
+  ).length
+
+  const enablePrizesForAll = async () => {
+    setPrizesAllSaving(true)
+    try {
+      const response = await apiService.put<{ updated: number; unchanged: number; skipped: number }>(
+        "/cashier-accounts/compensation/prizes-affect-subtotal",
+        { enabled: true }
+      )
+      if (!response.success || !response.data) {
+        toast({
+          variant: "destructive",
+          title: "No se pudo actualizar a los cajeros",
+          description: response.error?.message || "Error desconocido"
+        })
+        return
+      }
+      const { updated, skipped } = response.data
+      toast({
+        title: `Premios en el subtotal: ${updated} cajero(s) actualizado(s)`,
+        description: skipped > 0 ? `${skipped} sin comisión configurada, no se modificaron.` : undefined
+      })
+      setPrizesAllOpen(false)
+      await reload()
+      onChanged?.()
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo actualizar a los cajeros",
+        description: err instanceof Error ? err.message : "Error de conexión"
+      })
+    } finally {
+      setPrizesAllSaving(false)
     }
   }
 
@@ -230,6 +298,16 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
             {loading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}
             Actualizar
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPrizesAllOpen(true)}
+            disabled={loading || withoutPrizes === 0}
+            title="Activar en todos los cajeros que los premios se descuenten del subtotal"
+          >
+            <Trophy className="mr-1 h-4 w-4" />
+            Premios en todos
+          </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -239,7 +317,19 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
             disabled={loading || !cutoff || accounts.length === 0}
           >
             <FileText className="mr-1 h-4 w-4" />
-            Resumen PDF
+            Exportar diario
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadLatestSettlements}
+            disabled={loading || exportingSettlements || accounts.length === 0}
+            title="Descargar un .zip con la última liquidación de cada cajero"
+          >
+            {exportingSettlements
+              ? <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              : <FileArchive className="mr-1 h-4 w-4" />}
+            Exportar liquidaciones
           </Button>
           <Button
             size="sm"
@@ -256,7 +346,7 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
       <p className="text-xs text-muted-foreground">
         Cada cajero se liquida desde su última liquidación (o su primer movimiento) hasta la fecha de corte.
         Balance = fichas que tiene el cajero · Comisión sobre la venta de fichas · Subtotal = venta − comisión
-        (− premios en los cajeros marcados con <span className="font-semibold">P</span>) · Cobro = cobros a cuenta
+        (− premios en los cajeros marcados con <span className="font-semibold">Premio</span>) · Cobro = cobros a cuenta
         de la semana (botón Cobro) · Total = saldo anterior + subtotal − cobro. El cobro que fijás al liquidar
         queda pendiente hasta que confirmes que el cajero pagó. Al liquidar se le retiran las fichas de premios
         y, de las no vendidas, lo que no se le deje.
@@ -313,12 +403,12 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
                         {preview.compensation
                           ? `${preview.compensation.percentage ?? 0}% comisión`
                           : "sin comisión"}
-                        {preview.prizesDeducted && (
+                        {preview.compensation?.prizesAffectSubtotal && (
                           <span
                             className="ml-1 rounded bg-violet-100 px-1 font-semibold text-violet-700"
                             title="Los premios se descuentan del subtotal"
                           >
-                            P
+                            Premio
                           </span>
                         )}
                         {" · "}
@@ -431,6 +521,32 @@ export function CashierPeriodAccounts({ onChanged, onCompensation, onDetail }: P
         onClose={() => setCollectionTarget(null)}
         onChanged={refreshAfterCollection}
       />
+
+      <AlertDialog open={prizesAllOpen} onOpenChange={open => { if (!prizesAllSaving) setPrizesAllOpen(open) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Descontar los premios del subtotal en todos los cajeros?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se activa en los cajeros que hoy no lo tienen y cada uno mantiene su % de comisión.
+              Aplica a lo que todavía no está liquidado; las liquidaciones ya hechas no cambian. Los cajeros
+              sin comisión configurada no se modifican.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={prizesAllSaving}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={prizesAllSaving}
+              onClick={e => {
+                e.preventDefault()
+                enablePrizesForAll()
+              }}
+            >
+              {prizesAllSaving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+              Activar en todos
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConfirmCollectionDialog
         target={confirmTarget}

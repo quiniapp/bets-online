@@ -45,6 +45,15 @@ export class UsersDomain {
       );
     }
 
+    // Solo el owner da de alta administradores.
+    if (userData.role === UserRole.ADMIN && creator.role !== UserRole.OWNER) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Solo el owner puede crear administradores'
+      );
+    }
+
     // Validate that creator can create this type of user
     if (!canManageUser(creator.role, userData.role)) {
       throw new AppError(
@@ -326,11 +335,12 @@ export class UsersDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Requester not found');
     }
 
-    if (requester.role !== UserRole.OWNER && requester.role !== UserRole.ADMIN) {
+    // Promover crea un administrador, y eso solo lo hace el owner.
+    if (requester.role !== UserRole.OWNER) {
       throw new AppError(
         403,
         ErrorCode.INSUFFICIENT_PERMISSIONS,
-        'Solo un administrador puede promover cajeros'
+        'Solo el owner puede promover cajeros a administrador'
       );
     }
 
@@ -345,14 +355,6 @@ export class UsersDomain {
         ErrorCode.VALIDATION_ERROR,
         'Solo se puede promover a un cajero'
       );
-    }
-
-    // Un admin solo puede promover cajeros de su propio subárbol
-    if (requester.role !== UserRole.OWNER) {
-      const canModify = await this.canViewUser(requesterId, userId);
-      if (!canModify) {
-        throw new AppError(403, ErrorCode.FORBIDDEN, 'Cannot modify this user');
-      }
     }
 
     const updatedUser = await usersRepository.updateRole(userId, UserRole.ADMIN);

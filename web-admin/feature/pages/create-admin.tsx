@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,8 +22,12 @@ export default function CreateAdminFeature() {
   const router = useRouter()
   const { toast } = useToast()
   const { balance, loadBalance } = useChips()
-  const { role: myRole } = useAuth()
+  const { role: myRole, isLoading: authLoading } = useAuth()
   const isOwner = myRole === UserRole.OWNER
+  // Solo el owner da de alta administradores.
+  useEffect(() => {
+    if (!authLoading && !isOwner) router.replace("/admin/users")
+  }, [authLoading, isOwner, router])
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     username: "",

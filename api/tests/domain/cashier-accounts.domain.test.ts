@@ -1058,4 +1058,56 @@ describe('CashierAccountsDomain', () => {
       expect(balancesRepository.atomicIncrement).toHaveBeenCalledWith('cashier-1', 80, expect.anything());
     });
   });
+
+  describe('acciones sobre todos los cajeros', () => {
+    const cashier2 = { ...cashier, id: 'cashier-2', username: 'cajero2' };
+    const cashier3 = { ...cashier, id: 'cashier-3', username: 'cajero3' };
+
+    beforeEach(() => {
+      (usersRepository.findById as jest.Mock).mockImplementation((id: string) =>
+        Promise.resolve(id === 'owner-1' ? owner : { ...cashier, id })
+      );
+      (usersRepository.findDescendants as jest.Mock).mockResolvedValue([cashier, cashier2, cashier3]);
+    });
+
+    it('activa los premios en el subtotal de todos, manteniendo su % y salteando a los sin comisión', async () => {
+      repo.findCompensationMode.mockImplementation((id: string) =>
+        Promise.resolve(
+          id === 'cashier-1'
+            ? { ...mode20, percentage: 15 }
+            : id === 'cashier-2'
+              ? { ...mode20, cashierId: id, prizesAffectSubtotal: true }
+              : null
+        )
+      );
+      repo.createCompensationMode.mockImplementation((data: Record<string, unknown>) =>
+        Promise.resolve({ ...mode20, ...data })
+      );
+
+      const result = await domain.setPrizesAffectSubtotalForAll('owner-1', true);
+
+      expect(result).toEqual({ updated: 1, unchanged: 1, skipped: 1 });
+      expect(repo.createCompensationMode).toHaveBeenCalledTimes(1);
+      expect(repo.createCompensationMode).toHaveBeenCalledWith(
+        expect.objectContaining({ cashierId: 'cashier-1', percentage: 15, prizesAffectSubtotal: true })
+      );
+    });
+
+    it('arma un zip con la última liquidación de cada cajero que tenga una', async () => {
+      repo.findLastSettlement.mockImplementation((id: string) =>
+        Promise.resolve(id === 'cashier-3' ? null : makeSettlement({ id: `settlement-${id}`, cashierId: id }))
+      );
+
+      const { buffer, filename } = await domain.getLatestSettlementsZip('owner-1');
+
+      expect(filename).toMatch(/^liquidaciones-\d{4}-\d{2}-\d{2}\.zip$/);
+      expect(buffer.readUInt32LE(0)).toBe(0x04034b50);
+      // Fin de directorio central: cantidad de entradas.
+      expect(buffer.readUInt16LE(buffer.length - 22 + 10)).toBe(2);
+    });
+
+    it('sin liquidaciones no hay zip', async () => {
+      await expect(domain.getLatestSettlementsZip('owner-1')).rejects.toMatchObject({ statusCode: 404 });
+    });
+  });
 });
