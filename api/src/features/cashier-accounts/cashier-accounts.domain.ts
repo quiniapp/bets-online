@@ -38,6 +38,7 @@ import { sequelize } from '../../config/sequelize';
 import { config } from '../../config';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
+import { createZip } from '../../utils/zip.utils';
 import {
   generateOwnerAccountPdf,
   generatePeriodSummaryPdf,
@@ -175,6 +176,39 @@ export class CashierAccountsDomain {
     });
 
     return mode;
+  }
+
+  /**
+   * Activa (o desactiva) en todos los cajeros a cargo que los premios se
+   * descuenten del subtotal, manteniendo el % de cada uno. Los cajeros sin
+   * comisión configurada se saltean: no se les inventa una modalidad.
+   */
+  async setPrizesAffectSubtotalForAll(requesterId: string, enabled: boolean) {
+    await this.assertSettler(requesterId);
+    const cashiers = await this.getSettlerCashiers(requesterId);
+
+    let updated = 0;
+    let unchanged = 0;
+    let skipped = 0;
+    for (const cashier of cashiers) {
+      const current = await cashierAccountsRepository.findCompensationMode(cashier.id);
+      if (!current) {
+        skipped += 1;
+        continue;
+      }
+      if (current.prizesAffectSubtotal === enabled) {
+        unchanged += 1;
+        continue;
+      }
+      await this.updateCompensation(requesterId, cashier.id, {
+        type: current.type,
+        percentage: current.percentage,
+        prizesAffectSubtotal: enabled
+      });
+      updated += 1;
+    }
+
+    return { updated, unchanged, skipped };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -896,12 +930,32 @@ export class CashierAccountsDomain {
     };
   }
 
+  /** .zip con el comprobante de la última liquidación (no cancelada) de cada cajero a cargo. */
+  async getLatestSettlementsZip(requesterId: string) {
+    await this.assertSettler(requesterId);
+    const cashiers = await this.getSettlerCashiers(requesterId);
+
+    const entries = [];
+    for (const cashier of cashiers) {
+      const settlement = await cashierAccountsRepository.findLastSettlement(cashier.id);
+      if (!settlement) continue;
+      const { buffer, filename } = await this.buildSettlementReceipt(settlement);
+      entries.push({ name: filename, data: buffer, date: settlement.periodEnd });
+    }
+    if (entries.length === 0) {
+      throw new AppError(404, ErrorCode.NOT_FOUND, 'Ningún cajero tiene liquidaciones');
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    return { buffer: createZip(entries), filename: `liquidaciones-${stamp}.zip` };
+  }
+
   async getPeriodSummaryReceipt(requesterId: string, periodEnd: Date | string) {
     const result = await this.getPeriodAccounts(requesterId, periodEnd);
     const stamp = (date: Date) => date.toISOString().slice(0, 10);
     return {
       buffer: generatePeriodSummaryPdf(result),
-      filename: `cuenta-corriente-al-${stamp(result.periodEnd)}.pdf`
+      filename: `parte-diario-${stamp(result.periodEnd)}.pdf`
     };
   }
 

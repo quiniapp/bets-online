@@ -15,6 +15,11 @@ export const updateCashierCompensationSchema = z.object({
   path: ['type']
 });
 
+/** Activar o desactivar en todos los cajeros a cargo que los premios se descuenten del subtotal. */
+export const bulkPrizesAffectSubtotalSchema = z.object({
+  enabled: z.boolean()
+});
+
 /**
  * Liquidar a un cajero hasta una fecha de corte.
  * El inicio lo calcula el servidor: el fin de la última liquidación del

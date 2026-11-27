@@ -122,7 +122,7 @@ describe('generatePeriodSummaryPdf', () => {
     });
 
     const text = pdf.toString('latin1');
-    expect(text).toContain('Cuenta corriente de cajeros');
+    expect(text).toContain('Casino - Parte diario');
     expect(text).toContain('cajero1');
     expect(text).toContain('TOTALES');
     expect(text).toContain('Liquid.');

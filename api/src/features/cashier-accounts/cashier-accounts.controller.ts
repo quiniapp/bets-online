@@ -169,6 +169,30 @@ export class CashierAccountsController {
     }
   }
 
+  async latestSettlementsZip(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { buffer, filename } = await cashierAccountsDomain.getLatestSettlementsZip(req.user!.userId);
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async bulkPrizesAffectSubtotal(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await cashierAccountsDomain.setPrizesAffectSubtotalForAll(
+        req.user!.userId,
+        req.body.enabled
+      );
+      return res.json(ApiResponseBuilder.success(result));
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   async periodSummaryReceipt(req: Request, res: Response, next: NextFunction) {
     try {
       const { buffer, filename } = await cashierAccountsDomain.getPeriodSummaryReceipt(

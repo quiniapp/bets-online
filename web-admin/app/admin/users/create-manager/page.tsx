@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,19 @@ import { apiService } from "@/services/api.service";
 import { useToast } from "@/hooks/use-toast";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useAuth } from "@/contexts/auth-context";
+import { UserRole } from "helper";
 
 
 export default function CreateAdminPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { role, isLoading: authLoading } = useAuth();
+  // Solo el owner da de alta administradores.
+  const isOwner = role === UserRole.OWNER;
+  useEffect(() => {
+    if (!authLoading && !isOwner) router.replace("/admin/users");
+  }, [authLoading, isOwner, router]);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
@@ -95,6 +103,10 @@ export default function CreateAdminPage() {
     }
   };
 
+  const handlePasswordValidation = useCallback((v: boolean) => setPasswordValid(v), []);
+
+  if (!authLoading && !isOwner) return null;
+
   return (
     <DashboardLayout title="Alta de Administrador">
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -162,7 +174,7 @@ export default function CreateAdminPage() {
                 onBlur={() => handleBlur('password')}
                 placeholder="Contraseña segura"
                 showRequirements
-                onValidationChange={useCallback((v: boolean) => setPasswordValid(v), [])}
+                onValidationChange={handlePasswordValidation}
               />
             </div>
 

@@ -237,7 +237,8 @@ function UsersPageContent() {
   const [promoteLoading, setPromoteLoading] = useState(false)
 
   // Solo OWNER/ADMIN pueden promover cajeros a admin
-  const canPromote = role === UserRole.OWNER || role === UserRole.ADMIN
+  // Promover crea un administrador: solo el owner.
+  const canPromote = role === UserRole.OWNER
 
   const debouncedSearch = useDebounce(searchTerm, 300)
   const searchQuery = debouncedSearch.length >= 3 ? debouncedSearch : ""

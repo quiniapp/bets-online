@@ -202,7 +202,7 @@ export function generateSettlementReceiptPdf(data: SettlementReceiptData): Buffe
 }
 
 /**
- * Resumen de la cuenta corriente de todos los cajeros a una fecha de corte (A4 apaisado).
+ * Parte diario del casino: cuenta corriente de todos los cajeros a una fecha de corte (A4 apaisado).
  */
 export function generatePeriodSummaryPdf(data: {
   periodStart: Date;
@@ -213,7 +213,7 @@ export function generatePeriodSummaryPdf(data: {
   let content = '';
   content += '0.6 w\n';
   content += '30 30 782 525 re S\n';
-  content += pdfText('Cuenta corriente de cajeros', 40, 565, 18, true);
+  content += pdfText('Casino - Parte diario', 40, 565, 18, true);
   content += pdfText(
     `Corte: ${formatDate(data.periodEnd)} ${formatTime(data.periodEnd)} - cada cajero desde su ultima liquidacion`,
     40,

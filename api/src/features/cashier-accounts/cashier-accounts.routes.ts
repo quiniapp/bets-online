@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  bulkPrizesAffectSubtotalSchema,
   cancelCashierSettlementSchema,
   cashierAccountListQuerySchema,
   cashierCutoffQuerySchema,
@@ -48,6 +49,13 @@ router.get(
   cashierAccountsController.ownerAccountReceipt.bind(cashierAccountsController)
 );
 
+// Premios que afectan el subtotal, en todos los cajeros a cargo. Antes de '/:id'.
+router.put(
+  '/compensation/prizes-affect-subtotal',
+  validate(bulkPrizesAffectSubtotalSchema),
+  cashierAccountsController.bulkPrizesAffectSubtotal.bind(cashierAccountsController)
+);
+
 // Cashier accounts list + per-cashier detail
 router.get(
   '/',
@@ -61,6 +69,12 @@ router.get(
   '/settlements',
   validateQuery(cashierSettlementListQuerySchema),
   cashierAccountsController.listSettlements.bind(cashierAccountsController)
+);
+
+// Comprobantes de la última liquidación de cada cajero, en un .zip.
+router.get(
+  '/settlements/latest.zip',
+  cashierAccountsController.latestSettlementsZip.bind(cashierAccountsController)
 );
 
 router.get(
