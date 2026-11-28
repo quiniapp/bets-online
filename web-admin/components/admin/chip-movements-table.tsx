@@ -65,6 +65,15 @@ const getAmountColor = (type: ChipMovementType): string => {
   return POSITIVE_TYPES.includes(type) ? 'text-green-600' : 'text-red-600';
 };
 
+const getTypeLabel = (movement: ChipMovement, currentUserId: string): string => {
+  if (movement.userId !== currentUserId) {
+    if (movement.type === ChipMovementType.SELL_TO_PLAYER) return 'Venta a jugador';
+    if (movement.type === ChipMovementType.PRIZE) return 'Pago de premio';
+    if (movement.type === ChipMovementType.LOSS) return 'Pérdida de jugador';
+  }
+  return CHIP_MOVEMENT_TYPE_LABELS[movement.type] || movement.type;
+};
+
 export function ChipMovementsTable({
   userId,
   limit = 10,
@@ -154,7 +163,7 @@ export function ChipMovementsTable({
               {new Date(m.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
             </span>
             <Badge className={`${getMovementBadgeColor(m.type)} text-xs w-fit`}>
-              {CHIP_MOVEMENT_TYPE_LABELS[m.type] || m.type}
+              {getTypeLabel(m, userId)}
             </Badge>
             <span className={`font-semibold tabular-nums text-right ${getAmountColor(m.type)}`}>
               {formatAmount(m.amount, m.type)}
@@ -189,35 +198,41 @@ export function ChipMovementsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {movements.map(m => (
-              <tr key={m.id} className="hover:bg-muted/50">
-                <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm">
-                  <span className="sm:hidden">
-                    {new Date(m.createdAt).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span className="hidden sm:inline">
-                    {new Date(m.createdAt).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </td>
-                <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap">
-                  <Badge className={`${getMovementBadgeColor(m.type)} text-[10px] sm:text-xs`}>
-                    {CHIP_MOVEMENT_TYPE_LABELS[m.type] || m.type}
-                  </Badge>
-                </td>
-                <td className={`px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold text-right tabular-nums ${getAmountColor(m.type)}`}>
-                  {formatAmount(m.amount, m.type)}
-                </td>
-                <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-muted-foreground text-right tabular-nums">
-                  ${formatChips(m.previousBalance)}
-                </td>
-                <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-right tabular-nums">
-                  ${formatChips(m.newBalance)}
-                </td>
-                <td className="hidden md:table-cell px-4 py-3 text-sm text-muted-foreground">
-                  {m.description || '-'}
-                </td>
-              </tr>
-            ))}
+            {movements.map(m => {
+              const isRelated = m.userId !== userId;
+              return (
+                <tr key={m.id} className="hover:bg-muted/50">
+                  <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm">
+                    <span className="sm:hidden">
+                      {new Date(m.createdAt).toLocaleString('es-ES', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {new Date(m.createdAt).toLocaleString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </td>
+                  <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap">
+                    <Badge className={`${getMovementBadgeColor(m.type)} text-[10px] sm:text-xs`}>
+                      {getTypeLabel(m, userId)}
+                    </Badge>
+                    {isRelated && m.userUsername && (
+                      <div className="mt-0.5 text-[10px] text-muted-foreground">{m.userUsername}</div>
+                    )}
+                  </td>
+                  <td className={`px-2 sm:px-4 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold text-right tabular-nums ${getAmountColor(m.type)}`}>
+                    {formatAmount(m.amount, m.type)}
+                  </td>
+                  <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-muted-foreground text-right tabular-nums">
+                    {isRelated ? '—' : `$${formatChips(m.previousBalance)}`}
+                  </td>
+                  <td className="hidden sm:table-cell px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-right tabular-nums">
+                    {isRelated ? '—' : `$${formatChips(m.newBalance)}`}
+                  </td>
+                  <td className="hidden md:table-cell px-4 py-3 text-sm text-muted-foreground">
+                    {m.description || '-'}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

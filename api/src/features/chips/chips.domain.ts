@@ -12,6 +12,9 @@ import { AppError } from '../../middleware/error.middleware';
 import { sequelize } from '../../config/sequelize';
 import { writeAudit } from '../../utils/audit';
 
+export const ADMIN_LOAD_BLOCKED_MESSAGE =
+  'Las fichas a un administrador se venden desde Finanzas → Vender fichas.';
+
 export class ChipsDomain {
   /**
    * Sell chips from cashier/admin to player
@@ -51,6 +54,12 @@ export class ChipsDomain {
           'Can only sell chips to users in your hierarchy'
         );
       }
+    }
+
+    // Las fichas del owner a un admin se venden con precio y deuda
+    // (features/admin-chip-purchases): no se cargan sueltas.
+    if (seller.role === UserRole.OWNER && player.role === UserRole.ADMIN) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, ADMIN_LOAD_BLOCKED_MESSAGE);
     }
 
     // Solo se puede cargar fichas a usuarios con rol inferior
@@ -399,6 +408,7 @@ export class ChipsDomain {
       types?: ChipMovementType[];
       compact?: boolean;
       includeDescendants?: boolean;
+      includeRelated?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number; page: number; limit: number }> {
     const requester = await usersRepository.findById(requesterId);
@@ -443,6 +453,7 @@ export class ChipsDomain {
       type: options?.type,
       types: options?.types,
       compact: options?.compact,
+      includeRelated: options?.includeRelated,
     });
 
     return {

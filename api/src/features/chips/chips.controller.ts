@@ -271,7 +271,7 @@ export class ChipsController {
       }
 
       const { id } = req.params;
-      const { page, limit, startDate, endDate, type, types, compact, includeDescendants } = req.query;
+      const { page, limit, startDate, endDate, type, types, compact, includeDescendants, includeRelated } = req.query;
 
       const result = await chipsDomain.getMovementHistory(
         req.user.userId,
@@ -287,6 +287,7 @@ export class ChipsController {
             : undefined,
           compact: compact === 'true',
           includeDescendants: includeDescendants === 'true',
+          includeRelated: includeRelated === 'true',
         }
       );
 
@@ -410,7 +411,7 @@ export class ChipsController {
       }
 
       const { id } = req.params;
-      const { startDate, endDate, type } = req.query;
+      const { startDate, endDate, type, includeRelated } = req.query;
 
       // Get all movements without pagination for export
       const result = await chipsDomain.getMovementHistory(
@@ -420,6 +421,7 @@ export class ChipsController {
           startDate: startDate ? new Date(startDate as string) : undefined,
           endDate: endDate ? new Date(endDate as string) : undefined,
           type: type as ChipMovementType | undefined,
+          includeRelated: includeRelated === 'true',
           limit: 10000 // Large limit for export
         }
       );

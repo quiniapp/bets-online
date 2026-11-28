@@ -1,4 +1,4 @@
-import { ChipMovementModel } from '../../persistence/models';
+import { ChipMovementModel, UserModel } from '../../persistence/models';
 import { ChipMovement, CreateChipMovementDto, ChipMovementType } from 'helper';
 import { Op, Transaction } from 'sequelize';
 
@@ -51,9 +51,27 @@ export class ChipMovementsRepository {
       type?: ChipMovementType;
       types?: ChipMovementType[];
       compact?: boolean;
+      includeRelated?: boolean;
     }
   ): Promise<{ movements: ChipMovement[]; total: number }> {
-    const where: Record<string, unknown> = { userId };
+    // Un cajero/admin no solo tiene movimientos con userId = él: las ventas y
+    // premios que opera quedan con relatedUserId = él y userId = jugador.
+    // includeRelated trae ambas caras de la cuenta.
+    const ownerFilter = options?.includeRelated
+      ? { [Op.or]: [{ userId }, { relatedUserId: userId }] }
+      : { userId };
+
+    // Exclude GAME_WIN rows with amount <= 0: NOT(type=GAME_WIN AND amount<=0) = (type!=GAME_WIN OR amount>0)
+    const visibilityFilter = {
+      [Op.or]: [
+        { type: { [Op.ne]: ChipMovementType.GAME_WIN } },
+        { amount: { [Op.gt]: 0 } }
+      ]
+    };
+
+    const where: Record<string | symbol, unknown> = {
+      [Op.and]: [ownerFilter, visibilityFilter]
+    };
 
     if (options?.types && options.types.length > 0) {
       where.type = { [Op.in]: options.types };
@@ -72,22 +90,25 @@ export class ChipMovementsRepository {
       where.createdAt = createdAtFilter;
     }
 
-    // Exclude GAME_WIN rows with amount <= 0: NOT(type=GAME_WIN AND amount<=0) = (type!=GAME_WIN OR amount>0)
-    (where as Record<string | symbol, unknown>)[Op.or] = [
-      { type: { [Op.ne]: ChipMovementType.GAME_WIN } },
-      { amount: { [Op.gt]: 0 } }
-    ];
-
     const attributes = options?.compact
       ? ['id', 'type', 'amount', 'createdAt']
+      : undefined;
+
+    const include = options?.includeRelated && !options?.compact
+      ? [
+          { model: UserModel, as: 'user', attributes: ['id', 'username'] },
+          { model: UserModel, as: 'relatedUser', attributes: ['id', 'username'] }
+        ]
       : undefined;
 
     const { count, rows } = await ChipMovementModel.findAndCountAll({
       where,
       attributes,
+      include,
       limit: options?.limit,
       offset: options?.offset,
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      distinct: true
     });
 
     return {
@@ -237,11 +258,15 @@ export class ChipMovementsRepository {
   private mapToMovement(data: ChipMovementModel | Record<string, unknown>): ChipMovement {
     // Convert Sequelize model to plain object if needed
     const plain = data instanceof ChipMovementModel ? data.get({ plain: true }) : data;
+    const user = plain.user as { username?: string } | undefined;
+    const relatedUser = plain.relatedUser as { username?: string } | undefined;
 
     return {
       id: plain.id as string,
       userId: (plain.userId || plain.user_id) as string,
+      userUsername: user?.username ?? null,
       relatedUserId: (plain.relatedUserId || plain.related_user_id) as string | null,
+      relatedUsername: relatedUser?.username ?? null,
       type: plain.type as ChipMovementType,
       amount: parseFloat(String(plain.amount)),
       description: (plain.description || undefined) as string | undefined,

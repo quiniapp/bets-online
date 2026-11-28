@@ -146,6 +146,9 @@ export function useChips(userId?: string) {
     if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
     if (options?.type) queryParams.append('type', options.type);
     if (options?.compact) queryParams.append('compact', 'true');
+    // En el backoffice la cuenta del cajero incluye las ventas/premios que operó
+    // (relatedUserId), no solo sus propias cargas/retiros.
+    queryParams.append('includeRelated', 'true');
 
     return await apiService.get<ChipMovement[]>(
       `/chips/movements/${targetUserId}?${queryParams.toString()}`
@@ -164,6 +167,7 @@ export function useChips(userId?: string) {
     if (options?.startDate) queryParams.append('startDate', options.startDate.toISOString());
     if (options?.endDate) queryParams.append('endDate', options.endDate.toISOString());
     if (options?.type) queryParams.append('type', options.type);
+    queryParams.append('includeRelated', 'true');
 
     // Token via cookie httpOnly (enviada automáticamente por el browser).
     // URL relativa para pasar por el proxy de Next.js.

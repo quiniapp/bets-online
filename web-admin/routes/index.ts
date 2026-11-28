@@ -8,6 +8,7 @@ const ROUTER = {
   ADMIN_USERS: "/admin/users",
   ADMIN_GAMES: "/admin/games",
   ADMIN_BALANCES: "/admin/balances",
+  ADMIN_CASHIER_ACCOUNTS: "/admin/cashier-accounts",
   ADMIN_TRANSACTIONS: "/admin/transactions",
   ADMIN_REPORTS: "/admin/reports",
   ADMIN_SETTINGS: "/admin/settings",
@@ -26,6 +27,7 @@ const ROUTER = {
   CASHIER_SELL_CHIPS: "/cashier/sell",
   CASHIER_TRANSACTIONS: "/cashier/transactions",
   CASHIER_CREATE_USER: "/cashier/users/create-user",
+  CASHIER_SETTLEMENTS: "/cashier/settlements",
 
   // Player routes
   USER_GAME_PLAY: "/user/games",

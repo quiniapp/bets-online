@@ -9,6 +9,7 @@
 | [environment-variables.md](./environment-variables.md) | Todas las variables de `api`, `web` y `web-admin`; local, CI, Railway, Vercel; conexión a Supabase |
 | [deployment.md](./deployment.md) | Topología, Railway, Vercel, qué hace cada workflow de GitHub Actions, branch protection, checklist de entorno nuevo |
 | [frontend.md](./frontend.md) | `web` vs `web-admin`, estructura, `api.service` (CSRF, cookies), cómo agregar páginas |
+| [cuentas-corrientes-cajeros.md](./cuentas-corrientes-cajeros.md) | Liquidaciones admin → cajeros (comisión, premios, cobros) y compra de fichas owner → admin (precio por tramos, comprobante, pago) |
 | [../api/src/persistence/migrations/README.md](../api/src/persistence/migrations/README.md) | Migraciones y seeds con Sequelize CLI |
 | [../api/src/config/README.md](../api/src/config/README.md) | Cómo la API carga y valida su configuración |
 | [../.github/README.md](../.github/README.md) | Workflows y template de PR |
@@ -19,6 +20,7 @@
 | Doc | Qué cubre |
 |---|---|
 | [rfc8785-hmac-sha256.md](./rfc8785-hmac-sha256.md) | Canonicalización JSON + HMAC usada en los callbacks de 21Viral |
+| [21viral/README.md](./21viral/README.md) | Operator API **v1.23**: PDF original, texto extraído, endpoints, cambios vs. v1.20 y estado en el repo |
 | [21viral-configuracion-operador.md](./21viral-configuracion-operador.md) | Qué se configura de nuestro lado vs. del lado de 21Viral; gap analysis y pedidos al account manager |
 
 ## Informes
@@ -33,9 +35,10 @@ Foto de una fecha. Cada uno tiene arriba una sección "Estado" con lo que ya se 
 
 ## Histórico y backlog
 
-- [casino-prd.md](./casino-prd.md): PRD original (2025-11). Jerarquía, fichas y reportes se implementaron; compensación de cajeros, liquidaciones y recuperos tienen tablas pero no lógica ni endpoints.
+- [casino-prd.md](./casino-prd.md): PRD original (2025-11). Jerarquía, fichas, reportes y cuentas corrientes/liquidaciones de cajeros se implementaron; paneles y recuperos tienen tablas pero no lógica ni endpoints.
 - [superpowers/specs/](./superpowers/specs/): diseños de features ya implementadas (flujo de fichas, banners estáticos). Sirven para entender el porqué; el código manda.
 - [backlog/](./backlog/): ideas diferidas (API de preview por PR en Railway, `rotateTokens` con JOIN, SEO).
 - [CHANGELOG_THEME_BRANCH.md](./CHANGELOG_THEME_BRANCH.md): resumen de la implementación del tema seleccionable (`light`/`dark`/`casino`) y de la sincronización centralizada del tema.
 - [superpowers/specs/2026-10-09-theme-generator-design.md](./superpowers/specs/2026-10-09-theme-generator-design.md): generador de temas del admin (paleta derivada de colores semilla) y aplicación del theme custom en web-admin y web.
+- [superpowers/specs/2026-10-13-cashier-accounts-design.md](./superpowers/specs/2026-10-13-cashier-accounts-design.md): cuentas corrientes de cajeros, liquidación de comisiones por porcentaje y registro de pagos.
 - Cualquier carpeta llamada `plans/` está en `.gitignore`: los planes de implementación son locales y no se commitean.

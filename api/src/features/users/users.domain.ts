@@ -1,4 +1,5 @@
 import {
+  CompensationType,
   User,
   CreateUserDto,
   UpdateUserDto,
@@ -13,9 +14,15 @@ import { balancesRepository } from '../chips/balances.repository';
 import { sessionsRepository } from '../auth/sessions.repository';
 import { userCache } from '../../persistence/cache/user.cache';
 import { authDomain } from '../auth/auth.domain';
-import { chipsDomain } from '../chips/chips.domain';
+import { ADMIN_LOAD_BLOCKED_MESSAGE, chipsDomain } from '../chips/chips.domain';
 import { AppError } from '../../middleware/error.middleware';
 import { writeAudit } from '../../utils/audit';
+import { cashierAccountsRepository } from '../cashier-accounts/cashier-accounts.repository';
+
+/** Roles que cobran comisión sobre la venta de fichas. */
+// Solo el cajero cobra comisión por venta de fichas. El admin no: compra las
+// fichas al owner a precio diferencial (admin-chip-purchases) y se las vende a sus cajeros.
+const COMMISSION_ROLES: UserRole[] = [UserRole.CASHIER];
 
 export class UsersDomain {
   async createUser(
@@ -38,6 +45,15 @@ export class UsersDomain {
       );
     }
 
+    // Solo el owner da de alta administradores.
+    if (userData.role === UserRole.ADMIN && creator.role !== UserRole.OWNER) {
+      throw new AppError(
+        403,
+        ErrorCode.INSUFFICIENT_PERMISSIONS,
+        'Solo el owner puede crear administradores'
+      );
+    }
+
     // Validate that creator can create this type of user
     if (!canManageUser(creator.role, userData.role)) {
       throw new AppError(
@@ -45,6 +61,20 @@ export class UsersDomain {
         ErrorCode.INSUFFICIENT_PERMISSIONS,
         'Cannot create user with this role'
       );
+    }
+
+    const commission = userData.commissionPercentage;
+    if (commission !== undefined && !COMMISSION_ROLES.includes(userData.role)) {
+      throw new AppError(
+        400,
+        ErrorCode.INVALID_INPUT,
+        'Solo los cajeros tienen comisión'
+      );
+    }
+
+    // Al admin no se le cargan fichas sueltas: se le venden con precio y deuda.
+    if (userData.role === UserRole.ADMIN && userData.initialBalance && userData.initialBalance > 0) {
+      throw new AppError(400, ErrorCode.INVALID_INPUT, ADMIN_LOAD_BLOCKED_MESSAGE);
     }
 
     // Validate initial balance against creator's available balance before creating user
@@ -69,6 +99,16 @@ export class UsersDomain {
       userData.lastName
     );
 
+    if (commission !== undefined) {
+      await cashierAccountsRepository.createCompensationMode({
+        cashierId: user.id,
+        type: CompensationType.PERCENTAGE,
+        percentage: Math.round(commission * 100) / 100,
+        prizesAffectSubtotal: false,
+        activeFrom: new Date()
+      });
+    }
+
     if (userData.initialBalance && userData.initialBalance > 0) {
       await chipsDomain.sellChips(creatorId, user.id, userData.initialBalance, 'Balance inicial');
     }
@@ -78,7 +118,12 @@ export class UsersDomain {
       action: 'user.create',
       entityType: 'user',
       entityId: user.id,
-      newValues: { username: user.username, role: user.role, initialBalance: userData.initialBalance ?? 0 }
+      newValues: {
+        username: user.username,
+        role: user.role,
+        initialBalance: userData.initialBalance ?? 0,
+        commissionPercentage: commission ?? null
+      }
     });
     return user;
   }
@@ -290,11 +335,12 @@ export class UsersDomain {
       throw new AppError(404, ErrorCode.NOT_FOUND, 'Requester not found');
     }
 
-    if (requester.role !== UserRole.OWNER && requester.role !== UserRole.ADMIN) {
+    // Promover crea un administrador, y eso solo lo hace el owner.
+    if (requester.role !== UserRole.OWNER) {
       throw new AppError(
         403,
         ErrorCode.INSUFFICIENT_PERMISSIONS,
-        'Solo un administrador puede promover cajeros'
+        'Solo el owner puede promover cajeros a administrador'
       );
     }
 
@@ -309,14 +355,6 @@ export class UsersDomain {
         ErrorCode.VALIDATION_ERROR,
         'Solo se puede promover a un cajero'
       );
-    }
-
-    // Un admin solo puede promover cajeros de su propio subárbol
-    if (requester.role !== UserRole.OWNER) {
-      const canModify = await this.canViewUser(requesterId, userId);
-      if (!canModify) {
-        throw new AppError(403, ErrorCode.FORBIDDEN, 'Cannot modify this user');
-      }
     }
 
     const updatedUser = await usersRepository.updateRole(userId, UserRole.ADMIN);

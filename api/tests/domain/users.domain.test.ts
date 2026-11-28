@@ -39,11 +39,17 @@ jest.mock('../../src/features/chips/chips.domain', () => ({
 jest.mock('../../src/utils/audit', () => ({
   writeAudit: jest.fn()
 }));
+jest.mock('../../src/features/cashier-accounts/cashier-accounts.repository', () => ({
+  cashierAccountsRepository: {
+    createCompensationMode: jest.fn()
+  }
+}));
 
 import { UsersDomain } from '../../src/features/users/users.domain';
 import { usersRepository } from '../../src/features/users/users.repository';
 import { sessionsRepository } from '../../src/features/auth/sessions.repository';
 import { authDomain } from '../../src/features/auth/auth.domain';
+import { cashierAccountsRepository } from '../../src/features/cashier-accounts/cashier-accounts.repository';
 
 const makeUser = (overrides = {}) => ({
   id: 'user-1',
@@ -116,6 +122,23 @@ describe('UsersDomain', () => {
       );
     });
 
+    it('un admin NO puede crear otro admin', async () => {
+      const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN, parentUserId: 'owner-1' });
+      (usersRepository.findById as jest.Mock).mockResolvedValue(admin);
+
+      await expect(
+        domain.createUser('admin-1', {
+          role: UserRole.ADMIN,
+          username: 'otro-admin',
+          password: 'Password1'
+        })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: ErrorCode.INSUFFICIENT_PERMISSIONS
+      });
+      expect(authDomain.register).not.toHaveBeenCalled();
+    });
+
     it('un admin SÍ puede crear un cajero', async () => {
       const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN, parentUserId: 'owner-1' });
       (usersRepository.findById as jest.Mock).mockResolvedValue(admin);
@@ -130,27 +153,86 @@ describe('UsersDomain', () => {
       });
 
       expect(user.role).toBe(UserRole.CASHIER);
+      expect(cashierAccountsRepository.createCompensationMode).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('createUser — comisión', () => {
+    const owner = makeUser({ id: 'owner-1', role: UserRole.OWNER, parentUserId: null });
+
+    it.each([UserRole.CASHIER])('guarda la comisión de un %s nuevo', async role => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+      (authDomain.register as jest.Mock).mockResolvedValue(makeUser({ id: 'new-1', role }));
+
+      await domain.createUser('owner-1', {
+        role,
+        username: 'nuevo',
+        password: 'Password1',
+        commissionPercentage: 12.345
+      });
+
+      expect(cashierAccountsRepository.createCompensationMode).toHaveBeenCalledWith(
+        expect.objectContaining({ cashierId: 'new-1', type: 'PERCENTAGE', percentage: 12.35 })
+      );
+    });
+
+    it('rechaza comisión para un jugador, sin crear el usuario', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+
+      await expect(
+        domain.createUser('owner-1', {
+          role: UserRole.PLAYER,
+          username: 'jugador',
+          password: 'Password1',
+          commissionPercentage: 10
+        })
+      ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+
+      expect(authDomain.register).not.toHaveBeenCalled();
+      expect(cashierAccountsRepository.createCompensationMode).not.toHaveBeenCalled();
+    });
+
+    it('rechaza comisión para un admin (compra fichas a precio diferencial)', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+
+      await expect(
+        domain.createUser('owner-1', {
+          role: UserRole.ADMIN,
+          username: 'admin3',
+          password: 'Password1',
+          commissionPercentage: 10
+        })
+      ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+
+      expect(authDomain.register).not.toHaveBeenCalled();
+    });
+
+    it('rechaza saldo inicial para un admin (se le venden fichas desde Finanzas)', async () => {
+      (usersRepository.findById as jest.Mock).mockResolvedValue(owner);
+
+      await expect(
+        domain.createUser('owner-1', {
+          role: UserRole.ADMIN,
+          username: 'admin2',
+          password: 'Password1',
+          initialBalance: 1000
+        })
+      ).rejects.toMatchObject({ statusCode: 400, code: ErrorCode.INVALID_INPUT });
+
+      expect(authDomain.register).not.toHaveBeenCalled();
     });
   });
 
   describe('promoteToAdmin', () => {
-    it('un admin promueve a un cajero de su subárbol', async () => {
+    it('un admin NO puede promover a un cajero (solo el owner crea admins)', async () => {
       const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN, parentUserId: 'owner-1' });
-      const cashier = makeUser({ id: 'cashier-1', role: UserRole.CASHIER, parentUserId: 'admin-1' });
-      (usersRepository.findById as jest.Mock)
-        .mockResolvedValueOnce(admin)
-        .mockResolvedValueOnce(cashier);
-      (usersRepository.isDescendant as jest.Mock).mockResolvedValue(true);
-      (usersRepository.updateRole as jest.Mock).mockResolvedValue(
-        { ...cashier, role: UserRole.ADMIN }
-      );
+      (usersRepository.findById as jest.Mock).mockResolvedValueOnce(admin);
 
-      const user = await domain.promoteToAdmin('admin-1', 'cashier-1');
-
-      expect(user.role).toBe(UserRole.ADMIN);
-      expect(usersRepository.updateRole).toHaveBeenCalledWith('cashier-1', UserRole.ADMIN);
-      // El rol viaja en el JWT: las sesiones del promovido deben cerrarse
-      expect(sessionsRepository.deleteByUserId).toHaveBeenCalledWith('cashier-1');
+      await expect(domain.promoteToAdmin('admin-1', 'cashier-1')).rejects.toMatchObject({
+        statusCode: 403,
+        code: ErrorCode.INSUFFICIENT_PERMISSIONS
+      });
+      expect(usersRepository.updateRole).not.toHaveBeenCalled();
     });
 
     it('el owner promueve a cualquier cajero sin chequear subárbol', async () => {
@@ -167,6 +249,8 @@ describe('UsersDomain', () => {
 
       expect(user.role).toBe(UserRole.ADMIN);
       expect(usersRepository.isDescendant).not.toHaveBeenCalled();
+      // El rol viaja en el JWT: las sesiones del promovido deben cerrarse
+      expect(sessionsRepository.deleteByUserId).toHaveBeenCalledWith('cashier-1');
     });
 
     it('un cajero NO puede promover a otro cajero', async () => {
@@ -181,30 +265,15 @@ describe('UsersDomain', () => {
     });
 
     it('NO se puede promover a un jugador', async () => {
-      const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN });
+      const owner = makeUser({ id: 'owner-1', role: UserRole.OWNER, parentUserId: null });
       const player = makeUser({ id: 'player-1', role: UserRole.PLAYER });
       (usersRepository.findById as jest.Mock)
-        .mockResolvedValueOnce(admin)
+        .mockResolvedValueOnce(owner)
         .mockResolvedValueOnce(player);
 
-      await expect(domain.promoteToAdmin('admin-1', 'player-1')).rejects.toMatchObject({
+      await expect(domain.promoteToAdmin('owner-1', 'player-1')).rejects.toMatchObject({
         statusCode: 400,
         code: ErrorCode.VALIDATION_ERROR
-      });
-      expect(usersRepository.updateRole).not.toHaveBeenCalled();
-    });
-
-    it('un admin NO puede promover a un cajero fuera de su subárbol', async () => {
-      const admin = makeUser({ id: 'admin-1', role: UserRole.ADMIN });
-      const cashier = makeUser({ id: 'cashier-9', role: UserRole.CASHIER, parentUserId: 'otro-admin' });
-      (usersRepository.findById as jest.Mock)
-        .mockResolvedValueOnce(admin)
-        .mockResolvedValueOnce(cashier);
-      (usersRepository.isDescendant as jest.Mock).mockResolvedValue(false);
-
-      await expect(domain.promoteToAdmin('admin-1', 'cashier-9')).rejects.toMatchObject({
-        statusCode: 403,
-        code: ErrorCode.FORBIDDEN
       });
       expect(usersRepository.updateRole).not.toHaveBeenCalled();
     });
